@@ -1,15 +1,29 @@
 ---
-/**
- * UseCasesPreview — Homepage showcase rows (zigzag layout)
- *
- * Replaces stacked cards with alternating image/text feature rows.
- */
 import { useTranslations } from '../../i18n';
 import { useCases } from '../../content/use-cases';
 
 const locale = (Astro as any).currentLocale ?? 'en';
 const t = useTranslations(locale).useCases;
+const featuredDemo = useTranslations(locale).featuredDemo;
 const localePath = locale === 'en' ? '' : `/${locale}`;
+
+const readCaseLabel =
+  locale === 'fr'
+    ? 'Lire le cas'
+    : locale === 'zh'
+      ? '阅读案例'
+      : locale === 'zh-TW'
+        ? '閱讀案例'
+        : 'Read case study';
+
+const allCasesLabel =
+  locale === 'fr'
+    ? 'Tous les cas'
+    : locale === 'zh'
+      ? '所有案例'
+      : locale === 'zh-TW'
+        ? '所有案例'
+        : 'All case studies';
 ---
 
 <section id="use-cases-preview">
@@ -19,33 +33,60 @@ const localePath = locale === 'en' ? '' : `/${locale}`;
       <p class="section-subtitle">{t.heroSubtitle}</p>
     </div>
 
-    <div class="showcase-list">
-      {useCases.map((uc, index) => (
-        <article class={`showcase-row ${index % 2 === 1 ? 'reverse' : ''}`}>
-          {(uc.diagram || uc.visual) && (
-            <a href={`${localePath}/use-cases/${uc.id}`} class="showcase-media">
-              <img
-                src={uc.visual || `/diagrams/${uc.diagram}.svg`}
-                alt={uc.title[locale] || uc.title.en}
-                loading="lazy"
-                class="showcase-image"
-              />
-            </a>
-          )}
+    <div id="featured-demo" class="featured-case">
+      <div class="featured-video-card">
+        <video controls playsinline preload="metadata"><source src={featuredDemo.video.src} type="video/mp4" /></video>
+        <p class="video-caption">{featuredDemo.video.caption}</p>
+      </div>
 
-          <a href={`${localePath}/use-cases/${uc.id}`} class="showcase-copy">
-            <span class="case-tag">
-              <span class="material-symbols-rounded tag-icon">{uc.icon}</span>
-              {uc.tag}
-            </span>
+      <div class="featured-copy">
+        <span class="eyebrow">{featuredDemo.eyebrow}</span>
+        <h3 class="featured-title">{featuredDemo.name}</h3>
+        <p class="featured-tagline">{featuredDemo.tagline}</p>
+        <p class="featured-description">{featuredDemo.description}</p>
 
-            <h3>{uc.title[locale] || uc.title.en}</h3>
-            <p class="case-excerpt">{uc.punchline[locale] || uc.punchline.en}</p>
+        <ul class="featured-bullets">
+          {featuredDemo.bullets.map((bullet) => (
+            <li class="bullet-item">
+              <span class="material-symbols-rounded">check_circle</span>
+              <span>{bullet}</span>
+            </li>
+          ))}
+        </ul>
 
-            <span class="read-link">
-              {locale === 'fr' ? 'Lire le cas' : locale === 'zh' ? '阅读案例' : locale === 'zh-TW' ? '閱讀案例' : 'Read case study'}
-              <span aria-hidden="true">&rarr;</span>
-            </span>
+        <p class="featured-note">{featuredDemo.note}</p>
+      </div>
+    </div>
+
+    <div class="cases-grid">
+      {useCases.map((uc) => (
+        <article class="case-card">
+          <a href={`${localePath}/use-cases/${uc.id}`} class="case-card-link">
+            {(uc.diagram || uc.visual) && (
+              <div class="case-media">
+                <img
+                  src={uc.visual || `/diagrams/${uc.diagram}.svg`}
+                  alt={uc.title[locale] || uc.title.en}
+                  loading="lazy"
+                  class="case-image"
+                />
+              </div>
+            )}
+
+            <div class="case-copy">
+              <span class="case-tag">
+                <span class="material-symbols-rounded tag-icon">{uc.icon}</span>
+                {uc.tag}
+              </span>
+
+              <h3 class="case-title">{uc.title[locale] || uc.title.en}</h3>
+              <p class="case-excerpt">{uc.punchline[locale] || uc.punchline.en}</p>
+
+              <span class="read-link">
+                {readCaseLabel}
+                <span aria-hidden="true">&rarr;</span>
+              </span>
+            </div>
           </a>
         </article>
       ))}
@@ -53,7 +94,7 @@ const localePath = locale === 'en' ? '' : `/${locale}`;
 
     <div class="view-all-wrapper">
       <a href={`${localePath}/use-cases`} class="view-all-link">
-        {locale === 'fr' ? 'Tous les cas' : locale === 'zh' ? '所有案例' : locale === 'zh-TW' ? '所有案例' : 'All case studies'}
+        {allCasesLabel}
         <span aria-hidden="true">&rarr;</span>
       </a>
     </div>
@@ -74,7 +115,7 @@ const localePath = locale === 'en' ? '' : `/${locale}`;
 
   .section-header {
     text-align: left;
-    margin-bottom: 48px;
+    margin-bottom: 40px;
     max-width: 620px;
   }
 
@@ -94,139 +135,208 @@ const localePath = locale === 'en' ? '' : `/${locale}`;
     line-height: 1.6;
   }
 
-  .showcase-list {
+  .featured-case {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    gap: 32px;
+    margin-bottom: 40px;
+    padding: 18px;
+    background: var(--md-sys-color-surface);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: 24px;
+  }
+
+  .featured-video-card {
+    overflow: hidden;
+  }
+
+  video {
+    width: 100%;
+    display: block;
+    border-radius: 14px;
+    background: #000;
+  }
+
+  .video-caption {
+    margin: 14px 4px 0;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .featured-copy {
     display: flex;
     flex-direction: column;
+    gap: 16px;
+    padding: 12px;
+    border-left: 4px solid var(--md-sys-color-primary);
   }
 
-  .showcase-row {
+  .eyebrow {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--md-sys-color-primary);
+  }
+
+  .featured-title,
+  .case-title {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 600;
+    color: var(--md-sys-color-on-surface);
+    margin: 0;
+    letter-spacing: -0.02em;
+  }
+
+  .featured-title {
+    font-size: 1.8rem;
+    line-height: 1.2;
+  }
+
+  .case-title {
+    font-size: 1.45rem;
+    line-height: 1.3;
+  }
+
+  .featured-tagline {
+    margin: -6px 0 0;
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.08rem;
+    font-style: italic;
+    color: var(--md-sys-color-primary);
+  }
+
+  .featured-description,
+  .featured-note,
+  .case-excerpt {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.65;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .featured-bullets {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+  }
+
+  .bullet-item {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    color: var(--md-sys-color-on-surface);
+    font-size: 0.95rem;
+    line-height: 1.6;
+  }
+
+  .bullet-item .material-symbols-rounded {
+    font-size: 18px;
+    color: var(--md-sys-color-primary);
+    margin-top: 2px;
+  }
+
+  .cases-grid {
     display: grid;
-    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-    align-items: center;
-    gap: 32px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
   }
 
-  .showcase-row + .showcase-row {
-    margin-top: 40px;
-    padding-top: 40px;
-    border-top: 1px solid var(--md-sys-color-outline-variant);
-  }
-
-  .showcase-row.reverse {
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-  }
-
-  .showcase-row.reverse .showcase-media {
-    order: 2;
-  }
-
-  .showcase-row.reverse .showcase-copy {
-    order: 1;
-  }
-
-  .showcase-media {
-    display: block;
-    min-height: 240px;
-    background: #08080a;
-    border-radius: 14px;
+  .case-card {
+    background: var(--md-sys-color-surface);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: 20px;
     overflow: hidden;
+    transition: transform 240ms ease-out, box-shadow 240ms ease-out, border-color 240ms ease-out;
+  }
+
+  .case-card-link {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    color: inherit;
     text-decoration: none;
-    transition: transform 260ms ease-out;
   }
 
-  .showcase-media:hover {
+  .case-card-link,
+  .case-card-link * {
+    text-decoration: none;
+  }
+
+  .case-card:hover {
     transform: translateY(-3px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
+    border-color: var(--md-sys-color-primary);
   }
 
-  .showcase-media:focus-visible {
+  .case-card-link:focus-visible {
     outline: 3px solid var(--md-sys-color-primary);
     outline-offset: 4px;
+    border-radius: 16px;
   }
 
-  .showcase-image {
+  .case-media {
+    min-height: 220px;
+    background: #08080a;
+  }
+
+  .case-image {
     width: 100%;
     height: 100%;
-    min-height: 240px;
+    min-height: 220px;
     object-fit: contain;
-    padding: 18px 20px;
+    padding: 20px 22px;
   }
 
-  .showcase-copy {
+  .case-copy {
     display: flex;
+    flex: 1;
     flex-direction: column;
     gap: 14px;
-    text-decoration: none;
-    color: inherit;
-  }
-
-  .showcase-copy,
-  .showcase-copy * {
-    text-decoration: none;
-  }
-
-  .showcase-copy:focus-visible {
-    outline: 3px solid var(--md-sys-color-primary);
-    outline-offset: 4px;
-    border-radius: 4px;
+    padding: 22px;
   }
 
   .case-tag {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    font-size: 0.68rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--md-sys-color-primary);
-    background: var(--md-sys-color-primary-container);
+    align-self: flex-start;
     padding: 5px 10px;
     border-radius: 6px;
-    align-self: flex-start;
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-primary);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
   }
 
   .tag-icon {
     font-size: 13px;
   }
 
-  h3 {
-    font-family: 'Fraunces', Georgia, serif;
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--md-sys-color-on-surface);
-    margin: 0;
-    line-height: 1.3;
-    letter-spacing: -0.01em;
-  }
-
-  .case-excerpt {
-    margin: 0;
-    font-size: 1rem;
-    line-height: 1.65;
-    color: var(--md-sys-color-on-surface-variant);
-    max-width: 64ch;
-  }
-
   .read-link {
-    margin-top: 8px;
+    margin-top: auto;
     min-height: 44px;
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    text-decoration: none;
     color: var(--md-sys-color-primary);
     font-size: 0.9rem;
     font-weight: 600;
     transition: gap 200ms ease-out;
   }
 
-  .showcase-copy:hover .read-link {
+  .case-card:hover .read-link {
     gap: 10px;
   }
 
   .view-all-wrapper {
-    margin-top: 44px;
+    margin-top: 40px;
     text-align: center;
   }
 
@@ -257,20 +367,9 @@ const localePath = locale === 'en' ? '' : `/${locale}`;
   }
 
   @media (max-width: 900px) {
-    .showcase-row,
-    .showcase-row.reverse {
+    .featured-case,
+    .cases-grid {
       grid-template-columns: 1fr;
-      gap: 18px;
-    }
-
-    .showcase-row.reverse .showcase-media,
-    .showcase-row.reverse .showcase-copy {
-      order: initial;
-    }
-
-    .showcase-media,
-    .showcase-image {
-      min-height: 220px;
     }
   }
 
@@ -279,21 +378,36 @@ const localePath = locale === 'en' ? '' : `/${locale}`;
       padding: 32px 0;
     }
 
+    .container {
+      padding: 0 16px;
+    }
+
     h2 {
       font-size: 2rem;
     }
 
-    .showcase-row + .showcase-row {
-      margin-top: 32px;
-      padding-top: 32px;
+    .featured-case {
+      gap: 24px;
+      padding: 16px;
     }
 
-    h3 {
-      font-size: 1.3rem;
+    .featured-copy {
+      padding: 4px 0 0;
+      border-left: 0;
+      border-top: 4px solid var(--md-sys-color-primary);
+      padding-top: 16px;
     }
 
-    .case-excerpt {
-      font-size: 0.95rem;
+    .featured-title {
+      font-size: 1.5rem;
+    }
+
+    .case-title {
+      font-size: 1.25rem;
+    }
+
+    .case-copy {
+      padding: 18px;
     }
 
     .view-all-wrapper {
@@ -311,38 +425,58 @@ const localePath = locale === 'en' ? '' : `/${locale}`;
     background: var(--casys-warm-background);
   }
 
-  html[data-theme="dark"] #use-cases-preview h2 {
+  html[data-theme="dark"] #use-cases-preview h2,
+  html[data-theme="dark"] #use-cases-preview .featured-title,
+  html[data-theme="dark"] #use-cases-preview .case-title {
     color: var(--casys-warm-text-primary);
   }
 
-  html[data-theme="dark"] #use-cases-preview .section-subtitle {
+  html[data-theme="dark"] #use-cases-preview .section-subtitle,
+  html[data-theme="dark"] #use-cases-preview .video-caption,
+  html[data-theme="dark"] #use-cases-preview .featured-description,
+  html[data-theme="dark"] #use-cases-preview .featured-note,
+  html[data-theme="dark"] #use-cases-preview .case-excerpt {
     color: var(--casys-warm-text-secondary);
   }
 
-  html[data-theme="dark"] #use-cases-preview .showcase-row + .showcase-row {
-    border-top-color: var(--casys-warm-border-accent);
+  html[data-theme="dark"] #use-cases-preview .featured-case,
+  html[data-theme="dark"] #use-cases-preview .case-card {
+    background: var(--casys-warm-surface);
+    border-color: var(--casys-warm-border-accent);
   }
 
-  html[data-theme="dark"] #use-cases-preview .showcase-media {
+  html[data-theme="dark"] #use-cases-preview .featured-copy {
+    border-left-color: var(--casys-warm-accent);
+  }
+
+  @media (max-width: 768px) {
+    html[data-theme="dark"] #use-cases-preview .featured-copy {
+      border-top-color: var(--casys-warm-accent);
+    }
+  }
+
+  html[data-theme="dark"] #use-cases-preview .eyebrow,
+  html[data-theme="dark"] #use-cases-preview .featured-tagline,
+  html[data-theme="dark"] #use-cases-preview .read-link,
+  html[data-theme="dark"] #use-cases-preview .view-all-link {
+    color: var(--casys-warm-accent);
+  }
+
+  html[data-theme="dark"] #use-cases-preview .bullet-item {
+    color: var(--casys-warm-text-secondary);
+  }
+
+  html[data-theme="dark"] #use-cases-preview .bullet-item .material-symbols-rounded {
+    color: var(--casys-warm-accent);
+  }
+
+  html[data-theme="dark"] #use-cases-preview .case-media {
     background: #08080a;
   }
 
   html[data-theme="dark"] #use-cases-preview .case-tag {
     color: var(--casys-warm-accent);
     background: var(--casys-warm-border-accent);
-  }
-
-  html[data-theme="dark"] #use-cases-preview h3 {
-    color: var(--casys-warm-text-primary);
-  }
-
-  html[data-theme="dark"] #use-cases-preview .case-excerpt {
-    color: var(--casys-warm-text-secondary);
-  }
-
-  html[data-theme="dark"] #use-cases-preview .read-link,
-  html[data-theme="dark"] #use-cases-preview .view-all-link {
-    color: var(--casys-warm-accent);
   }
 
   html[data-theme="dark"] #use-cases-preview .view-all-link {
@@ -353,4 +487,4 @@ const localePath = locale === 'en' ? '' : `/${locale}`;
     border-color: var(--casys-warm-accent);
     background: var(--casys-warm-border-accent);
   }
-</style>
+ </style>
