@@ -91,7 +91,7 @@ export const fr: Translations = {
     note:
       "ERPNext n'est qu'un exemple. La même approche peut s'appliquer à d'autres workflows métier.",
     cta: {
-      primary: { text: "Ouvrir MCP ERPNext", icon: "open_in_new", url: "/fr/mcp-erpnext" },
+      primary: { text: "Ouvrir MCP ERPNext", icon: "open_in_new", url: "/fr/use-cases/mcp-erpnext" },
       secondary: { text: "Nous parler", icon: "mail", url: "#contact" },
     },
     video: {
@@ -356,7 +356,7 @@ export const fr: Translations = {
             status: "Actif",
             tech: "Deno",
             links: {
-              website: "/fr/mcp-erpnext",
+              website: "/fr/use-cases/mcp-erpnext",
               github: "https://github.com/Casys-AI/mcp-erpnext",
               jsr: "https://jsr.io/@casys/mcp-erpnext",
             },
@@ -368,7 +368,7 @@ export const fr: Translations = {
             status: "v0.1.0",
             tech: "Deno",
             links: {
-              website: "/fr/mcp-einvoice",
+              website: "/fr/use-cases/mcp-einvoice",
               github: "https://github.com/Casys-AI/mcp-einvoice",
               jsr: "https://jsr.io/@casys/mcp-einvoice",
             },

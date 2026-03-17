@@ -89,7 +89,7 @@ export const zh: Translations = {
     ],
     note: "ERPNext 只是一个例子。同样的方法也可以应用到其他业务工作流。",
     cta: {
-      primary: { text: "打开 MCP ERPNext", icon: "open_in_new", url: "/zh/mcp-erpnext" },
+      primary: { text: "打开 MCP ERPNext", icon: "open_in_new", url: "/zh/use-cases/mcp-erpnext" },
       secondary: { text: "联系我们", icon: "mail", url: "#contact" },
     },
     video: {
@@ -322,7 +322,7 @@ export const zh: Translations = {
             tagline: "面向 MCP 应用的交互式 ERPNext 工作流",
             status: "活跃",
             tech: "Deno",
-            links: { website: "/zh/mcp-erpnext", github: "https://github.com/Casys-AI/mcp-erpnext", jsr: "https://jsr.io/@casys/mcp-erpnext" },
+            links: { website: "/zh/use-cases/mcp-erpnext", github: "https://github.com/Casys-AI/mcp-erpnext", jsr: "https://jsr.io/@casys/mcp-erpnext" },
           },
           {
             id: "mcp-einvoice",
@@ -330,7 +330,7 @@ export const zh: Translations = {
             tagline: "French e-invoicing MCP server",
             status: "v0.1.0",
             tech: "Deno",
-            links: { website: "/zh/mcp-einvoice", github: "https://github.com/Casys-AI/mcp-einvoice", jsr: "https://jsr.io/@casys/mcp-einvoice" },
+            links: { website: "/zh/use-cases/mcp-einvoice", github: "https://github.com/Casys-AI/mcp-einvoice", jsr: "https://jsr.io/@casys/mcp-einvoice" },
           },
           {
             id: "mcp-compose",

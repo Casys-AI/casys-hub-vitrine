@@ -89,7 +89,7 @@ export const en = {
     note:
       "ERPNext is one example. The same approach can be applied to other business workflows.",
     cta: {
-      primary: { text: "Open MCP ERPNext", icon: "open_in_new", url: "/mcp-erpnext" },
+      primary: { text: "Open MCP ERPNext", icon: "open_in_new", url: "/use-cases/mcp-erpnext" },
       secondary: { text: "Talk to us", icon: "mail", url: "#contact" },
     },
     video: {
@@ -353,7 +353,7 @@ export const en = {
             status: "Active",
             tech: "Deno",
             links: {
-              website: "/mcp-erpnext",
+              website: "/use-cases/mcp-erpnext",
               github: "https://github.com/Casys-AI/mcp-erpnext",
               jsr: "https://jsr.io/@casys/mcp-erpnext",
             },
@@ -365,7 +365,7 @@ export const en = {
             status: "v0.1.0",
             tech: "Deno",
             links: {
-              website: "/mcp-einvoice",
+              website: "/use-cases/mcp-einvoice",
               github: "https://github.com/Casys-AI/mcp-einvoice",
               jsr: "https://jsr.io/@casys/mcp-einvoice",
             },
