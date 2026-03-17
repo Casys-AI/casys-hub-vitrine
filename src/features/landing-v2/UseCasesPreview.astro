@@ -80,7 +80,7 @@ const allCasesLabel =
                   src={`/og/use-case/${uc.id}.png`}
                   alt={uc.title[locale] || uc.title.en}
                   loading="lazy"
-                  class="case-image"
+                  class="case-image og-thumbnail"
                 />
               )}
             </div>
@@ -510,6 +510,11 @@ const allCasesLabel =
 
   html[data-theme="dark"] #use-cases-preview .case-media {
     background: #08080a;
+  }
+
+  html[data-theme="dark"] #use-cases-preview .og-thumbnail {
+    filter: invert(1) hue-rotate(180deg);
+    opacity: 0.9;
   }
 
   html[data-theme="dark"] #use-cases-preview .case-tag {

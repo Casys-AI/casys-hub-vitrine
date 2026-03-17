@@ -55,7 +55,7 @@ const localePath = locale === 'en' ? '' : `/${locale}`;
                   src={`/og/use-case/${uc.id}.png`}
                   alt={uc.title[locale] || uc.title.en}
                   loading="lazy"
-                  class="thumb-img"
+                  class="thumb-img og-thumbnail"
                 />
               )}
             </div>
@@ -686,6 +686,11 @@ const localePath = locale === 'en' ? '' : `/${locale}`;
   :global(html[data-theme="dark"]) .card-thumbnail {
     background: #08080a;
     border-bottom-color: var(--casys-warm-border-dim);
+  }
+
+  :global(html[data-theme="dark"]) .og-thumbnail {
+    filter: invert(1) hue-rotate(180deg);
+    opacity: 0.9;
   }
 
   :global(html[data-theme="dark"]) .case-card:hover:not(.placeholder-card) {
