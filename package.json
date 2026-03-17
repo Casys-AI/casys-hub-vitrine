@@ -8,7 +8,7 @@
   "packageManager": "pnpm@10.16.1",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build && node scripts/post-build.mjs",
+    "build": "node packages/design-system/generate-m3-tokens.js && node packages/design-system/build.js && astro build && node scripts/post-build.mjs",
     "preview": "astro preview",
     "astro": "astro",
     "vercel": "vercel",
@@ -46,5 +46,8 @@
     "glob": "^11.0.3",
     "vercel": "^47.0.5",
     "vitest": "^3.2.4"
-  }
+  },
+  "workspaces": [
+    "packages/*"
+  ]
 }
