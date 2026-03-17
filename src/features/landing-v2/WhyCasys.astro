@@ -247,8 +247,9 @@ const content = useTranslations(locale).whyCasys;
   /* === Bottom Line === */
   .bottom-line {
     margin-top: 40px;
-    padding-top: 32px;
-    border-top: 1px solid var(--md-sys-color-outline-variant);
+    padding: 28px 32px;
+    background: var(--md-sys-color-surface-container);
+    border-radius: 16px;
     display: flex;
     flex-direction: column;
     gap: 20px;
@@ -416,7 +417,7 @@ const content = useTranslations(locale).whyCasys;
 
   /* Bottom line */
   html[data-theme="dark"] #why-casys .bottom-line {
-    border-top-color: rgba(255, 184, 111, 0.1);
+    background: var(--casys-warm-surface);
   }
 
   html[data-theme="dark"] #why-casys .bottom-text {

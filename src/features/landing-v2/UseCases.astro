@@ -37,16 +37,14 @@ const localePath = locale === 'en' ? '' : `/${locale}`;
       <div class="cases-grid">
         {useCases.map((uc, index) => (
           <a href={`${localePath}/use-cases/${uc.id}`} class="case-card">
-            {(uc.diagram || uc.visual) && (
-              <div class="card-thumbnail">
-                <img
-                  src={uc.visual || `/diagrams/${uc.diagram}.svg`}
-                  alt={uc.title[locale] || uc.title.en}
-                  loading="lazy"
-                  class="thumb-img"
-                />
-              </div>
-            )}
+            <div class="card-thumbnail">
+              <img
+                src={`/og/use-case/${uc.id}.png`}
+                alt={uc.title[locale] || uc.title.en}
+                loading="lazy"
+                class="thumb-img og-thumbnail"
+              />
+            </div>
             <div class="card-body">
               <div class="card-number" aria-hidden="true">
                 {String(index + 1).padStart(2, '0')}
@@ -279,6 +277,32 @@ const localePath = locale === 'en' ? '' : `/${locale}`;
     overflow: hidden;
     background: var(--md-sys-color-surface-container-low, #f3f3f3);
     border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  }
+
+  .thumb-diagram {
+    padding: 8px;
+    height: 100%;
+  }
+
+  .thumb-diagram :global(.excalidraw-figure) {
+    margin: 0;
+    height: 100%;
+  }
+
+  .thumb-diagram :global(.excalidraw-wrapper) {
+    max-width: 100%;
+    height: 100%;
+    border-radius: 6px;
+  }
+
+  .thumb-diagram :global(.excalidraw-wrapper svg) {
+    height: 100%;
+    width: auto;
+    margin: 0 auto;
+  }
+
+  .thumb-diagram :global(.excalidraw-caption) {
+    display: none;
   }
 
   .thumb-img {
@@ -648,6 +672,11 @@ const localePath = locale === 'en' ? '' : `/${locale}`;
   :global(html[data-theme="dark"]) .card-thumbnail {
     background: #08080a;
     border-bottom-color: var(--casys-warm-border-dim);
+  }
+
+  :global(html[data-theme="dark"]) .og-thumbnail {
+    filter: invert(1) hue-rotate(180deg);
+    opacity: 0.9;
   }
 
   :global(html[data-theme="dark"]) .case-card:hover:not(.placeholder-card) {

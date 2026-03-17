@@ -62,12 +62,12 @@ export const fr: Translations = {
     titleLine1: "On branche l'IA",
     titleLine2: "sur vos métiers",
     subtitle:
-      "Des agents IA branchés sur vos ERP, CRM et outils internes. Stack observable, open source, déjà en production.",
+      "Des agents IA branchés sur vos ERP, CRM et outils internes. Stack observable et open source.",
     proofs: [
       { name: "Démo ERPNext", stat: "Workflow métier live", url: "#featured-demo" },
-      { name: "Stack publiée", stat: "npm + JSR, open source", url: "#projects" },
+      { name: "Open source", stat: "Code, issues, roadmap publics", url: "#projects" },
       { name: "Observable", stat: "Chaque appel tracé", url: "#what-we-do" },
-      { name: "Prêt pour la prod", stat: "Déployé, pas prototypé", url: "#what-we-do" },
+      { name: "Packages publiés", stat: "npm + JSR, versionnés", url: "#use-cases-preview" },
     ],
   },
   featuredDemo: {
@@ -80,7 +80,7 @@ export const fr: Translations = {
       "Au lieu de demander au visiteur d'imaginer le futur, on montre un workflow qu'il peut inspecter: une surface ERP connectée à un agent avec une exécution observable derrière.",
     bullets: [
       "Kanban interactif et actions métier, pas juste une capture de chat.",
-      "Projet public qui commence déjà à attirer de l'intérêt sur GitHub.",
+      "Open source sur GitHub — code, issues et roadmap sont publics.",
       "Un exemple concret de l'approche Casys sur des workflows métier.",
     ],
     stats: [
@@ -91,7 +91,7 @@ export const fr: Translations = {
     note:
       "ERPNext n'est qu'un exemple. La même approche peut s'appliquer à d'autres workflows métier.",
     cta: {
-      primary: { text: "Ouvrir MCP ERPNext", icon: "open_in_new", url: "/fr/mcp-erpnext" },
+      primary: { text: "Ouvrir MCP ERPNext", icon: "open_in_new", url: "/fr/use-cases/mcp-erpnext" },
       secondary: { text: "Nous parler", icon: "mail", url: "#contact" },
     },
     video: {
@@ -356,7 +356,7 @@ export const fr: Translations = {
             status: "Actif",
             tech: "Deno",
             links: {
-              website: "/fr/mcp-erpnext",
+              website: "/fr/use-cases/mcp-erpnext",
               github: "https://github.com/Casys-AI/mcp-erpnext",
               jsr: "https://jsr.io/@casys/mcp-erpnext",
             },
@@ -368,7 +368,7 @@ export const fr: Translations = {
             status: "v0.1.0",
             tech: "Deno",
             links: {
-              website: "/fr/mcp-einvoice",
+              website: "/fr/use-cases/mcp-einvoice",
               github: "https://github.com/Casys-AI/mcp-einvoice",
               jsr: "https://jsr.io/@casys/mcp-einvoice",
             },
@@ -436,7 +436,7 @@ export const fr: Translations = {
         description: "On connecte plusieurs domaines pour des perspectives uniques",
         highlights: [
           "Knowledge Management (2013+) → Graph DB → Agents IA",
-          "La fertilisation croisée génère des perspectives inédites",
+          "Chaque domaine a nourri le suivant — le KM a façonné nos graphes, les graphes ont façonné notre routage agent",
           "Une expertise qui se renforce à chaque vague technologique",
         ],
       },
@@ -468,7 +468,7 @@ export const fr: Translations = {
         title: "Recherche Pratique",
         description: "On livre des systèmes en production qui résolvent de vrais problèmes",
         highlights: [
-          "Prêt pour la production, pas juste des prototypes",
+          "Publié sur npm et JSR, pas dans un repo privé",
           "Éprouvé en conditions réelles",
           "On utilise nos propres outils",
         ],
@@ -605,11 +605,11 @@ export const fr: Translations = {
         description: "Le workflow tourne sur ERPNext, donc la démo reflète de vraies contraintes opérationnelles et pas un setup jouet.",
       },
     ],
-    whatItShowsTitle: "Ce que cette démo montre",
+    whatItShowsTitle: "Sous le capot",
     whatItShows: [
-      "Casys peut relier de vrais systèmes métier à des apps MCP.",
-      "On se soucie de la visibilité d'exécution, pas seulement de belles démos.",
-      "La même architecture peut s'appliquer à d'autres workflows au-delà d'ERPNext.",
+      "Kanban live connecté à ERPNext — pas une maquette, de vraies opérations CRUD via des outils MCP.",
+      "Chaque appel d'outil tracé de bout en bout : qui a appelé quoi, avec quels paramètres, et ce qui s'est passé.",
+      "Remplacez ERPNext par un autre ERP — la couche agent et les composants UI restent les mêmes.",
     ],
     stackTitle: "Propulsé par la stack Casys",
     stackItems: [

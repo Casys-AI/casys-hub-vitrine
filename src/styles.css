@@ -2,6 +2,7 @@
 
 /* Import Material 3 tokens */
 @import '../packages/design-system/dist/m3.css';
+@import '../packages/design-system/tokens/m3-dark-mode-enhancements.css';
 
 /* Global styles */
 *,

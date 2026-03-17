@@ -61,12 +61,12 @@ export const zh: Translations = {
     kicker: "AI 智能体集成商",
     titleLine1: "将 AI 接入",
     titleLine2: "您的业务系统",
-    subtitle: "AI 智能体接入您的 ERP、CRM 和内部工具。可观测技术栈，开源，已在生产环境运行。",
+    subtitle: "AI 智能体接入您的 ERP、CRM 和内部工具。可观测的开源技术栈。",
     proofs: [
       { name: "ERPNext 演示", stat: "真实业务工作流", url: "#featured-demo" },
-      { name: "已发布技术栈", stat: "npm + JSR，开源", url: "#projects" },
+      { name: "开源", stat: "代码、议题、路线图公开", url: "#projects" },
       { name: "可观测", stat: "每次调用可追踪", url: "#what-we-do" },
-      { name: "生产就绪", stat: "已部署，非原型", url: "#what-we-do" },
+      { name: "已发布包", stat: "npm + JSR，版本化", url: "#use-cases-preview" },
     ],
   },
   featuredDemo: {
@@ -79,7 +79,7 @@ export const zh: Translations = {
       "我们不要求访客去想象未来，而是直接展示一个可以检查的工作流：一个由智能体连接的 ERP 界面，背后有可观测的执行路径。",
     bullets: [
       "可点击的看板和业务动作，不只是聊天界面截图。",
-      "公开开发，并且已经在 GitHub 上获得了早期关注。",
+      "在 GitHub 上开源 — 代码、议题和路线图都是公开的。",
       "这是 Casys 处理业务工作流的一种具体示例。",
     ],
     stats: [
@@ -89,7 +89,7 @@ export const zh: Translations = {
     ],
     note: "ERPNext 只是一个例子。同样的方法也可以应用到其他业务工作流。",
     cta: {
-      primary: { text: "打开 MCP ERPNext", icon: "open_in_new", url: "/zh/mcp-erpnext" },
+      primary: { text: "打开 MCP ERPNext", icon: "open_in_new", url: "/zh/use-cases/mcp-erpnext" },
       secondary: { text: "联系我们", icon: "mail", url: "#contact" },
     },
     video: {
@@ -322,7 +322,7 @@ export const zh: Translations = {
             tagline: "面向 MCP 应用的交互式 ERPNext 工作流",
             status: "活跃",
             tech: "Deno",
-            links: { website: "/zh/mcp-erpnext", github: "https://github.com/Casys-AI/mcp-erpnext", jsr: "https://jsr.io/@casys/mcp-erpnext" },
+            links: { website: "/zh/use-cases/mcp-erpnext", github: "https://github.com/Casys-AI/mcp-erpnext", jsr: "https://jsr.io/@casys/mcp-erpnext" },
           },
           {
             id: "mcp-einvoice",
@@ -330,7 +330,7 @@ export const zh: Translations = {
             tagline: "French e-invoicing MCP server",
             status: "v0.1.0",
             tech: "Deno",
-            links: { website: "/zh/mcp-einvoice", github: "https://github.com/Casys-AI/mcp-einvoice", jsr: "https://jsr.io/@casys/mcp-einvoice" },
+            links: { website: "/zh/use-cases/mcp-einvoice", github: "https://github.com/Casys-AI/mcp-einvoice", jsr: "https://jsr.io/@casys/mcp-einvoice" },
           },
           {
             id: "mcp-compose",
@@ -379,7 +379,7 @@ export const zh: Translations = {
         description: "我们连接多个领域以获得独特洞察",
         highlights: [
           "KM 系统 (2013+) → 图数据库 → AI 代理",
-          "跨领域碰撞产生洞察",
+          "每个领域推动下一个 — KM 塑造了图谱工作，图谱塑造了代理路由",
           "专长跨技术浪潮持续累积",
         ],
       },
@@ -411,7 +411,7 @@ export const zh: Translations = {
         title: "务实研究",
         description: "我们发布解决实际问题的生产系统",
         highlights: [
-          "生产就绪，不仅是原型",
+          "已发布在 npm 和 JSR 上，不是私有仓库里的代码",
           "在真实环境中经过检验",
           "我们使用自己的工具",
         ],
@@ -547,11 +547,11 @@ export const zh: Translations = {
         description: "这个工作流直接运行在 ERPNext 上，所以它展示的是真实运营约束，而不是玩具级场景。",
       },
     ],
-    whatItShowsTitle: "这个演示展示了什么",
+    whatItShowsTitle: "技术细节",
     whatItShows: [
-      "Casys 可以把真实业务系统接到 MCP 应用上。",
-      "我们在意的是执行可见性，而不只是漂亮演示。",
-      "同样的架构可以应用到 ERPNext 之外的其他工作流。",
+      "连接 ERPNext 的实时看板 — 不是模型，是通过 MCP 工具进行的真实 CRUD 操作。",
+      "每个工具调用端到端追踪：谁调用了什么，使用了哪些参数，发生了什么。",
+      "将 ERPNext 替换为其他 ERP — 代理层和 UI 组件保持不变。",
     ],
     stackTitle: "由 Casys 技术栈驱动",
     stackItems: [

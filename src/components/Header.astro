@@ -11,23 +11,6 @@ const blogHref = locale === 'en' ? '/blog' : `/${locale}/blog`;
 
 const projectGroups = [
   {
-    label: t.projectGroupServers,
-    items: [
-      {
-        name: 'MCP ERPNext',
-        href: `${localePrefix}/mcp-erpnext`,
-        description: t.projectDescriptions.erpnext,
-        icon: 'dashboard',
-      },
-      {
-        name: 'MCP E-Invoice',
-        href: `${localePrefix}/mcp-einvoice`,
-        description: t.projectDescriptions.einvoice,
-        icon: 'receipt_long',
-      },
-    ],
-  },
-  {
     label: t.projectGroupInfra,
     items: [
       {
@@ -110,7 +93,6 @@ function isExternalUrl(url: string): boolean {
           </div>
         </div>
         <a href={whyCasysHref} class="nav-link">{t.whyCasys}</a>
-        <a href={contactHref} class="nav-link">{t.consulting}</a>
         <a href={blogHref} class="nav-link">{t.blog}</a>
         <a href={locale === 'en' ? '/use-cases' : `/${locale}/use-cases`} class="nav-link">{t.useCases}</a>
         <a href={locale === 'en' ? '/about' : `/${locale}/about`} class="nav-link">{t.about}</a>
@@ -173,7 +155,6 @@ function isExternalUrl(url: string): boolean {
       </div>
     </div>
     <a href={whyCasysHref} class="nav-link">{t.whyCasys}</a>
-    <a href={contactHref} class="nav-link">{t.consulting}</a>
     <a href={blogHref} class="nav-link">{t.blog}</a>
     <a href={locale === 'en' ? '/use-cases' : `/${locale}/use-cases`} class="nav-link">{t.useCases}</a>
     <a href={locale === 'en' ? '/about' : `/${locale}/about`} class="nav-link">{t.about}</a>

@@ -62,16 +62,14 @@ const allCasesLabel =
       {useCases.map((uc) => (
         <article class="case-card">
           <a href={`${localePath}/use-cases/${uc.id}`} class="case-card-link">
-            {(uc.diagram || uc.visual) && (
-              <div class="case-media">
-                <img
-                  src={uc.visual || `/diagrams/${uc.diagram}.svg`}
-                  alt={uc.title[locale] || uc.title.en}
-                  loading="lazy"
-                  class="case-image"
-                />
-              </div>
-            )}
+            <div class="case-media">
+              <img
+                src={`/og/use-case/${uc.id}.png`}
+                alt={uc.title[locale] || uc.title.en}
+                loading="lazy"
+                class="case-image og-thumbnail"
+              />
+            </div>
 
             <div class="case-copy">
               <span class="case-tag">
@@ -104,7 +102,7 @@ const allCasesLabel =
 <style>
   section {
     padding: 56px 0;
-    background: var(--md-sys-color-surface-container-lowest);
+    background: var(--md-sys-color-surface-container);
   }
 
   .container {
@@ -144,6 +142,12 @@ const allCasesLabel =
     background: var(--md-sys-color-surface);
     border: 1px solid var(--md-sys-color-outline-variant);
     border-radius: 24px;
+    transition: box-shadow 300ms ease-out, border-color 300ms ease-out;
+  }
+
+  .featured-case:hover {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+    border-color: var(--md-sys-color-primary);
   }
 
   .featured-video-card {
@@ -281,7 +285,25 @@ const allCasesLabel =
 
   .case-media {
     min-height: 220px;
-    background: #08080a;
+    background: var(--md-sys-color-surface-container-lowest);
+    overflow: hidden;
+  }
+
+  .case-diagram {
+    padding: 12px;
+  }
+
+  .case-diagram :global(.excalidraw-figure) {
+    margin: 0;
+  }
+
+  .case-diagram :global(.excalidraw-wrapper) {
+    max-width: 100%;
+    border-radius: 8px;
+  }
+
+  .case-diagram :global(.excalidraw-caption) {
+    display: none;
   }
 
   .case-image {
@@ -345,20 +367,22 @@ const allCasesLabel =
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    padding: 12px 24px;
+    gap: 8px;
+    padding: 14px 28px;
     text-decoration: none;
     font-size: 1rem;
     font-weight: 600;
-    color: var(--md-sys-color-primary);
-    border: 1px solid var(--md-sys-color-outline-variant);
-    border-radius: 10px;
-    transition: border-color 200ms ease-out, background 200ms ease-out;
+    color: var(--md-sys-color-on-primary);
+    background: var(--md-sys-color-primary);
+    border: none;
+    border-radius: 12px;
+    transition: background 200ms ease-out, transform 200ms ease-out, box-shadow 200ms ease-out;
   }
 
   .view-all-link:hover {
-    border-color: var(--md-sys-color-primary);
-    background: var(--md-sys-color-surface-container-high);
+    background: var(--md-sys-color-primary);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(128, 0, 128, 0.2);
   }
 
   .view-all-link:focus-visible {
@@ -457,8 +481,7 @@ const allCasesLabel =
 
   html[data-theme="dark"] #use-cases-preview .eyebrow,
   html[data-theme="dark"] #use-cases-preview .featured-tagline,
-  html[data-theme="dark"] #use-cases-preview .read-link,
-  html[data-theme="dark"] #use-cases-preview .view-all-link {
+  html[data-theme="dark"] #use-cases-preview .read-link {
     color: var(--casys-warm-accent);
   }
 
@@ -474,17 +497,23 @@ const allCasesLabel =
     background: #08080a;
   }
 
+  html[data-theme="dark"] #use-cases-preview .og-thumbnail {
+    filter: invert(1) hue-rotate(180deg);
+    opacity: 0.9;
+  }
+
   html[data-theme="dark"] #use-cases-preview .case-tag {
     color: var(--casys-warm-accent);
     background: var(--casys-warm-border-accent);
   }
 
   html[data-theme="dark"] #use-cases-preview .view-all-link {
-    border-color: var(--casys-warm-border-accent);
+    background: var(--casys-warm-accent);
+    color: var(--casys-warm-background);
   }
 
   html[data-theme="dark"] #use-cases-preview .view-all-link:hover {
-    border-color: var(--casys-warm-accent);
-    background: var(--casys-warm-border-accent);
+    background: var(--casys-warm-accent-hover);
+    box-shadow: 0 4px 16px rgba(255, 184, 111, 0.25);
   }
  </style>

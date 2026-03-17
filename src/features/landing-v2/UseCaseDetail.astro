@@ -874,7 +874,10 @@ const paragraphs = (text: string) => text.split('\n\n').filter(Boolean);
   @media (max-width: 768px) {
     section {
       --section-gap: 48px;
-      --connector-width: 36px;
+    }
+
+    .container {
+      padding: 0 20px;
     }
 
     .uc-detail-hero {
@@ -890,6 +893,23 @@ const paragraphs = (text: string) => text.split('\n\n').filter(Boolean);
       font-size: 1.6rem;
     }
 
+    .narrative-step,
+    .narrative-visual {
+      display: block;
+    }
+
+    .step-connector {
+      flex-direction: row;
+      align-items: center;
+      gap: 10px;
+      padding: 0;
+      margin-bottom: 12px;
+    }
+
+    .connector-line {
+      display: none;
+    }
+
     .step-number {
       width: 24px;
       height: 24px;
@@ -897,12 +917,21 @@ const paragraphs = (text: string) => text.split('\n\n').filter(Boolean);
     }
 
     .step-content {
-      padding: 0 0 32px 8px;
+      padding: 0 0 32px 0;
+    }
+
+    .narrative-text {
+      text-align: left;
+      font-size: 1rem;
+    }
+
+    .visual-frame {
+      padding-left: 0;
     }
 
     .punchline {
       font-size: 1.2rem;
-      padding: 24px 28px;
+      padding: 24px 20px;
     }
 
     .punchline-decoration {
