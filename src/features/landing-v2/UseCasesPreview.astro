@@ -481,8 +481,7 @@ const allCasesLabel =
 
   html[data-theme="dark"] #use-cases-preview .eyebrow,
   html[data-theme="dark"] #use-cases-preview .featured-tagline,
-  html[data-theme="dark"] #use-cases-preview .read-link,
-  html[data-theme="dark"] #use-cases-preview .view-all-link {
+  html[data-theme="dark"] #use-cases-preview .read-link {
     color: var(--casys-warm-accent);
   }
 
@@ -509,11 +508,12 @@ const allCasesLabel =
   }
 
   html[data-theme="dark"] #use-cases-preview .view-all-link {
-    border-color: var(--casys-warm-border-accent);
+    background: var(--casys-warm-accent);
+    color: var(--casys-warm-background);
   }
 
   html[data-theme="dark"] #use-cases-preview .view-all-link:hover {
-    border-color: var(--casys-warm-accent);
-    background: var(--casys-warm-border-accent);
+    background: var(--casys-warm-accent-hover);
+    box-shadow: 0 4px 16px rgba(255, 184, 111, 0.25);
   }
  </style>
