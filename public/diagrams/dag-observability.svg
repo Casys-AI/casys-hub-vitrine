@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 290" width="300" height="290">
+  <!-- svg-source:excalidraw — dag-observability.excalidraw -->
+  <defs>
+    <marker id="ah-666666" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#666666"/></marker>
+  </defs>
+
+  <rect x="0" y="0" width="300" height="290" fill="#08080a"/>
+  <rect x="100" y="20" width="100" height="40" rx="6" fill="#2d2d35" stroke="#4ade80" stroke-width="2"/>
+  <text x="150" y="43" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="11" fill="#4ade80" text-anchor="middle">✓ Complete</text>
+  <rect x="20" y="90" width="100" height="40" rx="6" fill="#2d2d35" stroke="#60a5fa" stroke-width="2"/>
+  <text x="70" y="113" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="11" fill="#60a5fa" text-anchor="middle">🔄 Running</text>
+  <rect x="180" y="90" width="100" height="40" rx="6" fill="#2d2d35" stroke="#60a5fa" stroke-width="2"/>
+  <text x="230" y="113" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="11" fill="#60a5fa" text-anchor="middle">🔄 Running</text>
+  <rect x="100" y="160" width="100" height="40" rx="6" fill="#2d2d35" stroke="#fbbf24" stroke-width="2"/>
+  <text x="150" y="183" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="11" fill="#fbbf24" text-anchor="middle">⏳ Waiting</text>
+  <rect x="100" y="230" width="100" height="40" rx="6" fill="#2d2d35" stroke="#fbbf24" stroke-width="2"/>
+  <text x="150" y="253" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="11" fill="#fbbf24" text-anchor="middle">⏳ Waiting</text>
+  <path d="M125 65 L85 85" fill="none" stroke="#666666" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ah-666666)"/>
+  <path d="M175 65 L215 85" fill="none" stroke="#666666" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ah-666666)"/>
+  <path d="M90 135 L130 155" fill="none" stroke="#666666" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ah-666666)"/>
+  <path d="M210 135 L170 155" fill="none" stroke="#666666" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ah-666666)"/>
+  <path d="M150 205 L150 225" fill="none" stroke="#666666" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ah-666666)"/>
+</svg>

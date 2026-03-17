@@ -1,0 +1,395 @@
+---
+import '../styles.css';
+import '../styles/fonts.css';
+import Analytics from '@vercel/analytics/astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import HrefLang from '../components/HrefLang.astro';
+import { DEFAULT_SITE_URL, resolvePublicUrl } from '../lib/public-url';
+
+export interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description } = Astro.props;
+const locale = (Astro as any).currentLocale ?? 'en';
+const pathname = Astro.url.pathname;
+const siteUrl = (import.meta.env.PUBLIC_SITE_URL as string | undefined)?.trim();
+const rootSiteUrl = (siteUrl || DEFAULT_SITE_URL).replace(/\/+$/, '');
+const publicUrl = resolvePublicUrl(pathname, siteUrl);
+const canonicalUrl = publicUrl.canonicalUrl;
+const ogImageUrl = new URL('/og/home.png', publicUrl.origin).toString();
+const ogLocaleMap = { en: 'en_US', fr: 'fr_FR', zh: 'zh_CN', 'zh-TW': 'zh_TW' } as const;
+const ogLocale = ogLocaleMap[locale as keyof typeof ogLocaleMap] ?? 'en_US';
+
+// Meta tags based on business positioning
+const metaTitles = {
+  en: 'Casys - Agentic AI Integrator | Open Source & Consulting',
+  fr: 'Casys - Intégrateur IA Agentic | Open Source & Consulting',
+  zh: 'Casys - AI 智能体集成商 | 开源与咨询',
+  'zh-TW': 'Casys - AI 智慧體整合商 | 開源與諮詢',
+} as const;
+const metaTitle = metaTitles[locale as keyof typeof metaTitles] ?? metaTitles.en;
+
+const metaDescriptions = {
+  en: 'Casys connects AI agents to your real business systems — ERP, CRM, internal tools. Observable stack, open source, already in production.',
+  fr: 'Casys connecte des agents IA à vos systèmes métier réels — ERP, CRM, outils internes. Stack observable, open source, déjà en production.',
+  zh: 'Casys 将 AI 智能体连接到您的真实业务系统 — ERP、CRM、内部工具。可观测技术栈，开源，已在生产环境运行。',
+  'zh-TW': 'Casys 將 AI 智慧體連接到您的真實業務系統 — ERP、CRM、內部工具。可觀測技術棧，開源，已在生產環境運行。',
+} as const;
+const metaDescriptionFallback = metaDescriptions[locale as keyof typeof metaDescriptions] ?? metaDescriptions.en;
+
+const resolvedTitle = title || (metaTitles[locale as keyof typeof metaTitles] ?? metaTitles.en);
+const resolvedDescription = description || metaDescriptionFallback;
+---
+
+<!DOCTYPE html>
+<html lang={locale}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="description" content={resolvedDescription} />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="/icons/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="manifest" href="/icons/site.webmanifest" />
+
+    <!-- Self-hosted fonts (Vercel CDN) — preload critical display font -->
+    <link rel="preload" href="/fonts/fraunces-latin-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/inter-latin-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <!-- Material Symbols — icon font, kept external (not critical path) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" />
+
+    <script>
+      // Auto language redirect (client-only): redirect to /fr, /zh-TW or /zh based on browser language
+      (function () {
+        try {
+          var path = location.pathname;
+          if (!path.startsWith('/fr') && !path.startsWith('/zh-TW') && !path.startsWith('/zh')) {
+            var lang = (navigator.languages && navigator.languages[0]) || navigator.language || '';
+            lang = String(lang || '').toLowerCase();
+            var prefix = '';
+            if (lang.startsWith('fr')) prefix = '/fr';
+            else if (lang === 'zh-tw' || lang.startsWith('zh-hant')) prefix = '/zh-TW';
+            else if (lang.startsWith('zh')) prefix = '/zh';
+            if (prefix) {
+              var target = path === '/' ? prefix + '/' : (prefix + path);
+              location.replace(target + location.search + location.hash);
+            }
+          }
+        } catch (_) { /* no-op */ }
+      })();
+
+      // Auto theme sync with system preference (Material Design 3)
+      (function () {
+        try {
+          var root = document.documentElement;
+          var mql = window.matchMedia('(prefers-color-scheme: dark)');
+          var apply = function () {
+            root.dataset.theme = mql.matches ? 'dark' : 'light';
+          };
+          apply();
+          mql.addEventListener('change', apply);
+        } catch (_) { /* no-op */ }
+      })();
+    </script>
+    <title>{resolvedTitle}</title>
+    <link rel="canonical" href={canonicalUrl} />
+    <HrefLang siteUrl={siteUrl} />
+    <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Casys",
+      "alternateName": "Casys AI",
+      "url": rootSiteUrl,
+      "logo": `${rootSiteUrl}/icons/logo.svg`,
+      "description": resolvedDescription,
+      "founder": {
+        "@type": "Person",
+        "name": "Erwan Lee Pesle"
+      },
+      "foundingDate": "2024",
+      "sameAs": [
+        "https://github.com/Casys-AI",
+        "https://discord.gg/casys",
+        "https://jsr.io/@casys",
+        "https://www.linkedin.com/company/casys-ai"
+      ],
+      "knowsAbout": ["Model Context Protocol", "MCP Server", "GraphRAG", "Context Engineering", "AI Agents"],
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "technical support",
+        "url": "https://discord.gg/casys"
+      },
+      "areaServed": ["FR", "TW", "US", "JP"]
+    })} />
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Casys",
+      "url": rootSiteUrl,
+      "inLanguage": ["en", "fr", "zh", "zh-TW"]
+    })} />
+    <style is:inline>
+      /* ============================================
+         LAYOUT ESSENTIALS
+         Minimal global styles - Component dark mode
+         handled in each component's <style is:global>
+         ============================================ */
+
+      /* Fix mobile header overlap - scroll-padding compensates for fixed header */
+      html {
+        scroll-padding-top: 80px;
+      }
+
+      /* Body padding to prevent fixed header from covering content */
+      body {
+        padding-top: 72px;
+      }
+
+      /* Dark mode base background */
+      html[data-theme="dark"],
+      html[data-theme="dark"] body {
+        background: #0a0908;
+      }
+
+      /* Footer dark mode (shared component) */
+      html[data-theme="dark"] .footer {
+        background: #0a0908;
+        border-top-color: rgba(255, 184, 111, 0.1);
+      }
+
+      html[data-theme="dark"] .footer .title {
+        color: #f5f0ea;
+      }
+
+      html[data-theme="dark"] .footer .title .material-symbols-rounded {
+        color: #FFB86F;
+      }
+
+      html[data-theme="dark"] .footer .links a {
+        color: #d5c3b5;
+      }
+
+      html[data-theme="dark"] .footer .links a:hover {
+        background: rgba(255, 184, 111, 0.1);
+        color: #FFB86F;
+      }
+
+      html[data-theme="dark"] .footer .logo .material-symbols-rounded {
+        color: #FFB86F;
+      }
+
+      html[data-theme="dark"] .footer .brand-name {
+        color: #FFB86F;
+      }
+
+      html[data-theme="dark"] .footer .description,
+      html[data-theme="dark"] .footer .tagline,
+      html[data-theme="dark"] .footer .copyright {
+        color: #d5c3b5;
+      }
+
+      html[data-theme="dark"] .footer .divider {
+        background: rgba(255, 184, 111, 0.1);
+      }
+
+      html[data-theme="dark"] .footer .social-link {
+        background: rgba(255, 184, 111, 0.1);
+        color: #f5f0ea;
+        border: 1px solid rgba(255, 184, 111, 0.2);
+      }
+
+      html[data-theme="dark"] .footer .social-link:hover {
+        background: #FFB86F;
+        color: #1a1815;
+        border-color: #FFB86F;
+      }
+      /* === Scroll Reveal Animations === */
+      .reveal {
+        opacity: 0;
+        transform: translateY(24px);
+        transition: opacity 600ms cubic-bezier(0.2, 0, 0, 1),
+                    transform 600ms cubic-bezier(0.2, 0, 0, 1);
+      }
+
+      .reveal.revealed {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      /* Stagger children inside revealed sections */
+      .reveal .section-header,
+      .reveal .bento-grid > *,
+      .reveal .diff-grid > *,
+      .reveal .showcase-row,
+      .reveal .demo-grid > *,
+      .reveal .faq-list > *,
+      .reveal .blog-grid > *,
+      .reveal .contact-grid > * {
+        opacity: 0;
+        transform: translateY(16px);
+        transition: opacity 400ms cubic-bezier(0.2, 0, 0, 1),
+                    transform 400ms cubic-bezier(0.2, 0, 0, 1);
+      }
+
+      .reveal.revealed .section-header,
+      .reveal.revealed .bento-grid > *,
+      .reveal.revealed .diff-grid > *,
+      .reveal.revealed .showcase-row,
+      .reveal.revealed .demo-grid > *,
+      .reveal.revealed .faq-list > *,
+      .reveal.revealed .blog-grid > *,
+      .reveal.revealed .contact-grid > * {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      /* Stagger delays for children */
+      .reveal.revealed .section-header { transition-delay: 0ms; }
+      .reveal.revealed .bento-grid > :nth-child(1),
+      .reveal.revealed .diff-grid > :nth-child(1),
+      .reveal.revealed .showcase-row:nth-child(1),
+      .reveal.revealed .demo-grid > :nth-child(1),
+      .reveal.revealed .faq-list > :nth-child(1),
+      .reveal.revealed .blog-grid > :nth-child(1),
+      .reveal.revealed .contact-grid > :nth-child(1) { transition-delay: 80ms; }
+
+      .reveal.revealed .bento-grid > :nth-child(2),
+      .reveal.revealed .diff-grid > :nth-child(2),
+      .reveal.revealed .showcase-row:nth-child(2),
+      .reveal.revealed .demo-grid > :nth-child(2),
+      .reveal.revealed .faq-list > :nth-child(2),
+      .reveal.revealed .blog-grid > :nth-child(2),
+      .reveal.revealed .contact-grid > :nth-child(2) { transition-delay: 160ms; }
+
+      .reveal.revealed .bento-grid > :nth-child(3),
+      .reveal.revealed .diff-grid > :nth-child(3),
+      .reveal.revealed .showcase-row:nth-child(3),
+      .reveal.revealed .faq-list > :nth-child(3),
+      .reveal.revealed .blog-grid > :nth-child(3) { transition-delay: 240ms; }
+
+      .reveal.revealed .bento-grid > :nth-child(4),
+      .reveal.revealed .diff-grid > :nth-child(4),
+      .reveal.revealed .faq-list > :nth-child(4),
+      .reveal.revealed .blog-grid > :nth-child(4) { transition-delay: 320ms; }
+
+      .reveal.revealed .diff-grid > :nth-child(5),
+      .reveal.revealed .faq-list > :nth-child(5) { transition-delay: 400ms; }
+
+      /* Respect reduced motion preference */
+      @media (prefers-reduced-motion: reduce) {
+        .reveal,
+        .reveal .section-header,
+        .reveal .bento-grid > *,
+        .reveal .diff-grid > *,
+        .reveal .showcase-row,
+        .reveal .demo-grid > *,
+        .reveal .faq-list > *,
+        .reveal .blog-grid > *,
+        .reveal .contact-grid > * {
+          opacity: 1 !important;
+          transform: none !important;
+          transition: none !important;
+        }
+      }
+    </style>
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Casys AI" />
+    <meta property="og:title" content={resolvedTitle} />
+    <meta property="og:description" content={resolvedDescription} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:locale" content={ogLocale} />
+    <meta property="og:image" content={ogImageUrl} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={resolvedTitle} />
+    <meta name="twitter:description" content={resolvedDescription} />
+    <meta name="twitter:image" content={ogImageUrl} />
+
+    <!-- Google tag (gtag.js) -->
+    <script is:inline async src="https://www.googletagmanager.com/gtag/js?id=G-FR86NHGK8Y"></script>
+    <script is:inline>
+      // @ts-nocheck
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-FR86NHGK8Y', {
+        cookie_domain: 'casys.ai',
+        linker: { accept_incoming: false, decorate: false }
+      });
+    </script>
+    <script defer src="/u/script.js" data-website-id="41fe387f-874e-4c5b-8a69-1364587b77f5"></script>
+  </head>
+
+  <body class="landing-container">
+    <!-- Header Component -->
+    <Header />
+
+    <!-- Main Content -->
+    <main>
+      <slot />
+    </main>
+
+    <!-- Footer -->
+    <Footer />
+
+    <!-- Scripts pour les boutons -->
+    <script>
+      // Gestion du bouton de connexion (mock pour l'instant)
+      document.getElementById('login-btn')?.addEventListener('click', () => {
+        // Pour l'instant, redirection directe vers l'app
+        // Plus tard : modal de connexion ou redirection vers auth
+        window.location.href = '/app';
+      });
+
+      // Beta signup button handler
+      document.getElementById('beta-signup-btn')?.addEventListener('click', () => {
+        // For now: simple alert
+        // Later: modal with form or API integration
+        alert('Beta access request — coming soon!');
+      });
+
+      // Theme follows system preference only (no manual toggle)
+    </script>
+
+
+    <!-- Scroll reveal — IntersectionObserver -->
+    <script>
+      (function () {
+        var sections = document.querySelectorAll('main > section');
+        if (!sections.length) return;
+
+        sections.forEach(function (s) { s.classList.add('reveal'); });
+
+        if (!('IntersectionObserver' in window)) {
+          sections.forEach(function (s) { s.classList.add('revealed'); });
+          return;
+        }
+
+        var observer = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (entry) {
+              if (entry.isIntersecting) {
+                entry.target.classList.add('revealed');
+                observer.unobserve(entry.target);
+              }
+            });
+          },
+          { threshold: 0.08, rootMargin: '0px 0px -40px 0px' }
+        );
+
+        sections.forEach(function (s) { observer.observe(s); });
+      })();
+    </script>
+
+    <Analytics />
+  </body>
+</html>

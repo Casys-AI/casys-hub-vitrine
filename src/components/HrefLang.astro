@@ -1,0 +1,56 @@
+---
+/**
+ * HrefLang - Generates <link rel="alternate" hreflang="..."> tags.
+ *
+ * For blog pages, only emits hreflang for locales where the content actually
+ * exists in the collection (prevents 404 alternates).
+ * For other pages, emits all locales (assumes all static pages exist).
+ */
+import { getCollection } from 'astro:content';
+import { buildPublicUrl } from '../lib/public-url';
+
+export interface Props {
+  siteUrl?: string;
+}
+
+const { siteUrl } = Astro.props;
+const LOCALES = ['en', 'fr', 'zh', 'zh-TW'] as const;
+
+const pathname = Astro.url.pathname;
+
+function getBasePath(path: string): string {
+  for (const prefix of ['/fr', '/zh-TW', '/zh']) {
+    if (path === prefix || path === `${prefix}/`) {
+      return '/';
+    }
+    if (path.startsWith(`${prefix}/`)) {
+      return path.slice(prefix.length);
+    }
+  }
+  return path;
+}
+
+const basePath = getBasePath(pathname);
+
+// For blog pages: only declare alternates for locales that have this slug
+const blogMatch = basePath.match(/^\/blog\/(.+?)\/?\s*$/);
+let activeLocales: readonly string[] = LOCALES;
+
+if (blogMatch) {
+  const slug = blogMatch[1];
+  const allBlogPosts = await getCollection('blog', ({ data }) => !data.draft);
+  const existingLocales = LOCALES.filter((locale) => {
+    const prefix = locale === 'en' ? 'en' : locale;
+    return allBlogPosts.some((post) => post.id === `${prefix}/${slug}.mdx` || post.id === `${prefix}/${slug}.md`);
+  });
+  activeLocales = existingLocales.length > 0 ? existingLocales : LOCALES;
+}
+---
+
+{activeLocales.map((locale) => (
+  <link rel="alternate" hreflang={locale} href={buildPublicUrl(pathname, locale, siteUrl)} />
+))}
+{activeLocales.includes('en')
+  ? <link rel="alternate" hreflang="x-default" href={buildPublicUrl(pathname, 'en', siteUrl)} />
+  : <link rel="alternate" hreflang="x-default" href={buildPublicUrl(pathname, activeLocales[0], siteUrl)} />
+}

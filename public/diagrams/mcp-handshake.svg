@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 435 225" width="435" height="225">
+  <!-- svg-source:excalidraw — mcp-handshake.excalidraw -->
+  <defs>
+    <marker id="ah-fbbf24" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#fbbf24"/></marker>
+    <marker id="ah-a78bfa" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#a78bfa"/></marker>
+  </defs>
+
+  <rect x="0" y="0" width="435" height="225" fill="#08080a"/>
+  <rect x="35" y="35" width="4" height="170" fill="#60a5fa" stroke="#60a5fa" stroke-width="0"/>
+  <text x="37.5" y="30" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="10" fill="#60a5fa" text-anchor="middle">Client</text>
+  <rect x="235" y="35" width="4" height="170" fill="#4ade80" stroke="#4ade80" stroke-width="0"/>
+  <text x="237.5" y="30" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="10" fill="#4ade80" text-anchor="middle">Server</text>
+  <path d="M45 50 L230 50" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ah-fbbf24)"/>
+  <text x="60" y="45" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="8" fill="#f0ede8" text-anchor="start">initialize (protocol, capabilities)</text>
+  <path d="M230 75 L45 75" fill="none" stroke="#a78bfa" stroke-width="2" stroke-dasharray="8 4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ah-a78bfa)"/>
+  <text x="60" y="70" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="8" fill="#a78bfa" text-anchor="start">capabilities (tools, resources)</text>
+  <path d="M45 105 L230 105" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ah-fbbf24)"/>
+  <text x="105" y="100" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="8" fill="#f0ede8" text-anchor="start">tools/list</text>
+  <path d="M230 130 L45 130" fill="none" stroke="#a78bfa" stroke-width="2" stroke-dasharray="8 4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ah-a78bfa)"/>
+  <text x="60" y="125" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="8" fill="#a78bfa" text-anchor="start">[{name, description, schema}...]</text>
+  <path d="M45 160 L230 160" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ah-fbbf24)"/>
+  <text x="75" y="155" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="8" fill="#f0ede8" text-anchor="start">tools/call (name, args)</text>
+  <path d="M230 185 L45 185" fill="none" stroke="#a78bfa" stroke-width="2" stroke-dasharray="8 4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ah-a78bfa)"/>
+  <text x="90" y="180" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="8" fill="#a78bfa" text-anchor="start">{content: result}</text>
+</svg>

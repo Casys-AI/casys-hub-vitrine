@@ -1,0 +1,48 @@
+
+> @casys/design-system@1.0.0 build /home/ubuntu/CascadeProjects/casys/packages/design-system
+> node generate-m3-tokens.js && node build.js
+
+
+🎨 Generating Material 3 Tokens...
+
+✅ Material 3 color tokens generated!
+📁 Output: /home/ubuntu/CascadeProjects/casys/packages/design-system/tokens/m3-colors-generated.css
+
+🎨 Colors generated from:
+   Primary: #dbbddb
+   Secondary (Cassis): #800080
+
+🎨 Building Material 3 Expressive Design System...
+
+📥 Loading tokens...
+✓ Loaded 242 base tokens
+✓ Loaded 29 components
+✓ Loaded light theme (36 tokens)
+✓ Loaded dark theme (31 tokens)
+
+🔗 Resolving token references...
+✓ Resolved 242 tokens
+
+
+📦 Generating outputs...
+✓ Generated tokens.css (with real M3 colors)
+✓ Generated components.css (from M3 official specs)
+📦 Bundling CSS utilities...
+✓ Generated utilities.css (bundled from 8 files)
+✓ Generated patterns.css (semantic reusable patterns)
+✓ Generated m3.css (complete bundle: reset + tokens + components + utilities + patterns)
+✓ Generated tokens.scss
+✓ Generated tokens.js
+✓ Generated tokens.d.ts
+
+✅ Build complete!
+
+📦 Generated files:
+   - dist/tokens.css      (CSS custom properties + themes)
+   - dist/components.css  (M3 official component specs)
+   - dist/utilities.css   (Utility classes)
+   - dist/m3.css          (Complete bundle)
+   - dist/tokens.scss     (SCSS variables)
+   - dist/tokens.js       (JavaScript module)
+   - dist/tokens.d.ts     (TypeScript types)
+

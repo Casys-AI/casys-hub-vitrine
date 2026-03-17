@@ -1,0 +1,497 @@
+---
+import fs from 'node:fs';
+import path from 'node:path';
+
+interface Props {
+  src: string;
+  alt: string;
+}
+
+const { src, alt } = Astro.props;
+
+// Read the pre-generated SVG at build time
+const svgPath = path.join(process.cwd(), 'public', 'diagrams', `${src}.svg`);
+let svgContent = '';
+
+try {
+  svgContent = fs.readFileSync(svgPath, 'utf-8');
+} catch (e) {
+  console.error(`[ExcalidrawDiagram] Failed to read: ${svgPath}`);
+}
+
+// Transform SVG for theme support:
+// 1. Remove hardcoded width/height (keep viewBox for responsive sizing)
+// 2. Replace dark background rect with transparent
+// 3. Add CSS classes for theme-adaptive colors
+if (svgContent) {
+  // Remove fixed width/height from root <svg> to make responsive
+  svgContent = svgContent.replace(
+    /(<svg[^>]*?)(\s+width="\d+")?(\s+height="\d+")?/,
+    (match, svg) => {
+      return svg.replace(/\s+width="\d+"/, '').replace(/\s+height="\d+"/, '');
+    }
+  );
+
+  // Replace the background rect fill (#08080a or #0d1117) with a CSS class
+  svgContent = svgContent.replace(
+    /(<rect x="0" y="0"[^>]*?)fill="#08080a"/,
+    '$1class="excali-bg" fill="#08080a"'
+  );
+  svgContent = svgContent.replace(
+    /(<rect x="0" y="0"[^>]*?)fill="#0d1117"/,
+    '$1class="excali-bg" fill="#0d1117"'
+  );
+
+  // Replace dark card fills with classes
+  svgContent = svgContent.replace(
+    /fill="#1f1f23"/g,
+    'class="excali-card-primary" fill="#1f1f23"'
+  );
+  svgContent = svgContent.replace(
+    /fill="#2d2d35"/g,
+    'class="excali-card" fill="#2d2d35"'
+  );
+  svgContent = svgContent.replace(
+    /fill="#1a1a1e"/g,
+    'class="excali-card-inner" fill="#1a1a1e"'
+  );
+
+  // Replace neutral text color with class
+  svgContent = svgContent.replace(
+    /fill="#f0ede8"/g,
+    'class="excali-text" fill="#f0ede8"'
+  );
+
+  // Replace gray strokes/fills with class
+  svgContent = svgContent.replace(
+    /stroke="#666666"/g,
+    'class="excali-muted-stroke" stroke="#666666"'
+  );
+  svgContent = svgContent.replace(
+    /fill="#666666"/g,
+    'class="excali-muted-fill" fill="#666666"'
+  );
+
+  // Replace SHGAT-specific node background fills
+  svgContent = svgContent.replace(/fill="#1a3a1a"/g, 'class="excali-node-green" fill="#1a3a1a"');
+  svgContent = svgContent.replace(/fill="#3a2a0a"/g, 'class="excali-node-amber" fill="#3a2a0a"');
+  svgContent = svgContent.replace(/fill="#1a2744"/g, 'class="excali-node-blue" fill="#1a2744"');
+  svgContent = svgContent.replace(/fill="#2d2044"/g, 'class="excali-node-purple" fill="#2d2044"');
+  svgContent = svgContent.replace(/fill="#3a1a2e"/g, 'class="excali-node-pink" fill="#3a1a2e"');
+
+  // Replace light gray text (#e5e5e5 — used in context engineering diagrams)
+  svgContent = svgContent.replace(/fill="#e5e5e5"/g, 'class="excali-text-light" fill="#e5e5e5"');
+
+  // Replace warm gray text (#e7e5e4 — used in SHGAT diagrams)
+  svgContent = svgContent.replace(/fill="#e7e5e4"/g, 'class="excali-text-warm" fill="#e7e5e4"');
+
+  // Replace gray-500 labels/strokes (#6b7280)
+  svgContent = svgContent.replace(/fill="#6b7280"/g, 'class="excali-gray-fill" fill="#6b7280"');
+  svgContent = svgContent.replace(/stroke="#6b7280"/g, 'class="excali-gray-stroke" stroke="#6b7280"');
+
+  // Replace gray-400 (#9ca3af)
+  svgContent = svgContent.replace(/fill="#9ca3af"/g, 'class="excali-gray-light-fill" fill="#9ca3af"');
+
+  // Replace accent colors (too light for light mode) with classes
+  // Red
+  svgContent = svgContent.replace(/stroke="#ef4444"/g, 'class="excali-accent-red-stroke" stroke="#ef4444"');
+  svgContent = svgContent.replace(/fill="#ef4444"/g, 'class="excali-accent-red-fill" fill="#ef4444"');
+  // Blue (SHGAT)
+  svgContent = svgContent.replace(/stroke="#60a5fa"/g, 'class="excali-accent-blue-stroke" stroke="#60a5fa"');
+  svgContent = svgContent.replace(/fill="#60a5fa"/g, 'class="excali-accent-blue-fill" fill="#60a5fa"');
+  // Yellow/amber (SHGAT)
+  svgContent = svgContent.replace(/stroke="#fbbf24"/g, 'class="excali-accent-yellow-stroke" stroke="#fbbf24"');
+  svgContent = svgContent.replace(/fill="#fbbf24"/g, 'class="excali-accent-yellow-fill" fill="#fbbf24"');
+  // Green (SHGAT)
+  svgContent = svgContent.replace(/stroke="#4ade80"/g, 'class="excali-accent-green-stroke" stroke="#4ade80"');
+  svgContent = svgContent.replace(/fill="#4ade80"/g, 'class="excali-accent-green-fill" fill="#4ade80"');
+  // Purple (SHGAT)
+  svgContent = svgContent.replace(/stroke="#a78bfa"/g, 'class="excali-accent-purple-stroke" stroke="#a78bfa"');
+  svgContent = svgContent.replace(/fill="#a78bfa"/g, 'class="excali-accent-purple-fill" fill="#a78bfa"');
+  // Pink
+  svgContent = svgContent.replace(/stroke="#f472b6"/g, 'class="excali-accent-pink-stroke" stroke="#f472b6"');
+  svgContent = svgContent.replace(/fill="#f472b6"/g, 'class="excali-accent-pink-fill" fill="#f472b6"');
+
+  // Context Engineering diagram accent colors
+  // Green (#22c55e) — fails WCAG on light bg
+  svgContent = svgContent.replace(/stroke="#22c55e"/g, 'class="excali-ce-green-stroke" stroke="#22c55e"');
+  svgContent = svgContent.replace(/fill="#22c55e"/g, 'class="excali-ce-green-fill" fill="#22c55e"');
+  // Amber (#f59e0b) — fails WCAG on light bg
+  svgContent = svgContent.replace(/stroke="#f59e0b"/g, 'class="excali-ce-amber-stroke" stroke="#f59e0b"');
+  svgContent = svgContent.replace(/fill="#f59e0b"/g, 'class="excali-ce-amber-fill" fill="#f59e0b"');
+  // Blue (#4a9eed)
+  svgContent = svgContent.replace(/stroke="#4a9eed"/g, 'class="excali-ce-blue-stroke" stroke="#4a9eed"');
+  svgContent = svgContent.replace(/fill="#4a9eed"/g, 'class="excali-ce-blue-fill" fill="#4a9eed"');
+  // Purple (#8b5cf6)
+  svgContent = svgContent.replace(/stroke="#8b5cf6"/g, 'class="excali-ce-purple-stroke" stroke="#8b5cf6"');
+  svgContent = svgContent.replace(/fill="#8b5cf6"/g, 'class="excali-ce-purple-fill" fill="#8b5cf6"');
+  // Cyan (#06b6d4) — fails WCAG on light bg
+  svgContent = svgContent.replace(/stroke="#06b6d4"/g, 'class="excali-ce-cyan-stroke" stroke="#06b6d4"');
+  svgContent = svgContent.replace(/fill="#06b6d4"/g, 'class="excali-ce-cyan-fill" fill="#06b6d4"');
+
+  // Context Engineering dark card backgrounds
+  svgContent = svgContent.replace(/fill="#1a4d2e"/g, 'class="excali-ce-card-green" fill="#1a4d2e"');
+  svgContent = svgContent.replace(/fill="#1e3a5f"/g, 'class="excali-ce-card-blue" fill="#1e3a5f"');
+  svgContent = svgContent.replace(/fill="#5c3d1a"/g, 'class="excali-ce-card-amber" fill="#5c3d1a"');
+  svgContent = svgContent.replace(/fill="#2d1b69"/g, 'class="excali-ce-card-purple" fill="#2d1b69"');
+  svgContent = svgContent.replace(/fill="#5c1a1a"/g, 'class="excali-ce-card-red" fill="#5c1a1a"');
+  svgContent = svgContent.replace(/fill="#1a4d4d"/g, 'class="excali-ce-card-cyan" fill="#1a4d4d"');
+
+  // Multi-Agent Sandbox — box backgrounds
+  svgContent = svgContent.replace(/fill="#3d3520"/g, 'class="excali-ma-card-amber" fill="#3d3520"');
+  svgContent = svgContent.replace(/fill="#1e3d2e"/g, 'class="excali-ma-card-green" fill="#1e3d2e"');
+  svgContent = svgContent.replace(/fill="#3d1f1f"/g, 'class="excali-ma-card-red" fill="#3d1f1f"');
+  svgContent = svgContent.replace(/fill="#2d1e5e"/g, 'class="excali-ma-card-purple" fill="#2d1e5e"');
+
+  // Multi-Agent Sandbox — accent strokes and fills
+  svgContent = svgContent.replace(/stroke="#ffd43b"/g, 'class="excali-ma-yellow-stroke" stroke="#ffd43b"');
+  svgContent = svgContent.replace(/fill="#ffd43b"/g, 'class="excali-ma-yellow-fill" fill="#ffd43b"');
+  svgContent = svgContent.replace(/stroke="#69db7c"/g, 'class="excali-ma-green-stroke" stroke="#69db7c"');
+  svgContent = svgContent.replace(/fill="#69db7c"/g, 'class="excali-ma-green-fill" fill="#69db7c"');
+  svgContent = svgContent.replace(/stroke="#ff6b6b"/g, 'class="excali-ma-red-stroke" stroke="#ff6b6b"');
+  svgContent = svgContent.replace(/fill="#ff6b6b"/g, 'class="excali-ma-red-fill" fill="#ff6b6b"');
+  svgContent = svgContent.replace(/stroke="#7950f2"/g, 'class="excali-ma-purple-stroke" stroke="#7950f2"');
+  svgContent = svgContent.replace(/fill="#7950f2"/g, 'class="excali-ma-purple-fill" fill="#7950f2"');
+  svgContent = svgContent.replace(/stroke="#74c0fc"/g, 'class="excali-ma-blue-stroke" stroke="#74c0fc"');
+  svgContent = svgContent.replace(/fill="#74c0fc"/g, 'class="excali-ma-blue-fill" fill="#74c0fc"');
+
+  // Multi-Agent Sandbox — misc fills (gray, tailscale light blue)
+  svgContent = svgContent.replace(/fill="#868e96"/g, 'class="excali-ma-gray-fill" fill="#868e96"');
+  svgContent = svgContent.replace(/stroke="#868e96"/g, 'class="excali-ma-gray-stroke" stroke="#868e96"');
+  svgContent = svgContent.replace(/fill="#a5d8ff"/g, 'class="excali-ma-lightblue-fill" fill="#a5d8ff"');
+  svgContent = svgContent.replace(/fill="#495057"/g, 'class="excali-ma-darkgray-fill" fill="#495057"');
+  svgContent = svgContent.replace(/stroke="#495057"/g, 'class="excali-ma-darkgray-stroke" stroke="#495057"');
+
+  // Multi-Agent Sandbox Architecture — card backgrounds
+  svgContent = svgContent.replace(/fill="#14352a"/g, 'class="excali-arch-card-green" fill="#14352a"');
+  svgContent = svgContent.replace(/fill="#332a14"/g, 'class="excali-arch-card-amber" fill="#332a14"');
+  svgContent = svgContent.replace(/fill="#1f1a3d"/g, 'class="excali-arch-card-purple" fill="#1f1a3d"');
+  svgContent = svgContent.replace(/fill="#2a1f44"/g, 'class="excali-arch-card-purple-inner" fill="#2a1f44"');
+  svgContent = svgContent.replace(/fill="#1e1b4b"/g, 'class="excali-arch-card-indigo" fill="#1e1b4b"');
+  svgContent = svgContent.replace(/fill="#2a1a0a"/g, 'class="excali-arch-card-brown" fill="#2a1a0a"');
+
+  // Multi-Agent Sandbox Architecture — accent strokes and fills
+  svgContent = svgContent.replace(/stroke="#818cf8"/g, 'class="excali-arch-indigo-stroke" stroke="#818cf8"');
+  svgContent = svgContent.replace(/fill="#818cf8"/g, 'class="excali-arch-indigo-fill" fill="#818cf8"');
+  svgContent = svgContent.replace(/stroke="#f97316"/g, 'class="excali-arch-orange-stroke" stroke="#f97316"');
+  svgContent = svgContent.replace(/fill="#f97316"/g, 'class="excali-arch-orange-fill" fill="#f97316"');
+  svgContent = svgContent.replace(/stroke="#34d399"/g, 'class="excali-arch-emerald-stroke" stroke="#34d399"');
+  svgContent = svgContent.replace(/fill="#34d399"/g, 'class="excali-arch-emerald-fill" fill="#34d399"');
+
+  // Multi-Agent Sandbox Architecture — gray text and borders
+  svgContent = svgContent.replace(/fill="#94a3b8"/g, 'class="excali-arch-slate-fill" fill="#94a3b8"');
+  svgContent = svgContent.replace(/stroke="#475569"/g, 'class="excali-arch-slate-stroke" stroke="#475569"');
+  svgContent = svgContent.replace(/fill="rgba\(30,41,59,0\.8\)"/g, 'class="excali-arch-footer-bg" fill="rgba(30,41,59,0.8)"');
+  svgContent = svgContent.replace(/fill="rgba\(20,20,23,0\.8\)"/g, 'class="excali-ma-footer-bg" fill="rgba(20,20,23,0.8)"');
+}
+---
+
+<figure class="excalidraw-figure" role="img" aria-label={alt}>
+  <div class="excalidraw-wrapper" set:html={svgContent} />
+  <figcaption class="excalidraw-caption">{alt}</figcaption>
+</figure>
+
+<style>
+  .excalidraw-figure {
+    margin: 2rem 0;
+    padding: 0;
+  }
+
+  .excalidraw-wrapper {
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--md-sys-color-outline-variant);
+    background: var(--md-sys-color-surface-container-low);
+  }
+
+  .excalidraw-wrapper :global(svg) {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .excalidraw-caption {
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--md-sys-color-on-surface-variant);
+    margin-top: 8px;
+    font-style: italic;
+  }
+</style>
+
+<style is:global>
+  /* ========================================
+     EXCALIDRAW DIAGRAM - LIGHT MODE
+     ======================================== */
+
+  .excalidraw-wrapper .excali-bg {
+    fill: #f8f7f4 !important;
+  }
+
+  .excalidraw-wrapper .excali-card-primary {
+    fill: #eceae5 !important;
+  }
+
+  .excalidraw-wrapper .excali-card {
+    fill: #e2e0db !important;
+  }
+
+  .excalidraw-wrapper .excali-card-inner {
+    fill: #e8e6e1 !important;
+  }
+
+  .excalidraw-wrapper .excali-text {
+    fill: #2a2520 !important;
+  }
+
+  .excalidraw-wrapper .excali-muted-stroke {
+    stroke: #999 !important;
+  }
+
+  .excalidraw-wrapper .excali-muted-fill {
+    fill: #999 !important;
+  }
+
+  /* SHGAT node backgrounds - light pastel fills */
+  .excalidraw-wrapper .excali-node-green { fill: #dcfce7 !important; }
+  .excalidraw-wrapper .excali-node-amber { fill: #fef3c7 !important; }
+  .excalidraw-wrapper .excali-node-blue { fill: #dbeafe !important; }
+  .excalidraw-wrapper .excali-node-purple { fill: #ede9fe !important; }
+  .excalidraw-wrapper .excali-node-pink { fill: #fce7f3 !important; }
+
+  /* Warm gray text — dark for light mode */
+  .excalidraw-wrapper .excali-text-warm { fill: #2a2520 !important; }
+
+  /* Gray labels and strokes */
+  .excalidraw-wrapper .excali-gray-fill { fill: #4b5563 !important; }
+  .excalidraw-wrapper .excali-gray-stroke { stroke: #9ca3af !important; }
+  .excalidraw-wrapper .excali-gray-light-fill { fill: #6b7280 !important; }
+
+  /* Accent colors - Casys brand palette (dark variants for light mode) */
+  .excalidraw-wrapper .excali-accent-red-stroke { stroke: #A04A35 !important; }
+  .excalidraw-wrapper .excali-accent-red-fill { fill: #A04A35 !important; }
+  .excalidraw-wrapper .excali-accent-blue-stroke { stroke: #3A6A7A !important; }
+  .excalidraw-wrapper .excali-accent-blue-fill { fill: #3A6A7A !important; }
+  .excalidraw-wrapper .excali-accent-yellow-stroke { stroke: #A07030 !important; }
+  .excalidraw-wrapper .excali-accent-yellow-fill { fill: #A07030 !important; }
+  .excalidraw-wrapper .excali-accent-green-stroke { stroke: #5A7A3A !important; }
+  .excalidraw-wrapper .excali-accent-green-fill { fill: #5A7A3A !important; }
+  .excalidraw-wrapper .excali-accent-purple-stroke { stroke: #6A3A63 !important; }
+  .excalidraw-wrapper .excali-accent-purple-fill { fill: #6A3A63 !important; }
+  .excalidraw-wrapper .excali-accent-pink-stroke { stroke: #8A4A50 !important; }
+  .excalidraw-wrapper .excali-accent-pink-fill { fill: #8A4A50 !important; }
+
+  /* Light gray text — dark for light mode */
+  .excalidraw-wrapper .excali-text-light { fill: #2a2520 !important; }
+
+  /* Context Engineering accent colors — WCAG-compliant dark variants for light mode */
+  .excalidraw-wrapper .excali-ce-green-stroke { stroke: #15803d !important; }
+  .excalidraw-wrapper .excali-ce-green-fill { fill: #15803d !important; }
+  .excalidraw-wrapper .excali-ce-amber-stroke { stroke: #b45309 !important; }
+  .excalidraw-wrapper .excali-ce-amber-fill { fill: #b45309 !important; }
+  .excalidraw-wrapper .excali-ce-blue-stroke { stroke: #2563eb !important; }
+  .excalidraw-wrapper .excali-ce-blue-fill { fill: #2563eb !important; }
+  .excalidraw-wrapper .excali-ce-purple-stroke { stroke: #7c3aed !important; }
+  .excalidraw-wrapper .excali-ce-purple-fill { fill: #7c3aed !important; }
+  .excalidraw-wrapper .excali-ce-cyan-stroke { stroke: #0e7490 !important; }
+  .excalidraw-wrapper .excali-ce-cyan-fill { fill: #0e7490 !important; }
+
+  /* Context Engineering dark card backgrounds — light pastel fills */
+  .excalidraw-wrapper .excali-ce-card-green { fill: #dcfce7 !important; }
+  .excalidraw-wrapper .excali-ce-card-blue { fill: #dbeafe !important; }
+  .excalidraw-wrapper .excali-ce-card-amber { fill: #fef3c7 !important; }
+  .excalidraw-wrapper .excali-ce-card-purple { fill: #ede9fe !important; }
+  .excalidraw-wrapper .excali-ce-card-red { fill: #fee2e2 !important; }
+  .excalidraw-wrapper .excali-ce-card-cyan { fill: #ccfbf1 !important; }
+
+  /* Multi-Agent Sandbox — box backgrounds (dark → light pastel) */
+  .excalidraw-wrapper .excali-ma-card-amber { fill: #fef3c7 !important; }
+  .excalidraw-wrapper .excali-ma-card-green { fill: #dcfce7 !important; }
+  .excalidraw-wrapper .excali-ma-card-red { fill: #fee2e2 !important; }
+  .excalidraw-wrapper .excali-ma-card-purple { fill: #ede9fe !important; }
+
+  /* Multi-Agent Sandbox — accent colors (bright → WCAG-dark for light bg) */
+  .excalidraw-wrapper .excali-ma-yellow-stroke { stroke: #92400e !important; }
+  .excalidraw-wrapper .excali-ma-yellow-fill { fill: #92400e !important; }
+  .excalidraw-wrapper .excali-ma-green-stroke { stroke: #166534 !important; }
+  .excalidraw-wrapper .excali-ma-green-fill { fill: #166534 !important; }
+  .excalidraw-wrapper .excali-ma-red-stroke { stroke: #991b1b !important; }
+  .excalidraw-wrapper .excali-ma-red-fill { fill: #991b1b !important; }
+  .excalidraw-wrapper .excali-ma-purple-stroke { stroke: #5b21b6 !important; }
+  .excalidraw-wrapper .excali-ma-purple-fill { fill: #5b21b6 !important; }
+  .excalidraw-wrapper .excali-ma-blue-stroke { stroke: #1e40af !important; }
+  .excalidraw-wrapper .excali-ma-blue-fill { fill: #1e40af !important; }
+
+  /* Multi-Agent Sandbox — misc */
+  .excalidraw-wrapper .excali-ma-gray-fill { fill: #4b5563 !important; }
+  .excalidraw-wrapper .excali-ma-gray-stroke { stroke: #6b7280 !important; }
+  .excalidraw-wrapper .excali-ma-lightblue-fill { fill: #bfdbfe !important; }
+  .excalidraw-wrapper .excali-ma-darkgray-fill { fill: #6b7280 !important; }
+  .excalidraw-wrapper .excali-ma-darkgray-stroke { stroke: #9ca3af !important; }
+
+  /* Multi-Agent Architecture — card backgrounds (dark → light pastel) */
+  .excalidraw-wrapper .excali-arch-card-green { fill: #dcfce7 !important; }
+  .excalidraw-wrapper .excali-arch-card-amber { fill: #fef3c7 !important; }
+  .excalidraw-wrapper .excali-arch-card-purple { fill: #ede9fe !important; }
+  .excalidraw-wrapper .excali-arch-card-purple-inner { fill: #e8e0ff !important; }
+  .excalidraw-wrapper .excali-arch-card-indigo { fill: #e0e7ff !important; }
+  .excalidraw-wrapper .excali-arch-card-brown { fill: #fef3c7 !important; }
+
+  /* Multi-Agent Architecture — accents (bright → WCAG-dark for light bg) */
+  .excalidraw-wrapper .excali-arch-indigo-stroke { stroke: #4338ca !important; }
+  .excalidraw-wrapper .excali-arch-indigo-fill { fill: #4338ca !important; }
+  .excalidraw-wrapper .excali-arch-orange-stroke { stroke: #c2410c !important; }
+  .excalidraw-wrapper .excali-arch-orange-fill { fill: #c2410c !important; }
+  .excalidraw-wrapper .excali-arch-emerald-stroke { stroke: #047857 !important; }
+  .excalidraw-wrapper .excali-arch-emerald-fill { fill: #047857 !important; }
+
+  /* Multi-Agent Architecture — gray text and borders */
+  .excalidraw-wrapper .excali-arch-slate-fill { fill: #64748b !important; }
+  .excalidraw-wrapper .excali-arch-slate-stroke { stroke: #94a3b8 !important; }
+  .excalidraw-wrapper .excali-arch-footer-bg { fill: rgba(226,224,219,0.8) !important; }
+  .excalidraw-wrapper .excali-ma-footer-bg { fill: rgba(226,224,219,0.8) !important; }
+
+  /* ========================================
+     EXCALIDRAW DIAGRAM - DARK MODE
+     ======================================== */
+
+  html[data-theme="dark"] .excalidraw-wrapper {
+    border-color: rgba(255, 184, 111, 0.1);
+    background: #0a0908;
+  }
+
+  html[data-theme="dark"] .excalidraw-wrapper .excali-bg {
+    fill: #0a0908 !important;
+  }
+
+  html[data-theme="dark"] .excalidraw-wrapper .excali-card-primary {
+    fill: #1f1f23 !important;
+  }
+
+  html[data-theme="dark"] .excalidraw-wrapper .excali-card {
+    fill: #2d2d35 !important;
+  }
+
+  html[data-theme="dark"] .excalidraw-wrapper .excali-card-inner {
+    fill: #1a1a1e !important;
+  }
+
+  html[data-theme="dark"] .excalidraw-wrapper .excali-text {
+    fill: #f0ede8 !important;
+  }
+
+  html[data-theme="dark"] .excalidraw-wrapper .excali-muted-stroke {
+    stroke: #666 !important;
+  }
+
+  html[data-theme="dark"] .excalidraw-wrapper .excali-muted-fill {
+    fill: #666 !important;
+  }
+
+  /* SHGAT node backgrounds - restore dark fills */
+  html[data-theme="dark"] .excalidraw-wrapper .excali-node-green { fill: #1a3a1a !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-node-amber { fill: #3a2a0a !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-node-blue { fill: #1a2744 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-node-purple { fill: #2d2044 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-node-pink { fill: #3a1a2e !important; }
+
+  /* Warm gray text — light for dark mode */
+  html[data-theme="dark"] .excalidraw-wrapper .excali-text-warm { fill: #e7e5e4 !important; }
+
+  /* Gray labels and strokes */
+  html[data-theme="dark"] .excalidraw-wrapper .excali-gray-fill { fill: #6b7280 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-gray-stroke { stroke: #6b7280 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-gray-light-fill { fill: #9ca3af !important; }
+
+  /* Accent colors - Casys brand palette (bright variants for dark mode) */
+  html[data-theme="dark"] .excalidraw-wrapper .excali-accent-red-stroke { stroke: #FF9B7A !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-accent-red-fill { fill: #FF9B7A !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-accent-blue-stroke { stroke: #7CBCD4 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-accent-blue-fill { fill: #7CBCD4 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-accent-yellow-stroke { stroke: #FFB86F !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-accent-yellow-fill { fill: #FFB86F !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-accent-green-stroke { stroke: #B8D4A0 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-accent-green-fill { fill: #B8D4A0 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-accent-purple-stroke { stroke: #C9A0D4 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-accent-purple-fill { fill: #C9A0D4 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-accent-pink-stroke { stroke: #E8A8B0 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-accent-pink-fill { fill: #E8A8B0 !important; }
+
+  /* Light gray text — restore for dark mode */
+  html[data-theme="dark"] .excalidraw-wrapper .excali-text-light { fill: #e5e5e5 !important; }
+
+  /* Context Engineering accent colors — restore bright for dark mode */
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ce-green-stroke { stroke: #22c55e !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ce-green-fill { fill: #22c55e !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ce-amber-stroke { stroke: #f59e0b !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ce-amber-fill { fill: #f59e0b !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ce-blue-stroke { stroke: #4a9eed !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ce-blue-fill { fill: #4a9eed !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ce-purple-stroke { stroke: #8b5cf6 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ce-purple-fill { fill: #8b5cf6 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ce-cyan-stroke { stroke: #06b6d4 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ce-cyan-fill { fill: #06b6d4 !important; }
+
+  /* Context Engineering dark card backgrounds — restore dark fills */
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ce-card-green { fill: #1a4d2e !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ce-card-blue { fill: #1e3a5f !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ce-card-amber { fill: #5c3d1a !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ce-card-purple { fill: #2d1b69 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ce-card-red { fill: #5c1a1a !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ce-card-cyan { fill: #1a4d4d !important; }
+
+  /* Multi-Agent Sandbox — restore dark box backgrounds */
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ma-card-amber { fill: #3d3520 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ma-card-green { fill: #1e3d2e !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ma-card-red { fill: #3d1f1f !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ma-card-purple { fill: #2d1e5e !important; }
+
+  /* Multi-Agent Sandbox — restore bright accents for dark mode */
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ma-yellow-stroke { stroke: #ffd43b !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ma-yellow-fill { fill: #ffd43b !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ma-green-stroke { stroke: #69db7c !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ma-green-fill { fill: #69db7c !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ma-red-stroke { stroke: #ff6b6b !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ma-red-fill { fill: #ff6b6b !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ma-purple-stroke { stroke: #7950f2 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ma-purple-fill { fill: #7950f2 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ma-blue-stroke { stroke: #74c0fc !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ma-blue-fill { fill: #74c0fc !important; }
+
+  /* Multi-Agent Sandbox — restore misc for dark mode */
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ma-gray-fill { fill: #868e96 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ma-gray-stroke { stroke: #868e96 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ma-lightblue-fill { fill: #a5d8ff !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ma-darkgray-fill { fill: #495057 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ma-darkgray-stroke { stroke: #495057 !important; }
+
+  /* Multi-Agent Architecture — restore dark card backgrounds */
+  html[data-theme="dark"] .excalidraw-wrapper .excali-arch-card-green { fill: #14352a !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-arch-card-amber { fill: #332a14 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-arch-card-purple { fill: #1f1a3d !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-arch-card-purple-inner { fill: #2a1f44 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-arch-card-indigo { fill: #1e1b4b !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-arch-card-brown { fill: #2a1a0a !important; }
+
+  /* Multi-Agent Architecture — restore bright accents for dark mode */
+  html[data-theme="dark"] .excalidraw-wrapper .excali-arch-indigo-stroke { stroke: #818cf8 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-arch-indigo-fill { fill: #818cf8 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-arch-orange-stroke { stroke: #f97316 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-arch-orange-fill { fill: #f97316 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-arch-emerald-stroke { stroke: #34d399 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-arch-emerald-fill { fill: #34d399 !important; }
+
+  /* Multi-Agent Architecture — restore gray text and borders for dark mode */
+  html[data-theme="dark"] .excalidraw-wrapper .excali-arch-slate-fill { fill: #94a3b8 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-arch-slate-stroke { stroke: #475569 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-arch-footer-bg { fill: rgba(30,41,59,0.8) !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-ma-footer-bg { fill: rgba(20,20,23,0.8) !important; }
+
+  /* Dark mode container */
+  html[data-theme="dark"] .excalidraw-figure .excalidraw-caption {
+    color: #d5c3b5;
+  }
+</style>

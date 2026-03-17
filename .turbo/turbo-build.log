@@ -1,0 +1,39 @@
+
+> casys-app@0.0.1 build /home/ubuntu/CascadeProjects/casys/apps/casys-app
+> astro build
+
+03:36:07 [content] Syncing content
+03:36:07 [content] Synced content
+03:36:07 [types] Generated 345ms
+03:36:07 [build] output: "static"
+03:36:07 [build] mode: "server"
+03:36:07 [build] directory: /home/ubuntu/CascadeProjects/casys/apps/casys-app/dist/
+03:36:07 [build] adapter: @astrojs/vercel
+03:36:07 [build] Collecting build info...
+03:36:07 [build] ✓ Completed in 370ms.
+03:36:07 [build] Building server entrypoints...
+03:36:09 [vite] ✓ built in 1.83s
+03:36:09 [build] ✓ Completed in 1.86s.
+
+ building client (vite) 
+03:36:09 [vite] transforming...
+03:36:09 [vite] ✓ 7 modules transformed.
+03:36:09 [vite] rendering chunks...
+03:36:09 [vite] ✓ built in 34ms
+
+ prerendering static routes 
+03:36:09 ▶ src/pages/blog/index.astro
+03:36:09   └─ /blog/index.html (+13ms) 
+03:36:09 ▶ src/pages/blog/[...slug].astro
+03:36:09   └─ /blog/hello-vitrine/index.html (+5ms) 
+03:36:09 ▶ src/pages/fr/index.astro
+03:36:09   └─ /fr/index.html (+7ms) 
+03:36:09 ▶ src/pages/index.astro
+03:36:09   └─ /index.html (+4ms) 
+03:36:09 ✓ Completed in 46ms.
+
+03:36:09 [build] Rearranging server assets...
+03:36:09 [@astrojs/vercel] Bundling function ../../../../dist/server/entry.mjs
+03:36:10 [@astrojs/vercel] Copying static files to .vercel/output/static
+03:36:10 [build] Server built in 2.80s
+03:36:10 [build] Complete!

@@ -1,0 +1,404 @@
+---
+title: "Multi-Agent Sandbox — Two OpenClaws, One Discord, One VPS"
+description: "Lessons learned from building a multi-agent collaborative workspace: sandboxed agents, shared Discord, remote VPS via Tailscale, socat bridges, and controlled communication."
+author: "Erwan Lee Pesle"
+date: 2026-03-07
+tags:
+  - agents
+  - sandbox
+  - discord
+  - tailscale
+  - infrastructure
+  - openclaw
+  - multi-agent
+category: "Infrastructure"
+language: en
+snippet: "How to connect two independent OpenClaw instances into a shared workspace — without sacrificing isolation."
+featured: true
+draft: false
+---
+
+import ExcalidrawDiagram from '../../../components/ExcalidrawDiagram.astro';
+
+> Two agents, two owners, one shared workspace. Without either being able to read the other's private data. A Saturday evening well spent.
+
+---
+
+## The Problem
+
+A developer friend and I wanted our agents to work together. Not just drop them into a Discord — give them a real shared playground: a common VPS, SSH access, the ability to code and test things together.
+
+The catch: we each run our own OpenClaw. My main agent manages my WhatsApp, my calendar, my client projects. His agent does the same. These agents have access to everything. Obviously, we didn't want to connect them directly — one bug, one hallucination, and data from one side leaks to the other.
+
+The solution: dedicated **sandboxed agents** for collaboration. Isolated from our main agents. Limited in their permissions. But able to collaborate via Discord and SSH.
+
+Here's what we built in one evening, and everything we broke along the way.
+
+---
+
+## The Overall Architecture
+
+Three machines. Two OpenClaw instances. One shared Discord. One cheap VPS as a common playground.
+
+<ExcalidrawDiagram src="multi-agent-sandbox/multi-agent-sandbox-architecture" alt="Multi-Agent Sandbox Architecture: Two OpenClaw instances with sandboxed agents communicating via Discord and a shared VPS through Tailscale" />
+
+Each OpenClaw runs on its own server. Each instance has a main agent (with full access: WhatsApp, calendar, client data) and a sandboxed agent (isolated, restricted permissions). The sandboxed agents communicate with each other via a shared Discord server and access the common VPS via SSH — all connected through a Tailscale mesh VPN.
+
+The ground rules:
+
+1. **Isolation** — The sandboxed agent can't see the main agent's workspace. No data leaks.
+2. **@mention only** — Agents only respond when tagged. Two bots in the same channel without this rule = infinite loop and an astronomical token bill.
+3. **Shared VPS** — A common playground. Both agents can code on it, install things, break everything and start over.
+4. **Controlled communication** — Agents communicate via `sessions_send` with explicit, bidirectional permissions. Each link is a conscious decision.
+
+But before the network details, we need to create the sandbox agent itself. Then the architecture rests on three technical pillars: container connectivity (socat bridges — already covered in [The Localhost Trap](/blog/the-localhost-trap)), the private network (Tailscale), and inter-agent communication (Discord + sessions_send).
+
+---
+
+## Creating the Sandbox Agent
+
+In OpenClaw, a sandbox agent is a full-fledged agent with its own workspace, its own model, and its own restrictions. Not just a "mode" — a separate entity.
+
+The config in `openclaw.json`:
+
+```json
+{
+  "id": "spoke",
+  "workspace": "/path/to/workspace-sandbox",
+  "model": {
+    "primary": "your-preferred-model",
+    "fallbacks": ["your-fallback-model"]
+  },
+  "identity": {
+    "name": "Spoke",
+    "emoji": "🖖"
+  },
+  "sandbox": {
+    "mode": "all",
+    "workspaceAccess": "rw",
+    "docker": {
+      "image": "openclaw-sandbox:bookworm-slim",
+      "readOnlyRoot": true,
+      "network": "bridge",
+      "memory": "1536m",
+      "cpus": 2
+    }
+  },
+  "tools": {
+    "deny": ["gateway", "process", "whatsapp_login", "cron"],
+    "agentToAgent": {
+      "allow": ["your-main-agent-id"]
+    }
+  }
+}
+```
+
+Key points:
+
+- **`sandbox.mode: "all"`** — all exec commands run through the Docker container. Spoke never touches the host.
+- **`readOnlyRoot: true`** — the container's filesystem is read-only, except for the workspace. This prevents the agent from modifying system binaries or installing backdoors.
+- **`tools.deny`** — no `gateway` (it can't modify the OpenClaw config), no `process` (it can't launch persistent processes on the host), no `cron` (it can't schedule tasks), no `whatsapp_login` (it can't hijack WhatsApp sessions).
+- **`agentToAgent.allow: ["your-main-agent-id"]`** — Spoke can communicate with the main agent, but no one else.
+
+The workspace `/path/to/workspace-sandbox` has its own `SOUL.md` and `TOOLS.md`. The sandboxed agent knows nothing about my clients, my projects, my tokens. It knows the VPS SSH IP and the Discord channels. That's it.
+
+> **Note:** the `bookworm-slim` Docker image is minimal. If the sandboxed agent needs SSH, add `openssh-client` to the Dockerfile:
+> ```dockerfile
+> RUN apt-get update && apt-get install -y openssh-client && rm -rf /var/lib/apt/lists/*
+> ```
+
+---
+
+## Pillar 1 — Socat Bridges
+
+If you've read [The Localhost Trap](/blog/the-localhost-trap), the problem is familiar: a Docker container needs to access a service that doesn't exist in its network namespace. The solution was a `socat` bridge on the host. Here, we extend this pattern to a remote VPS.
+
+<ExcalidrawDiagram src="multi-agent-sandbox/multi-agent-socat-bridges" alt="The two socat bridges: Container → Host → VPS" />
+
+### The Problem: Docker Can't See the Private Network
+
+Our agents run inside **Docker containers**. A container in `bridge` mode (the default) has its own network namespace. It sees `eth0` (in the docker0 subnet, `172.17.0.x`) and nothing else.
+
+The shared VPS is accessible through a private Tailscale network (detailed in Pillar 2). Its address is `100.y.y.y` — a private IP in the mesh VPN. The container can't resolve this address. The route doesn't exist in its namespace.
+
+We could install Tailscale inside the container — but that would require network privileges (`NET_ADMIN`) that defeat the entire purpose of the sandbox. The solution: a `socat` bridge on the host that relays traffic.
+
+### The Two Hops
+
+The complete SSH connection chain involves **two hops**:
+
+**Hop 1: Container → Host (docker0 gateway)**
+
+The Docker container sees `172.17.0.1` as its gateway — that's the address of the `docker0` interface on the host. We expose a port on that interface:
+
+```bash
+# On the host
+socat TCP-LISTEN:2222,bind=172.17.0.1,fork,reuseaddr \
+      TCP:100.y.y.y:22
+```
+
+When Spoke runs `ssh -p 2222 root@172.17.0.1` from inside its container:
+1. The packet hits `172.17.0.1:2222` (the host's docker0 interface)
+2. socat receives it and opens a connection to `100.y.y.y:22`
+3. `100.y.y.y` is the VPS's Tailscale address — the host knows how to resolve it via `tailscale0`
+4. The SSH connection is established end-to-end
+
+**Hop 2: Host → Remote VPS via Tailscale**
+
+The second hop is transparent from socat's perspective — it's just a TCP connection to `100.y.y.y:22`. But Tailscale does the heavy lifting under the hood: the packet is encapsulated in WireGuard, traverses NAT, and arrives at the VPS. We'll cover the details in Pillar 2.
+
+From Spoke's perspective, it's a simple `ssh -p 2222 root@172.17.0.1`. All the network complexity is absorbed by socat + Tailscale.
+
+### systemd Service
+
+The bridge needs to survive reboots. A simple systemd service:
+
+```ini
+# /etc/systemd/system/socat-bridge-docker0-vps-ssh.service
+[Unit]
+Description=Socat bridge: docker0:2222 → VPS Tailscale SSH
+After=network.target docker.service tailscaled.service
+Wants=tailscaled.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/socat \
+    TCP-LISTEN:2222,bind=172.17.0.1,fork,reuseaddr \
+    TCP:100.y.y.y:22
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+systemctl daemon-reload && systemctl enable --now socat-bridge-docker0-vps-ssh
+```
+
+The `Wants=tailscaled.service` and `After=tailscaled.service` ensure the bridge doesn't start before Tailscale is ready. Without this, socat tries to connect to `100.y.y.y` while the Tailscale interface doesn't exist yet — silent failure.
+
+### UFW Rule
+
+By default, UFW blocks incoming traffic on `docker0`. You need to explicitly allow the bridge port:
+
+```bash
+ufw allow in on docker0 to any port 2222 proto tcp \
+    comment "socat-bridge-vps-ssh"
+```
+
+Without this rule, `ssh -p 2222 root@172.17.0.1` from the container gives a silent timeout. No `Connection refused`, no `Permission denied` — just nothing. This is the kind of issue that can cost an hour of debugging if you don't think of it.
+
+---
+
+## Pillar 2 — Tailscale Mesh VPN
+
+The socat bridge relays traffic to `100.y.y.y`. But where does this address come from, and how do the three machines find each other? That's Tailscale's role.
+
+<ExcalidrawDiagram src="multi-agent-sandbox/multi-agent-tailscale-mesh" alt="Tailscale Mesh VPN between 3 machines" />
+
+### What is Tailscale
+
+Tailscale is a **mesh VPN** built on WireGuard. It creates a private network between machines scattered across the Internet — each machine gets a stable private IP address (in the `100.x.x.x` range) and can communicate directly with others, regardless of physical location, NAT configuration, or datacenter.
+
+In practice, Tailscale handles:
+- **Private networking** — each machine in the mesh gets a stable IP, no need to open ports on the Internet
+- **NAT traversal** — machines behind NATs find each other automatically (via DERP, encrypted relays)
+- **Built-in SSH authentication** — `tailscale up --ssh` enables an SSH server that authenticates via Tailscale identity, not public keys
+- **Encryption** — all traffic goes through WireGuard (point-to-point encryption)
+
+The free tier supports up to 100 machines and 3 users — more than enough for our use case. For a fully self-hosted, free alternative, raw WireGuard does the same job for encryption and tunneling, but you'll need to manage keys, configs, and NAT traversal yourself.
+
+### Installation
+
+```bash
+# On each machine (Server A, the VPS, the colleague's server)
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up --ssh
+```
+
+The `--ssh` flag is the interesting part. It enables **Tailscale SSH**: authentication happens through Tailscale identity, not public key. No more `authorized_keys` to manage, no more `ssh-keygen`, no more "I pasted the wrong key in the panel."
+
+Within 5 minutes, all three machines are on the same private network:
+
+- My server → `100.x.x.x`
+- The VPS → `100.y.y.y`
+- My colleague's server → `100.z.z.z`
+
+From any machine in the mesh: `ssh root@100.y.y.y`. No keys, no complicated setup.
+
+### Automatic NAT Traversal
+
+Tailscale handles NAT traversal through DERP (Designated Encrypted Relay for Packets). In practice:
+- If both machines can reach each other directly (no NAT), they do point-to-point WireGuard.
+- If one is behind a symmetric NAT, Tailscale uses a DERP relay for the initial handshake, then attempts hole punching to establish a direct connection.
+- As a last resort, traffic flows through the nearest DERP relay.
+
+In practice, we never had to think about it. It just works.
+
+### Why Tailscale on the Host, Not in the Container
+
+This is a question that comes up often. Three reasons not to install Tailscale inside the sandbox container:
+
+1. **`NET_ADMIN` capability** — Tailscale needs to create a TUN network interface. This requires `NET_ADMIN`, which gives the container the ability to modify the entire host's network stack (if combined with other capabilities or lax configurations). Unacceptable for a sandbox.
+2. **`/dev/net/tun`** — You need to mount the TUN device into the container. Yet another device to expose.
+3. **Tailscale login** — The container would need to authenticate with Tailscale using an authkey. That means storing a Tailscale token inside the container — an additional leak vector.
+
+That's why the socat bridge is the right abstraction: the container needs no special privileges. It does basic TCP to `172.17.0.1:2222`. The host handles the network complexity — Tailscale, WireGuard, NAT traversal.
+
+---
+
+## Pillar 3 — Agent-to-Agent Communication
+
+The network is in place. The agents can reach the VPS. The remaining question: how do agents talk to each other?
+
+<ExcalidrawDiagram src="multi-agent-sandbox/multi-agent-communication" alt="Inter-agent communication: delegation and isolation" />
+
+### Discord Multi-Account
+
+Each agent has its own Discord bot. No question of sharing a token — identities must be distinct. The main agent posts under one name, the sandboxed agent under another.
+
+The Discord config in `openclaw.json`:
+
+```json
+{
+  "channels": {
+    "discord": {
+      "enabled": true,
+      "accounts": {
+        "default": {
+          "enabled": true,
+          "name": "Main Agent",
+          "token": "$DISCORD_TOKEN_PRINCIPAL",
+          "guilds": {
+            "YOUR_PRIVATE_GUILD_ID": {
+              "slug": "private-workspace",
+              "requireMention": false
+            }
+          }
+        },
+        "sandbox": {
+          "enabled": true,
+          "name": "Spoke (Sandbox)",
+          "token": "$DISCORD_TOKEN_SPOKE",
+          "allowBots": "mentions",
+          "guilds": {
+            "YOUR_SHARED_GUILD_ID": {
+              "slug": "openclaw-multi-session",
+              "requireMention": true,
+              "users": [
+                "YOUR_HUMAN_USER_ID",
+                "YOUR_OTHER_BOT_ID"
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+Then the routing — which agent responds in which server? That's in the `bindings`:
+
+```json
+{
+  "bindings": [
+    {
+      "agentId": "spoke",
+      "match": {
+        "channel": "discord",
+        "accountId": "sandbox",
+        "guildId": "YOUR_SHARED_GUILD_ID"
+      }
+    }
+  ]
+}
+```
+
+When a message arrives on the shared server via the `sandbox` account, Spoke responds. Not the main agent.
+
+### requireMention: true — The Essential Safeguard
+
+This is the single most important rule in the entire architecture. Without `requireMention: true`, every message in a channel triggers a response from every bot present. Two bots responding to each other: instant infinite loop.
+
+With `requireMention`, the agent only responds when someone types `@Spoke` (or `@BotName`). A human mentions an agent, the agent responds, done. No cascade.
+
+If you want **bot-to-bot** triggering on Discord, you need **two** things, not one:
+
+- **`allowBots: "mentions"`** on the sandbox Discord account — otherwise OpenClaw ignores bot-authored messages by default.
+- **`guilds.<YOUR_SHARED_GUILD_ID>.users`** with the Discord IDs of the humans or bots allowed to trigger that agent in the shared server.
+
+The safe setting is `"mentions"`, not `true`: the other bot must mention **the bot itself**, not just a Discord role.
+
+To get Discord IDs, enable **Developer Mode** in Discord, then right-click the user, bot, channel, or server → **Copy ID**. This matters because reliable Discord/OpenClaw mention gating is ID-based, not display-name-based.
+
+In practice, mention handling is more subtle than it appears. [PR #33224](https://github.com/openclaw/openclaw/pull/33224) (merged March 3, 2026) significantly improved the system:
+
+- **ID-based mentions** — Discord internally uses numeric IDs for mentions (`<@123456789>`), not display names. The PR aligned OpenClaw's gating with native Discord IDs instead of string matching on display names. Result: no more false positives when a bot name resembles a common word.
+- **Cached rewrites** — Discord usernames are resolved and cached to avoid repeated API calls on every message.
+- **`ignoreOtherMentions`** — A new flag that lets an agent ignore messages mentioning a *different* bot. Before this PR, if someone wrote `@Bot1 and @Bot2`, both bots would respond (if `requireMention` was satisfied for each). Now, each bot can choose to only respond when it's the *sole* mention, or the *first* mention.
+
+### sessions_send() — Inter-Agent Communication
+
+How does the main agent give Spoke a task?
+
+```
+Main agent: sessions_send(agent="spoke", message="Check the VPS status")
+```
+
+The main agent can inject instructions into Spoke's session. And vice versa — as long as permissions are configured on both sides.
+
+Initially, OpenClaw's A2A (agent-to-agent) communication was a flat global gate: either all agents could talk to each other, or none could. In a hub-spoke topology — a main agent delegating to sandboxed agents — this was too coarse. The sandbox could reach the main agent, but also any *other* sandbox. No isolation between spokes.
+
+[PR #39102](https://github.com/openclaw/openclaw/pull/39102) introduced **per-agent outbound A2A allowlists**: each agent declares exactly which other agents it can contact via `sessions_send`, `sessions_list`, and `sessions_history`. The global gate remains as a participation prerequisite, but the per-agent override controls direction.
+
+```json
+{
+  "tools": {
+    "agentToAgent": { "enabled": true, "allow": ["*"] }
+  },
+  "agents": {
+    "list": [
+      { "id": "david",  "tools": { "agentToAgent": { "allow": ["*"] } } },
+      { "id": "spoke",  "tools": { "agentToAgent": { "allow": ["david"] } } }
+    ]
+  }
+}
+```
+
+`spoke → david` ✅ | `spoke → other-sandbox` ❌ | `david → anyone` ✅
+
+Communication is **bidirectional but controlled**: each agent explicitly declares which other agents it authorizes to contact. No wildcards by default, no "everyone can talk to everyone." Each link is a conscious decision. The PR also added structured deny reasons (`AgentToAgentDenyReason`) so agents get clear error messages instead of silent failures, and automatic pruning of stale references when an agent is deleted from the config.
+
+### Cross-Context Messaging
+
+A subtle gotcha: an agent spawned from WhatsApp can't write to Discord. The spawn context determines the available channels.
+
+If the main agent receives a request on WhatsApp and wants Spoke to work on Discord, the first trigger must come from the Discord channel. This is a security constraint — not a bug. A WhatsApp agent that could post to Discord without being invited would be a channel isolation violation.
+
+In practice, this means you need to think through the flow ahead of time: which channel triggers what, and in what context each agent operates.
+
+---
+
+## The Flow in Action
+
+What does this look like day-to-day? Here's the typical flow:
+
+1. The main agent receives a request on WhatsApp
+2. It delegates a task to Spoke via `sessions_send`
+3. Spoke works autonomously in the shared Discord — SSH to the VPS, code execution, testing
+4. Spoke sends results back via `sessions_send` into the main session
+5. The main agent synthesizes and responds on WhatsApp
+
+In practice, it's strangely quiet. You send a WhatsApp message in the morning, and an hour later you get a response with a summary of what Spoke did — the commits, the tests run, the errors encountered. Meanwhile, the shared Discord has filled up with messages between the two sandboxed agents, without human intervention. The main agent never touched Discord. Spoke never touched WhatsApp. Each agent operated within its perimeter, on its channel, with its permissions.
+
+## What We Learned
+
+Multi-agent architecture isn't complicated in theory. In practice, it's a succession of silent gotchas — a port that doesn't respond, a Discord role confused with a bot, a missing `openssh-client` in a slim Docker image.
+
+The gotchas we wish we'd known about in advance: the `agentToAgent.allow` forgotten on one side (communication is bidirectional — both agents must authorize each other), the Discord binding misrouted (an `accountId` that doesn't match the right `guildId`), the missing `requireMention: true` on a shared guild (guaranteed infinite loop), and the socat bridge without the corresponding UFW rule (silent timeout, no `Connection refused` — just nothing).
+
+On the WhatsApp side, the same directional control principle is addressed by [PR #33924](https://github.com/openclaw/openclaw/pull/33924): a separate `allowSendTo` field for outbound targeting, independent of the inbound `allowFrom` gate. Who can contact you and who you can contact are two different questions that deserve two different configs.
+
+Isolation isn't improvised. It's declared — in an allowlist, a `tools.deny`, a `requireMention: true`. Every permission is a door you choose to open. Agents collaborate exactly as much as you let them, and not a bit more.

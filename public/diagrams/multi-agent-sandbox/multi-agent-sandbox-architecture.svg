@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 440"
+     font-family="'Inter','Segoe UI',system-ui,-apple-system,sans-serif">
+  <defs>
+    <marker id="ah-7950f2" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#7950f2"/></marker>
+    <marker id="ah-ffd43b" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#ffd43b"/></marker>
+    <marker id="ah-74c0fc" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#74c0fc"/></marker>
+  </defs>
+
+  <rect x="0" y="0" width="780" height="440" fill="#08080a"/>
+
+  <!-- Title -->
+  <text x="390" y="32" font-size="20" fill="#f0ede8" text-anchor="middle">Architecture Multi-Agent Sandbox</text>
+
+  <!-- ═══════════ Server A ═══════════ -->
+  <rect x="40" y="52" width="310" height="185" rx="12" fill="#1a2744" stroke="#60a5fa" stroke-width="2"/>
+  <text x="195" y="74" font-size="14" fill="#60a5fa" text-anchor="middle">🖥️ Server A</text>
+
+  <rect x="62" y="84" width="266" height="45" rx="8" fill="#1e3d2e" stroke="#69db7c" stroke-width="1.5"/>
+  <text x="195" y="105" font-size="14" fill="#69db7c" text-anchor="middle">🟢 Main Agent</text>
+  <text x="195" y="121" font-size="11" fill="#868e96" text-anchor="middle">Full access</text>
+
+  <path d="M195 129 L195 157" fill="none" stroke="#74c0fc" stroke-width="1.5" marker-end="url(#ah-74c0fc)" marker-start="url(#ah-74c0fc)"/>
+  <text x="210" y="148" font-size="9" fill="#74c0fc" text-anchor="start">sessions_send</text>
+
+  <rect x="62" y="162" width="266" height="45" rx="8" fill="#3d1f1f" stroke="#ff6b6b" stroke-width="1.5"/>
+  <text x="195" y="183" font-size="14" fill="#ff6b6b" text-anchor="middle">🔴 Sandboxed Agent</text>
+  <text x="195" y="199" font-size="11" fill="#868e96" text-anchor="middle">🐳 Docker · isolated</text>
+
+  <!-- ═══════════ Server B ═══════════ -->
+  <rect x="430" y="52" width="310" height="185" rx="12" fill="#2d2044" stroke="#a78bfa" stroke-width="2"/>
+  <text x="585" y="74" font-size="14" fill="#a78bfa" text-anchor="middle">🖥️ Server B</text>
+
+  <rect x="452" y="84" width="266" height="45" rx="8" fill="#1e3d2e" stroke="#69db7c" stroke-width="1.5"/>
+  <text x="585" y="105" font-size="14" fill="#69db7c" text-anchor="middle">🟢 Main Agent</text>
+  <text x="585" y="121" font-size="11" fill="#868e96" text-anchor="middle">Full access</text>
+
+  <path d="M585 129 L585 157" fill="none" stroke="#74c0fc" stroke-width="1.5" marker-end="url(#ah-74c0fc)" marker-start="url(#ah-74c0fc)"/>
+  <text x="600" y="148" font-size="9" fill="#74c0fc" text-anchor="start">sessions_send</text>
+
+  <rect x="452" y="162" width="266" height="45" rx="8" fill="#3d1f1f" stroke="#ff6b6b" stroke-width="1.5"/>
+  <text x="585" y="183" font-size="14" fill="#ff6b6b" text-anchor="middle">🔴 Sandboxed Agent</text>
+  <text x="585" y="199" font-size="11" fill="#868e96" text-anchor="middle">🐳 Docker · isolated</text>
+
+  <!-- ═══════════ @mention arrows → Discord ═══════════ -->
+  <path d="M195 237 L305 278" fill="none" stroke="#7950f2" stroke-width="1.5" marker-end="url(#ah-7950f2)"/>
+  <text x="225" y="254" font-size="10" fill="#7950f2" text-anchor="start">@mention</text>
+
+  <path d="M585 237 L475 278" fill="none" stroke="#7950f2" stroke-width="1.5" marker-end="url(#ah-7950f2)"/>
+  <text x="540" y="254" font-size="10" fill="#7950f2" text-anchor="end">@mention</text>
+
+  <!-- ═══════════ Discord ═══════════ -->
+  <rect x="200" y="280" width="380" height="50" rx="8" fill="#2d1e5e" stroke="#7950f2" stroke-width="2"/>
+  <text x="390" y="303" font-size="15" fill="#f0ede8" text-anchor="middle">🟣 Shared Discord</text>
+  <text x="390" y="321" font-size="11" fill="#868e96" text-anchor="middle">requireMention: true</text>
+
+  <!-- ═══════════ SSH arrows (L-shaped, along outside edges) → VPS ═══════════ -->
+  <path d="M40 237 L40 380 L200 380" fill="none" stroke="#ffd43b" stroke-width="1.5" stroke-dasharray="6 3" stroke-linejoin="round" marker-end="url(#ah-ffd43b)"/>
+  <text x="48" y="316" font-size="9" fill="#ffd43b" text-anchor="start">SSH</text>
+
+  <path d="M740 237 L740 380 L580 380" fill="none" stroke="#ffd43b" stroke-width="1.5" stroke-dasharray="6 3" stroke-linejoin="round" marker-end="url(#ah-ffd43b)"/>
+  <text x="732" y="316" font-size="9" fill="#ffd43b" text-anchor="end">SSH</text>
+
+  <!-- ═══════════ VPS ═══════════ -->
+  <rect x="200" y="358" width="380" height="50" rx="8" fill="#3d3520" stroke="#ffd43b" stroke-width="1.5"/>
+  <text x="390" y="381" font-size="15" fill="#f0ede8" text-anchor="middle">🌐 Shared VPS</text>
+  <text x="390" y="399" font-size="11" fill="#868e96" text-anchor="middle">Shared workspace</text>
+
+  <!-- ═══════════ Tailscale footer ═══════════ -->
+  <text x="390" y="433" font-size="11" fill="#868e96" text-anchor="middle">🔒 Tailscale Private Network</text>
+</svg>

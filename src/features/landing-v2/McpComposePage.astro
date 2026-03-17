@@ -1,0 +1,659 @@
+---
+import { useTranslations } from '../../i18n';
+
+const locale = (Astro as any).currentLocale ?? 'en';
+const content = useTranslations(locale).mcpComposePage;
+---
+
+<section id="mcp-compose-page">
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-inner">
+      <span class="eyebrow">{content.eyebrow}</span>
+      <h1>{content.title}</h1>
+      <p class="subtitle">{content.subtitle}</p>
+      <p class="description">{content.description}</p>
+      <div class="cta-group">
+        <a href={content.ctaPrimary.href} class="cta-primary">
+          <span class="material-symbols-rounded">rocket_launch</span>
+          <span>{content.ctaPrimary.text}</span>
+        </a>
+        <a href={content.ctaSecondary.href} target="_blank" rel="noopener" class="cta-secondary">
+          <span class="material-symbols-rounded">package_2</span>
+          <span>{content.ctaSecondary.text}</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Features grid -->
+  <div class="features-section" id="features">
+    <div class="container">
+      <div class="section-header">
+        <h2>{content.featuresTitle}</h2>
+        <p class="section-subtitle">{content.featuresSubtitle}</p>
+      </div>
+      <ul class="features-grid">
+        {content.features.map((f) => (
+          <li class="feature-item">
+            <span class="material-symbols-rounded feature-icon">{f.icon}</span>
+            <span class="feature-name">{f.name}</span>
+            <span class="feature-desc">{f.desc}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </div>
+
+  <!-- Pipeline -->
+  <div class="pipeline-section">
+    <div class="container">
+      <h2>{content.architectureTitle}</h2>
+      <div class="pipeline-steps">
+        {content.architectureSteps.map((step, i) => (
+          <div class="pipeline-step">
+            <div class="step-number">{step.step}</div>
+            <div class="step-content">
+              <h3>{step.title}</h3>
+              <p>{step.description}</p>
+            </div>
+            {i < content.architectureSteps.length - 1 && (
+              <span class="material-symbols-rounded step-arrow">arrow_forward</span>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick start -->
+  <div class="quickstart-section" id="quickstart">
+    <div class="container">
+      <h2>{content.quickstartTitle}</h2>
+      <div class="code-card">
+        <div class="code-header">
+          <span class="code-dot"></span>
+          <span class="code-dot"></span>
+          <span class="code-dot"></span>
+          <span class="code-title">compose.ts</span>
+        </div>
+        <pre><code set:html={content.quickstartCode
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/(\/\/.*)/g, '<span class="code-comment">$1</span>')
+          .replace(/("@casys\/mcp-compose\/core")/g, '<span class="code-string">$1</span>')
+          .replace(/("[^"]*")/g, '<span class="code-string">$1</span>')
+          .replace(/\b(import|from|const)\b/g, '<span class="code-keyword">$1</span>')
+        } /></code></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Install -->
+  <div class="install-section">
+    <div class="container">
+      <h2>{content.installTitle}</h2>
+      <div class="install-grid">
+        <div class="install-card">
+          <span class="install-label">Deno</span>
+          <code class="install-cmd">{content.installDeno}</code>
+        </div>
+        <div class="install-card">
+          <span class="install-label">npm</span>
+          <code class="install-cmd">{content.installNpm}</code>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  section {
+    background: var(--md-sys-color-surface);
+  }
+
+  .container,
+  .hero-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* ─── Hero ─── */
+  .hero {
+    padding: 56px 0 40px;
+  }
+
+  .hero-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    max-width: 860px;
+  }
+
+  .eyebrow {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--md-sys-color-primary);
+  }
+
+  h1 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: clamp(2.6rem, 6vw, 4.4rem);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    margin: 0;
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .subtitle {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.25rem;
+    font-style: italic;
+    color: var(--md-sys-color-primary);
+    margin: 0;
+  }
+
+  .description {
+    font-size: 1.02rem;
+    line-height: 1.7;
+    color: var(--md-sys-color-on-surface-variant);
+    margin: 0;
+  }
+
+  .cta-group {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+
+  .cta-primary,
+  .cta-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .cta-primary {
+    background: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+  }
+
+  .cta-secondary {
+    border: 1px solid var(--md-sys-color-outline-variant);
+    color: var(--md-sys-color-on-surface);
+  }
+
+  /* ─── Features grid ─── */
+  .features-section {
+    padding: 56px 0 64px;
+  }
+
+  .section-header {
+    margin-bottom: 28px;
+    max-width: 600px;
+  }
+
+  .section-header h2 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: clamp(2rem, 4vw, 2.75rem);
+    font-weight: 600;
+    color: var(--md-sys-color-on-surface);
+    margin: 0 0 12px;
+    letter-spacing: -0.02em;
+  }
+
+  .section-subtitle {
+    font-size: 1.1rem;
+    color: var(--md-sys-color-on-surface-variant);
+    margin: 0;
+    line-height: 1.6;
+  }
+
+  .features-grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1px;
+    background: var(--md-sys-color-outline-variant);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .feature-item {
+    display: grid;
+    grid-template-columns: 32px 1fr;
+    grid-template-rows: auto auto;
+    column-gap: 12px;
+    row-gap: 2px;
+    padding: 16px 20px;
+    background: var(--md-sys-color-surface-container-lowest);
+    transition: background 150ms ease-out;
+  }
+
+  .feature-item:hover {
+    background: var(--md-sys-color-surface-container);
+  }
+
+  .feature-icon {
+    grid-row: 1 / 3;
+    align-self: center;
+    font-size: 22px;
+    color: var(--md-sys-color-primary);
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .feature-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--md-sys-color-on-surface);
+    line-height: 1.3;
+  }
+
+  .feature-desc {
+    font-size: 0.75rem;
+    color: var(--md-sys-color-on-surface-variant);
+    line-height: 1.4;
+  }
+
+  /* ─── Pipeline ─── */
+  .pipeline-section {
+    padding: 56px 0;
+  }
+
+  .pipeline-section h2 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: clamp(2rem, 4vw, 2.75rem);
+    font-weight: 600;
+    color: var(--md-sys-color-on-surface);
+    margin: 0 0 32px;
+    letter-spacing: -0.02em;
+  }
+
+  .pipeline-steps {
+    display: flex;
+    gap: 0;
+    align-items: stretch;
+  }
+
+  .pipeline-step {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 28px;
+    background: var(--md-sys-color-surface-container-lowest);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: 16px;
+    position: relative;
+  }
+
+  .pipeline-step + .pipeline-step {
+    margin-left: 32px;
+  }
+
+  .step-arrow {
+    position: absolute;
+    right: -26px;
+    font-size: 20px;
+    color: var(--md-sys-color-primary);
+    z-index: 1;
+  }
+
+  .step-number {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+
+  .step-content h3 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.2rem;
+    margin: 0 0 6px;
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .step-content p {
+    margin: 0;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  /* ─── Quick start ─── */
+  .quickstart-section {
+    padding: 56px 0;
+  }
+
+  .quickstart-section h2 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: clamp(2rem, 4vw, 2.75rem);
+    font-weight: 600;
+    color: var(--md-sys-color-on-surface);
+    margin: 0 0 24px;
+    letter-spacing: -0.02em;
+  }
+
+  .code-card {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--md-sys-color-outline-variant);
+  }
+
+  .code-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    background: var(--md-sys-color-surface-container);
+  }
+
+  .code-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--md-sys-color-outline);
+  }
+
+  .code-title {
+    margin-left: 8px;
+    font-size: 0.75rem;
+    color: var(--md-sys-color-on-surface-variant);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  pre {
+    margin: 0;
+    padding: 20px 24px;
+    background: var(--md-sys-color-surface-container-lowest);
+    overflow-x: auto;
+  }
+
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    line-height: 1.7;
+    color: var(--md-sys-color-on-surface);
+  }
+
+  /* ─── Install ─── */
+  .install-section {
+    padding: 40px 0 72px;
+  }
+
+  .install-section h2 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: clamp(2rem, 4vw, 2.75rem);
+    font-weight: 600;
+    color: var(--md-sys-color-on-surface);
+    margin: 0 0 24px;
+    letter-spacing: -0.02em;
+  }
+
+  .install-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .install-card {
+    padding: 20px 24px;
+    border-radius: 12px;
+    background: var(--md-sys-color-surface-container-lowest);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .install-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--md-sys-color-primary);
+  }
+
+  .install-cmd {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--md-sys-color-on-surface);
+  }
+
+  /* ─── Responsive ─── */
+  @media (max-width: 900px) {
+    .pipeline-steps {
+      flex-direction: column;
+    }
+
+    .pipeline-step + .pipeline-step {
+      margin-left: 0;
+      margin-top: 16px;
+    }
+
+    .step-arrow {
+      display: none;
+    }
+
+    .install-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .hero {
+      padding: 40px 0 28px;
+    }
+
+    h1 {
+      font-size: 2.2rem;
+    }
+
+    .features-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .pipeline-step {
+      padding: 20px;
+    }
+  }
+</style>
+
+<style is:global>
+  html[data-theme="dark"] #mcp-compose-page {
+    background: var(--casys-warm-background);
+  }
+
+  html[data-theme="dark"] #mcp-compose-page .hero {
+    background: var(--casys-warm-background);
+  }
+
+  html[data-theme="dark"] #mcp-compose-page .eyebrow {
+    color: var(--casys-warm-accent);
+  }
+
+  html[data-theme="dark"] #mcp-compose-page h1 {
+    color: var(--casys-warm-text-primary);
+  }
+
+  html[data-theme="dark"] #mcp-compose-page .subtitle {
+    color: var(--casys-warm-accent);
+  }
+
+  html[data-theme="dark"] #mcp-compose-page .description {
+    color: var(--casys-warm-text-secondary);
+  }
+
+  html[data-theme="dark"] #mcp-compose-page .cta-primary {
+    background: var(--casys-warm-accent);
+    color: #0a0908;
+  }
+
+  html[data-theme="dark"] #mcp-compose-page .cta-secondary {
+    border-color: var(--casys-warm-border-accent);
+    color: var(--casys-warm-text-primary);
+  }
+
+  html[data-theme="dark"] #mcp-compose-page .cta-secondary:hover {
+    border-color: var(--casys-warm-accent);
+    background: var(--casys-warm-border-accent);
+  }
+
+  /* Features */
+  html[data-theme="dark"] #mcp-compose-page .features-section {
+    background: #0d0c0a;
+  }
+
+  html[data-theme="dark"] #mcp-compose-page .section-header h2 {
+    color: var(--casys-warm-text-primary);
+  }
+
+  html[data-theme="dark"] #mcp-compose-page .section-subtitle {
+    color: var(--casys-warm-text-secondary);
+  }
+
+  html[data-theme="dark"] #mcp-compose-page .features-grid {
+    background: rgba(255, 184, 111, 0.06);
+    border-color: rgba(255, 184, 111, 0.08);
+  }
+
+  html[data-theme="dark"] #mcp-compose-page .feature-item {
+    background: #0d0c0a;
+  }
+
+  html[data-theme="dark"] #mcp-compose-page .feature-item:hover {
+    background: #1a1815;
+  }
+
+  html[data-theme="dark"] #mcp-compose-page .feature-icon {
+    color: var(--casys-warm-accent);
+  }
+
+  html[data-theme="dark"] #mcp-compose-page .feature-name {
+    color: var(--casys-warm-text-primary);
+  }
+
+  html[data-theme="dark"] #mcp-compose-page .feature-desc {
+    color: #a89a8c;
+  }
+
+  /* Pipeline */
+  html[data-theme="dark"] #mcp-compose-page .pipeline-section h2 {
+    color: var(--casys-warm-text-primary);
+  }
+
+  html[data-theme="dark"] #mcp-compose-page .pipeline-step {
+    background: var(--casys-warm-surface);
+    border-color: var(--casys-warm-border-accent);
+  }
+
+  html[data-theme="dark"] #mcp-compose-page .step-number {
+    background: var(--casys-warm-accent);
+    color: #0a0908;
+  }
+
+  html[data-theme="dark"] #mcp-compose-page .step-arrow {
+    color: var(--casys-warm-accent);
+  }
+
+  html[data-theme="dark"] #mcp-compose-page .step-content h3 {
+    color: var(--casys-warm-text-primary);
+  }
+
+  html[data-theme="dark"] #mcp-compose-page .step-content p {
+    color: var(--casys-warm-text-secondary);
+  }
+
+  /* Quickstart */
+  html[data-theme="dark"] #mcp-compose-page .quickstart-section h2 {
+    color: var(--casys-warm-text-primary);
+  }
+
+  html[data-theme="dark"] #mcp-compose-page .code-card {
+    border-color: rgba(255, 184, 111, 0.08);
+  }
+
+  html[data-theme="dark"] #mcp-compose-page .code-header {
+    background: #1a1815;
+  }
+
+  html[data-theme="dark"] #mcp-compose-page .code-dot {
+    background: rgba(255, 184, 111, 0.3);
+  }
+
+  html[data-theme="dark"] #mcp-compose-page pre {
+    background: #0d0c0a;
+  }
+
+  html[data-theme="dark"] #mcp-compose-page code {
+    color: var(--casys-warm-text-primary);
+  }
+
+  /* Install */
+  html[data-theme="dark"] #mcp-compose-page .install-section h2 {
+    color: var(--casys-warm-text-primary);
+  }
+
+  html[data-theme="dark"] #mcp-compose-page .install-card {
+    background: var(--casys-warm-surface);
+    border-color: var(--casys-warm-border-accent);
+  }
+
+  html[data-theme="dark"] #mcp-compose-page .install-label {
+    color: var(--casys-warm-accent);
+  }
+
+  html[data-theme="dark"] #mcp-compose-page .install-cmd {
+    color: var(--casys-warm-text-primary);
+  }
+</style>
+
+<style is:global>
+  /* Code syntax highlighting */
+  #mcp-compose-page .code-comment {
+    color: var(--md-sys-color-outline);
+  }
+
+  #mcp-compose-page .code-keyword {
+    color: var(--md-sys-color-primary);
+  }
+
+  #mcp-compose-page .code-string {
+    color: var(--md-sys-color-tertiary, #4caf50);
+  }
+
+  html[data-theme="dark"] #mcp-compose-page .code-comment {
+    color: #7a6f63;
+  }
+
+  html[data-theme="dark"] #mcp-compose-page .code-keyword {
+    color: var(--casys-warm-accent);
+  }
+
+  html[data-theme="dark"] #mcp-compose-page .code-string {
+    color: #C9DC9A;
+  }
+</style>

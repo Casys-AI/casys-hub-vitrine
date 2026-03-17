@@ -1,0 +1,16 @@
+---
+import LandingLayout from '../layouts/LandingLayout.astro';
+import McpStdContent from '../features/mcp-std/McpStdContent.astro';
+
+const locale = (Astro as any).currentLocale ?? 'en';
+const pageTitle = locale === 'fr'
+  ? '508 Outils MCP pour Agents IA — @casys/mcp-std | Casys AI'
+  : '508 MCP Tools for AI Agents — @casys/mcp-std | Casys AI';
+const description = locale === 'fr'
+  ? '508 outils MCP standards pour agents IA. File, HTTP, crypto, git, et plus.'
+  : '508 standard MCP tools for AI agents. File, HTTP, crypto, git, and more.';
+---
+
+<LandingLayout title={pageTitle} description={description}>
+  <McpStdContent />
+</LandingLayout>

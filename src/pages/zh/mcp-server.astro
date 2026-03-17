@@ -1,0 +1,11 @@
+---
+import LandingLayout from '../../layouts/LandingLayout.astro';
+import McpServerContent from '../../features/mcp-server/McpServerContent.astro';
+
+const pageTitle = '生产级 MCP 服务器框架 — @casys/mcp-server | Casys AI';
+const description = 'Production-grade MCP server framework with composable middleware, OAuth2 auth, dual transport.';
+---
+
+<LandingLayout title={pageTitle} description={description}>
+  <McpServerContent />
+</LandingLayout>

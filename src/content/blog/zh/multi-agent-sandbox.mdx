@@ -1,0 +1,410 @@
+---
+title: "多智能体沙箱 — 两个 OpenClaw、一个 Discord、一台 VPS"
+description: "搭建多智能体协作空间的实战经验：沙箱化智能体、共享 Discord、通过 Tailscale 连接远程 VPS、socat 桥接，以及受控的跨智能体通信。"
+author: "Erwan Lee Pesle"
+date: 2026-03-07
+tags:
+  - agents
+  - sandbox
+  - discord
+  - tailscale
+  - infrastructure
+  - openclaw
+  - multi-agent
+category: "Infrastructure"
+language: zh
+snippet: "如何将两个独立的 OpenClaw 实例连接到共享工作空间——同时保持隔离。"
+featured: true
+draft: false
+---
+
+import ExcalidrawDiagram from '../../../components/ExcalidrawDiagram.astro';
+
+> 两个智能体，两个所有者，一个共享工作空间。彼此无法访问对方的私有数据。一个周六晚上的成果。
+
+---
+
+## 问题
+
+一个开发者朋友和我，想让各自的智能体协同工作。不只是把它们拉进同一个 Discord——而是给它们一个真正的共享实验场地：一台公共 VPS、SSH 访问权限、能够一起写代码和做测试。
+
+问题在于：我们各自运行着自己的 OpenClaw 实例。我的主智能体管理着我的 WhatsApp、日历、客户项目。朋友那边的智能体也一样。这些智能体对各自宿主的数据有完全访问权限。显然，我们不想把它们直接互联——一个 bug、一次幻觉，一方的数据就可能泄露到另一方。
+
+解决方案：创建专门用于协作的**沙箱智能体**。与主智能体隔离。权限受限。但能够通过 Discord 和 SSH 进行协作。
+
+以下是我们一个晚上搭建的全过程，以及途中踩过的所有坑。
+
+---
+
+## 整体架构
+
+三台机器。两个 OpenClaw 实例。一个共享 Discord。一台月费约 4 欧元的 VPS 作为共同实验场地。
+
+<ExcalidrawDiagram src="multi-agent-sandbox/multi-agent-sandbox-architecture" alt="多智能体沙箱架构：两个 OpenClaw 实例的沙箱智能体通过 Discord 通信，并通过 Tailscale 共享 VPS" />
+
+每个 OpenClaw 运行在各自的服务器上。每个实例包含一个主智能体（拥有完整权限：WhatsApp、日历、客户数据）和一个沙箱智能体（隔离运行，权限受限）。沙箱智能体之间通过共享的 Discord 服务器通信，通过 SSH 访问公共 VPS——所有连接由 Tailscale mesh VPN 支撑。
+
+基本规则：
+
+1. **隔离** — 沙箱智能体看不到主智能体的工作空间。不存在数据泄露的可能。
+2. **仅 @提及响应** — 智能体只在被 @ 提及时才回复。两个机器人在同一频道且没有这条规则 = 无限循环和天文数字的 token 账单。
+3. **共享 VPS** — 一个月费约 4 欧元的公共实验场。两个智能体都可以在上面写代码、装软件、随便折腾然后重来。
+4. **受控通信** — 智能体通过 `sessions_send` 通信，使用明确的双向权限。每个链接都是一个有意识的决定。
+
+但在讨论网络细节之前，首先要创建沙箱智能体本身。之后，架构建立在三个技术支柱上：容器连通性（socat 桥接——已在 [The Localhost Trap](/blog/the-localhost-trap) 中介绍）、私有网络（Tailscale）、以及智能体间通信（Discord + sessions_send）。
+
+---
+
+## 创建沙箱智能体
+
+在 OpenClaw 中，沙箱智能体是一个完整独立的智能体，拥有自己的工作空间、模型和访问限制。它不是某种"模式"——而是一个独立实体。
+
+`openclaw.json` 中的配置：
+
+```json
+{
+  "id": "spoke",
+  "workspace": "/path/to/workspace-sandbox",
+  "model": {
+    "primary": "your-preferred-model",
+    "fallbacks": ["your-fallback-model"]
+  },
+  "identity": {
+    "name": "Spoke",
+    "emoji": "🖖"
+  },
+  "sandbox": {
+    "mode": "all",
+    "workspaceAccess": "rw",
+    "docker": {
+      "image": "openclaw-sandbox:bookworm-slim",
+      "readOnlyRoot": true,
+      "network": "bridge",
+      "memory": "1536m",
+      "cpus": 2
+    }
+  },
+  "tools": {
+    "deny": ["gateway", "process", "whatsapp_login", "cron"],
+    "agentToAgent": {
+      "allow": ["your-main-agent-id"]
+    }
+  }
+}
+```
+
+关键要点：
+
+- **`sandbox.mode: "all"`** — 所有 exec 命令都在 Docker 容器中执行。Spoke 永远不会接触宿主机。
+- **`readOnlyRoot: true`** — 容器文件系统为只读（工作空间除外）。这防止智能体修改系统二进制文件或植入后门。
+- **`tools.deny`** — 禁用 `gateway`（不能修改 OpenClaw 配置）、`process`（不能在宿主机上启动持久进程）、`cron`（不能调度任务）、`whatsapp_login`（不能窃取 WhatsApp 会话）。
+- **`agentToAgent.allow: ["your-main-agent-id"]`** — Spoke 可以与主智能体通信，但不能与其他任何智能体通信。
+
+工作空间 `/path/to/workspace-sandbox` 有自己的 `SOUL.md` 和 `TOOLS.md`。沙箱智能体不知道我的客户、项目和 token。它只知道 VPS 的 SSH 地址和 Discord 频道。仅此而已。
+
+> **注意：** `bookworm-slim` Docker 镜像是最小化的。如果沙箱智能体需要 SSH，需要在 Dockerfile 中添加 `openssh-client`：
+> ```dockerfile
+> RUN apt-get update && apt-get install -y openssh-client && rm -rf /var/lib/apt/lists/*
+> ```
+
+---
+
+## 支柱一 — Socat 桥接
+
+如果你读过 [The Localhost Trap](/blog/the-localhost-trap)，这个问题会很熟悉：Docker 容器需要访问一个不在其网络命名空间中的服务。解决方案是在宿主机上建立 `socat` 桥接。这里，我们将这个模式扩展到远程 VPS。
+
+<ExcalidrawDiagram src="multi-agent-sandbox/multi-agent-socat-bridges" alt="两个 socat 桥接：容器 → 宿主机 → VPS" />
+
+### 问题：Docker 看不到私有网络
+
+我们的智能体运行在 **Docker 容器**中。使用默认 `bridge` 模式的容器拥有自己独立的网络命名空间。它只能看到 `eth0`（docker0 子网中，`172.17.0.x`），仅此而已。
+
+共享 VPS 通过 Tailscale 私有网络连接（详见支柱二）。它的地址是 `100.y.y.y`——mesh VPN 中的私有 IP。容器无法解析这个地址。路由在它的命名空间中根本不存在。
+
+一种方案是在容器内安装 Tailscale——但这需要网络权限（`NET_ADMIN`），完全违背沙箱的初衷。解决方案：在宿主机上建立 `socat` 桥接来转发流量。
+
+### 两跳
+
+完整的 SSH 连接链需要**两跳**：
+
+**第一跳：容器 → 宿主机（docker0 网关）**
+
+Docker 容器将 `172.17.0.1` 视为网关——这是宿主机上 `docker0` 接口的地址。我们在这个接口上暴露一个端口：
+
+```bash
+# 在宿主机上
+socat TCP-LISTEN:2222,bind=172.17.0.1,fork,reuseaddr \
+      TCP:100.y.y.y:22
+```
+
+当 Spoke 在容器中执行 `ssh -p 2222 root@172.17.0.1` 时：
+1. 数据包到达 `172.17.0.1:2222`（宿主机的 docker0 接口）
+2. socat 接收后向 `100.y.y.y:22` 发起连接
+3. `100.y.y.y` 是 VPS 的 Tailscale 地址——宿主机通过 `tailscale0` 可以解析它
+4. 端到端的 SSH 连接建立
+
+**第二跳：宿主机 → 通过 Tailscale 连接远程 VPS**
+
+从 socat 的视角看，第二跳是透明的——只是向 `100.y.y.y:22` 发起一个 TCP 连接。但底层是 Tailscale 在做实际的工作：数据包被封装为 WireGuard 协议、穿越 NAT、到达 VPS。详细机制会在支柱二中说明。
+
+对于 Spoke 来说，就是一个简单的 `ssh -p 2222 root@172.17.0.1`。所有的网络复杂性都被 socat + Tailscale 吸收了。
+
+### systemd 服务
+
+桥接需要在重启后自动恢复。一个简单的 systemd 服务：
+
+```ini
+# /etc/systemd/system/socat-bridge-docker0-vps-ssh.service
+[Unit]
+Description=Socat bridge: docker0:2222 → VPS Tailscale SSH
+After=network.target docker.service tailscaled.service
+Wants=tailscaled.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/socat \
+    TCP-LISTEN:2222,bind=172.17.0.1,fork,reuseaddr \
+    TCP:100.y.y.y:22
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+systemctl daemon-reload && systemctl enable --now socat-bridge-docker0-vps-ssh
+```
+
+`Wants=tailscaled.service` 和 `After=tailscaled.service` 确保桥接不会在 Tailscale 就绪之前启动。否则 socat 会尝试连接 `100.y.y.y`，而 Tailscale 接口尚不存在——导致静默失败。
+
+### UFW 规则
+
+默认情况下，UFW 会阻止 `docker0` 上的入站流量。需要显式放行桥接端口：
+
+```bash
+ufw allow in on docker0 to any port 2222 proto tcp \
+    comment "socat-bridge-vps-ssh"
+```
+
+没有这条规则，从容器执行 `ssh -p 2222 root@172.17.0.1` 会得到一个静默超时。没有 `Connection refused`，没有 `Permission denied`——只有一片寂静。这种问题如果没提前想到，足以浪费一个小时来排查。
+
+---
+
+## 支柱二 — Tailscale Mesh VPN
+
+socat 桥接将流量转发到 `100.y.y.y`。但这个地址从哪来，三台机器又是如何互相发现的？这就是 Tailscale 的角色。
+
+<ExcalidrawDiagram src="multi-agent-sandbox/multi-agent-tailscale-mesh" alt="三台机器之间的 Tailscale Mesh VPN" />
+
+### 什么是 Tailscale
+
+Tailscale 是一个基于 WireGuard 的 **mesh VPN**。它在分散于互联网的机器之间建立私有网络——每台机器获得一个稳定的私有 IP 地址（在 `100.x.x.x` 范围内），无论实际位置、NAT 配置或数据中心在哪，都能直接与其他机器通信。
+
+具体来说，Tailscale 处理：
+- **私有网络** — mesh 中的每台机器都有稳定的 IP，不需要在互联网上开放端口
+- **NAT 穿透** — NAT 后面的机器自动互相发现（通过 DERP，加密中继服务器）
+- **内置 SSH 认证** — `tailscale up --ssh` 启用 SSH 服务器，通过 Tailscale 身份认证，不需要公钥
+- **加密** — 所有流量经过 WireGuard（点对点加密）
+
+免费套餐支持最多 100 台机器和 3 个用户——对我们的场景绰绰有余。如果想要完全自建的免费方案，原生 WireGuard 在加密和隧道方面效果一样好，但需要自己管理密钥、配置和 NAT 穿透。
+
+### 安装
+
+```bash
+# 在每台机器上执行（服务器 A、VPS、朋友的服务器）
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up --ssh
+```
+
+`--ssh` 参数是关键。它启用 **Tailscale SSH**：认证基于 Tailscale 身份而非 SSH 公钥。不再需要管理 `authorized_keys`、不用跑 `ssh-keygen`、不会出现"复制错密钥到面板"的问题。
+
+五分钟内，三台机器就在同一个私有网络上了：
+
+- 我的服务器 → `100.x.x.x`
+- VPS → `100.y.y.y`
+- 朋友的服务器 → `100.z.z.z`
+
+从 mesh 中的任意机器：`ssh root@100.y.y.y`。无需密钥，无需复杂配置。
+
+### 自动 NAT 穿透
+
+Tailscale 通过 DERP（Designated Encrypted Relay for Packets）实现 NAT 穿透。具体来说：
+- 如果两台机器可以直连（无 NAT），它们直接进行点对点 WireGuard 通信。
+- 如果其中一台在对称型 NAT 之后，Tailscale 使用 DERP 中继完成初始握手，然后尝试打洞建立直连。
+- 最坏情况下，流量通过最近的 DERP 中继转发。
+
+在实际使用中，我们完全不需要考虑这些。开箱即用。
+
+### 为什么 Tailscale 装在宿主机上，而非容器中
+
+这是经常被问到的问题。三个原因不要在沙箱容器中安装 Tailscale：
+
+1. **`NET_ADMIN` capability** — Tailscale 需要创建 TUN 网络接口，这要求 `NET_ADMIN` 权限。该权限赋予容器修改宿主机整个网络栈的能力（在与其他 capability 或宽松配置组合时）。对沙箱而言完全不可接受。
+2. **`/dev/net/tun`** — 需要将 TUN 设备挂载到容器中。又多了一个暴露的设备。
+3. **Tailscale 登录** — 容器需要使用 authkey 向 Tailscale 认证。这意味着在容器中存储 Tailscale token——又增加了一个泄露向量。
+
+所以 socat 桥接才是正确的抽象：容器不需要任何特殊权限。它只对 `172.17.0.1:2222` 发起基础 TCP 连接。复杂的网络处理由宿主机承担——Tailscale、WireGuard、NAT 穿透。
+
+---
+
+## 支柱三 — 智能体间通信
+
+网络已就位。智能体可以访问 VPS 了。剩下的问题是：智能体之间如何对话？
+
+<ExcalidrawDiagram src="multi-agent-sandbox/multi-agent-communication" alt="智能体间通信：委派与隔离" />
+
+### Discord 多账号
+
+每个智能体拥有自己的 Discord 机器人。绝不共享 token——身份必须保持独立。主智能体用一个名字发帖，沙箱智能体用另一个名字。
+
+`openclaw.json` 中的 Discord 配置：
+
+```json
+{
+  "channels": {
+    "discord": {
+      "enabled": true,
+      "accounts": {
+        "default": {
+          "enabled": true,
+          "name": "Agent Principal",
+          "token": "$DISCORD_TOKEN_PRINCIPAL",
+          "guilds": {
+            "YOUR_PRIVATE_GUILD_ID": {
+              "slug": "private-workspace",
+              "requireMention": false
+            }
+          }
+        },
+        "sandbox": {
+          "enabled": true,
+          "name": "Spoke (Sandbox)",
+          "token": "$DISCORD_TOKEN_SPOKE",
+          "allowBots": "mentions",
+          "guilds": {
+            "YOUR_SHARED_GUILD_ID": {
+              "slug": "openclaw-multi-session",
+              "requireMention": true,
+              "users": [
+                "YOUR_HUMAN_USER_ID",
+                "YOUR_OTHER_BOT_ID"
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+接下来是路由——哪个智能体在哪个服务器响应？这在 `bindings` 中配置：
+
+```json
+{
+  "bindings": [
+    {
+      "agentId": "spoke",
+      "match": {
+        "channel": "discord",
+        "accountId": "sandbox",
+        "guildId": "YOUR_SHARED_GUILD_ID"
+      }
+    }
+  ]
+}
+```
+
+当消息通过 `sandbox` 账号在共享服务器上收到时，是 Spoke 来响应。不是主智能体。
+
+### requireMention: true — 最关键的安全护栏
+
+这是整个架构中最重要的一条规则。没有 `requireMention: true`，频道中的每条消息都会触发每个在场机器人的回复。两个机器人互相回复：瞬间进入无限循环。
+
+设置 `requireMention` 后，智能体只在有人输入 `@Spoke`（或 `@机器人名称`）时才回复。人类提及一个智能体，智能体回复，结束。没有级联反应。
+
+如果你想在 Discord 上实现 **bot → bot** 触发，需要同时配置 **两件事**，不是一件：
+
+- 在 sandbox Discord account 上加入 **`allowBots: "mentions"`** —— 否则 OpenClaw 默认会忽略其他 bot 发出的消息。
+- 在 **`guilds.<YOUR_SHARED_GUILD_ID>.users`** 中列出允许触发这个智能体的人类或 bot 的 Discord ID。
+
+安全的设置是 `"mentions"`，不是 `true`：对方 bot 必须 mention **bot 本身**，不能只 mention 一个 Discord 角色。
+
+如果要获取 Discord ID，先在 Discord 里开启 **Developer Mode**，然后右键用户、bot、频道或服务器 → **Copy ID**。这一点很关键，因为 Discord/OpenClaw 的可靠 mention gating 依赖的是 ID，而不是显示名称。
+
+实际上，提及处理比看起来更微妙。[PR #33224](https://github.com/openclaw/openclaw/pull/33224)（2026 年 3 月 3 日合并）显著改进了这一机制：
+
+- **基于 ID 的提及** — Discord 内部使用数字 ID 来表示提及（`<@123456789>`），而非文本名称。该 PR 将 OpenClaw 的匹配逻辑对齐到 Discord 原生 ID，而非对显示名称做字符串匹配。结果：当机器人名称碰巧是常见词汇时，不再产生误触发。
+- **缓存化名称解析** — Discord 用户名被解析后缓存，避免每条消息都重复调用 API。
+- **`ignoreOtherMentions`** — 新增标志，允许智能体忽略提及了*其他*机器人的消息。在此 PR 之前，如果有人写 `@Bot1 和 @Bot2`，两个机器人都会响应（只要各自的 `requireMention` 条件满足）。现在，每个机器人可以选择只在自己是*唯一*被提及者或*首个*被提及者时才响应。
+
+### sessions_send() — 智能体间通信
+
+主智能体如何给 Spoke 分配任务？
+
+```
+主智能体: sessions_send(agent="spoke", message="检查 VPS 状态")
+```
+
+主智能体可以向 Spoke 的会话注入指令。反过来也可以——前提是双方的权限都已配置。
+
+最初，OpenClaw 的 A2A（agent-to-agent）通信依赖于一个扁平的全局门控：要么所有智能体都可以相互通信，要么都不行。在 hub-spoke 拓扑中——主智能体委派给沙箱智能体——这太粗糙了。沙箱可以联系主智能体，但也可以联系任何*其他*沙箱。spoke 之间没有隔离。
+
+[PR #39102](https://github.com/openclaw/openclaw/pull/39102) 引入了**逐智能体出站 A2A 允许列表**：每个智能体精确声明它可以通过 `sessions_send`、`sessions_list` 和 `sessions_history` 联系哪些其他智能体。全局门控仍然作为参与前提，但逐智能体覆盖控制方向。
+
+```json
+{
+  "tools": {
+    "agentToAgent": { "enabled": true, "allow": ["*"] }
+  },
+  "agents": {
+    "list": [
+      { "id": "david",  "tools": { "agentToAgent": { "allow": ["*"] } } },
+      { "id": "spoke",  "tools": { "agentToAgent": { "allow": ["david"] } } }
+    ]
+  }
+}
+```
+
+`spoke → david` ✅ | `spoke → 其他沙箱` ❌ | `david → 任何人` ✅
+
+通信是**双向但受控的**：每个智能体明确声明它允许联系哪些其他智能体。默认没有通配符，没有"所有人都可以和所有人对话"。每个链接都是一个有意识的决定。该 PR 还添加了结构化拒绝原因（`AgentToAgentDenyReason`），使智能体收到清晰的错误消息而非静默失败，以及在从配置中删除智能体时自动清理过时引用。
+
+### 跨上下文消息传递
+
+一个微妙的陷阱：从 WhatsApp 派生的智能体无法写入 Discord。派生时的上下文决定了可用的通道。
+
+如果主智能体在 WhatsApp 上收到请求，想让 Spoke 在 Discord 上工作，首次触发必须来自 Discord 通道。这是安全约束——不是 bug。一个 WhatsApp 智能体如果能在未被邀请的情况下向 Discord 发帖，就违反了通道隔离原则。
+
+在实践中，这意味着需要提前规划流程：哪个通道触发什么，每个智能体在什么上下文中运行。
+
+---
+
+## 实际运作流程
+
+日常使用是什么样子？以下是典型的流程：
+
+1. 主智能体在 WhatsApp 上收到一个请求
+2. 它通过 `sessions_send` 将任务委派给 Spoke
+3. Spoke 在共享的 Discord 中自主工作——SSH 到 VPS、执行代码、测试
+4. Spoke 通过 `sessions_send` 将结果返回到主会话
+5. 主智能体整合并在 WhatsApp 上回复
+
+在实际使用中，这个过程出奇地安静。早上发一条 WhatsApp 消息，一个小时后收到一份 Spoke 工作总结——提交的代码、运行的测试、遇到的错误。与此同时，共享的 Discord 已经被两个沙箱智能体之间的消息填满了，完全没有人工干预。主智能体从未碰过 Discord。Spoke 从未碰过 WhatsApp。每个智能体都在自己的范围内、自己的频道上、以自己的权限运作。
+
+---
+
+## 经验总结
+
+多智能体架构在理论上并不复杂。但在实践中，它是一连串静默的细节问题——一个不响应的端口、Discord 角色被误认为机器人、Docker 镜像中缺少一个软件包。
+
+那些我们希望提前知道的坑：一侧忘记配置 `agentToAgent.allow`（通信是双向的——两个智能体必须互相授权）、Discord binding 路由错误（`accountId` 和 `guildId` 没有正确匹配）、共享 guild 上缺少 `requireMention: true`（保证进入无限循环）、以及 socat 桥接没有对应的 UFW 规则（静默超时，没有 `Connection refused`——只有一片寂静）。
+
+在 WhatsApp 端，[PR #33924](https://github.com/openclaw/openclaw/pull/33924) 解决了相同的方向控制问题：独立的 `allowSendTo` 字段用于出站目标控制，与入站 `allowFrom` 门控分离。谁可以联系你和你可以联系谁是两个不同的问题，值得两个不同的配置。
+
+隔离不是即兴发挥的。它需要声明——在允许列表中、在 `tools.deny` 中、在 `requireMention: true` 中。每个权限都是一扇你选择打开的门。智能体的协作程度恰好等于你允许的程度，多一比特都不会。
+
+---
+
+*完整操作流程已作为 OpenClaw skill（`multi-agent-sandbox`）发布，包含配置文件、systemd 单元和安装脚本。*

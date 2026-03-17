@@ -1,0 +1,107 @@
+---
+title: "MCP 協議完整解析：Model Context Protocol 如何統一所有 AI 工具介面"
+description: "Model Context Protocol（MCP）是 AI 工具互通的開放標準。本文解析 MCP 協議的核心架構、為什麼所有主流 AI 平台都在支援它，以及 PML 如何在 MCP 之上提供智慧路由。"
+author: "Erwan Lee Pesle"
+date: 2025-12-18
+tags:
+  - pml
+  - mcp-server
+  - mcp
+  - 工具
+  - 互通性
+category: "產品"
+language: zh-TW
+snippet: "Model Context Protocol（MCP）是 AI 工具互通的開放標準。本文解析 MCP 協議的核心架構，以及 PML 如何在 MCP 之上提供智慧路由。"
+featured: false
+draft: false
+---
+import ExcalidrawDiagram from '../../../components/ExcalidrawDiagram.astro';
+
+## 充電器的煩惱
+
+還記得 2010 年嗎？每個手機品牌都有自己專屬的充電器。出門旅行意味著要帶一堆線纜。
+
+然後 USB-C 出現了。一根線，所有設備通用。
+
+**AI 工具今天面臨著同樣的問題。**
+
+每個 AI 服務商都有自己的工具接入方式：
+- OpenAI 用一種方式
+- Anthropic 用另一種方式
+- Google 又是另一套
+- 以此類推……
+
+為一個平台開發了工具？想用在其他平台上，得重新開發。
+
+<ExcalidrawDiagram src="why-mcp-protocol/mcp-without" alt="沒有 MCP：N 個適配器" />
+
+## MCP 協議登場：AI 工具的統一標準
+
+**Model Context Protocol**（模型上下文協議）就是 AI 工具的 USB-C。
+
+一個標準，處處通用。
+
+<ExcalidrawDiagram src="why-mcp-protocol/mcp-with" alt="有了 MCP：一個標準" />
+
+開發一次工具，就能在 Claude、GPT、本地模型以及未來出現的任何模型上執行。
+
+## 這對你意味著什麼
+
+### 1. 不再被綁定
+
+今天在用 Claude？很好。明天想試試 GPT？你的工具可以直接帶過去。
+
+你不再需要和某一家 AI 服務商「綁定」了。
+
+### 2. 更多工具，更少麻煩
+
+MCP 生態系統正在快速增長：
+- 檔案管理
+- GitHub 整合
+- 資料庫存取
+- 網頁瀏覽
+- 還有數百個更多……
+
+這些工具開箱即用。不需要額外配置，不需要費力整合。
+
+### 3. 面向未來
+
+新的 AI 模型不斷湧現。有了 MCP，它們可以直接使用你現有的工具。
+
+你在工具上的投入不會過時。
+
+## PML 在 MCP 之上做了什麼：MCP 閘道器與智慧路由
+
+PML 連接 MCP 工具，並讓它們變得更智慧：
+
+| 沒有 PML | 有了 PML |
+| ----------- | -------- |
+| 你自己選擇用哪個工具 | PML 推薦合適的工具 |
+| 你手動串聯工具 | PML 自動建構工作流 |
+| 工具各自孤立 | 工具學會協同工作 |
+
+MCP 提供連接。PML 提供智慧。
+
+## MCP 生態效應：開發者與 AI 代理都是贏家
+
+真正令人興奮的是：越多工具支援 MCP，整個生態就越強大。
+
+- **工具開發者**觸及更多使用者
+- **AI 開發者**獲得更多能力
+- **使用者**得到更好的 AI 助手
+
+當大家認同同一個標準時，每個人都是贏家。
+
+## 總結
+
+MCP 正在為 AI 工具做 USB-C 為硬體設備做過的事。
+
+一個標準。全面相容。告別那一堆線纜。
+
+PML 基於 MCP 建構，因為我們相信開放標準。你的工具應該在任何地方都能用，而不是只服務於某一家服務商。
+
+**AI 的未來是互聯互通的。MCP 就是那根連接線。**
+
+---
+
+*了解更多請造訪 [modelcontextprotocol.io](https://modelcontextprotocol.io)*

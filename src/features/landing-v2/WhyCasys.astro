@@ -1,0 +1,444 @@
+---
+import { useTranslations } from '../../i18n';
+
+const locale = (Astro as any).currentLocale ?? 'en';
+const content = useTranslations(locale).whyCasys;
+---
+
+<section id="why-casys">
+  <div class="container">
+    <div class="section-header">
+      <h2>{content.title}</h2>
+      <p class="section-subtitle">{content.subtitle}</p>
+    </div>
+
+    <div class="diff-grid">
+      {content.differentiation.map((item, index) => (
+        <article class={`diff-card ${index === 0 ? 'card-hero' : ''}`}>
+          <div class="card-number">
+            <span>{index + 1}</span>
+          </div>
+
+          <div class="card-body">
+            <header class="card-heading">
+              <span class="material-symbols-rounded icon">{item.icon}</span>
+              <h3>{item.title}</h3>
+            </header>
+
+            <p class="description">{item.description}</p>
+
+            <ul class="highlights">
+              {item.highlights.map((highlight) => (
+                <li class="highlight-item">
+                  <span class="material-symbols-rounded">check</span>
+                  <span>{highlight}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </article>
+      ))}
+    </div>
+
+    {content.bottomLine && (
+      <div class="bottom-line">
+        <p class="bottom-text">{content.bottomLine.text}</p>
+        <div class="bottom-cta">
+          <a href={content.bottomLine.cta.primary.url} class="cta-primary">
+            <span class="material-symbols-rounded">{content.bottomLine.cta.primary.icon}</span>
+            <span>{content.bottomLine.cta.primary.text}</span>
+          </a>
+          <a
+            href={content.bottomLine.cta.secondary.url}
+            class="cta-secondary"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <span class="material-symbols-rounded">{content.bottomLine.cta.secondary.icon}</span>
+            <span>{content.bottomLine.cta.secondary.text}</span>
+          </a>
+        </div>
+      </div>
+    )}
+  </div>
+</section>
+
+<style>
+  section {
+    padding: 56px 0;
+    background: var(--md-sys-color-surface-container-low);
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  .section-header {
+    text-align: left;
+    margin-bottom: 40px;
+    max-width: 620px;
+  }
+
+  h2 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 2.5rem;
+    font-weight: 600;
+    color: var(--md-sys-color-on-surface);
+    margin: 0 0 12px;
+    letter-spacing: -0.02em;
+  }
+
+  .section-subtitle {
+    font-size: 1.1rem;
+    color: var(--md-sys-color-on-surface-variant);
+    margin: 0;
+    line-height: 1.6;
+  }
+
+  /* === Grid: 3 top + 2 bottom === */
+  .diff-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  .diff-card:nth-child(4) {
+    grid-column: 1 / 2;
+  }
+  .diff-card:nth-child(5) {
+    grid-column: 2 / 3;
+  }
+
+  /* === Card — M3 Filled Card (surface-container) === */
+  .diff-card {
+    background: var(--md-sys-color-surface-container-highest);
+    border: none;
+    border-radius: 16px;
+    padding: 22px;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    transition: transform 280ms cubic-bezier(0.2, 0, 0, 1), box-shadow 280ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .diff-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  }
+
+  /* === Hero — M3 Filled Card (secondary-container — on-brand lavender) === */
+  .card-hero {
+    background: var(--md-sys-color-secondary-container);
+  }
+
+  .card-hero:hover {
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  }
+
+  .card-hero .card-number {
+    background: var(--md-sys-color-on-secondary-container);
+    color: var(--md-sys-color-secondary-container);
+  }
+
+  .card-hero h3 {
+    color: var(--md-sys-color-on-secondary-container);
+  }
+
+  .card-hero .icon {
+    color: var(--md-sys-color-on-secondary-container);
+    opacity: 0.7;
+  }
+
+  .card-hero .description {
+    color: var(--md-sys-color-on-secondary-container);
+    opacity: 0.85;
+  }
+
+  .card-hero .highlight-item {
+    color: var(--md-sys-color-on-secondary-container);
+    opacity: 0.8;
+  }
+
+  .card-hero .highlight-item .material-symbols-rounded {
+    color: var(--md-sys-color-on-secondary-container);
+    opacity: 0.6;
+  }
+
+  /* === Number Badge === */
+  .card-number {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    border-radius: 10px;
+    background: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* === Card Body === */
+  .card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .card-heading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .icon {
+    font-size: 20px;
+    color: var(--md-sys-color-primary);
+    flex-shrink: 0;
+  }
+
+  h3 {
+    margin: 0;
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.15rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--md-sys-color-on-surface);
+    line-height: 1.35;
+  }
+
+  .description {
+    margin: 0;
+    font-size: var(--md-sys-typescale-body-medium-size);
+    line-height: 1.6;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .highlights {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .highlight-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    color: var(--md-sys-color-on-surface-variant);
+    font-size: var(--md-sys-typescale-body-small-size);
+    line-height: 1.55;
+  }
+
+  .highlight-item .material-symbols-rounded {
+    font-size: 16px;
+    color: var(--md-sys-color-secondary);
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+
+  /* === Bottom Line === */
+  .bottom-line {
+    margin-top: 40px;
+    padding-top: 32px;
+    border-top: 1px solid var(--md-sys-color-outline-variant);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    align-items: flex-start;
+    max-width: 720px;
+  }
+
+  .bottom-text {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--md-sys-color-on-surface-variant);
+    margin: 0;
+  }
+
+  .bottom-cta {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .cta-primary,
+  .cta-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    border-radius: 12px;
+    padding: 12px 18px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: background 200ms ease-out, border-color 200ms ease-out;
+  }
+
+  .cta-primary {
+    background: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+  }
+
+  .cta-primary:hover {
+    background: var(--md-sys-color-primary-container);
+    color: var(--md-sys-color-on-primary-container);
+  }
+
+  .cta-secondary {
+    border: 1px solid var(--md-sys-color-outline-variant);
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .cta-secondary:hover {
+    border-color: var(--md-sys-color-primary);
+    background: var(--md-sys-color-surface-container);
+  }
+
+  /* === Responsive === */
+  @media (max-width: 900px) {
+    .diff-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .diff-card:nth-child(4),
+    .diff-card:nth-child(5) {
+      grid-column: auto;
+    }
+
+    .diff-card:nth-child(5) {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (max-width: 600px) {
+    section {
+      padding: 32px 0;
+    }
+
+    h2 {
+      font-size: 2rem;
+    }
+
+    .diff-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .diff-card:nth-child(5) {
+      grid-column: auto;
+    }
+
+    .diff-card {
+      padding: 20px;
+    }
+
+    h3 {
+      font-size: 1.1rem;
+    }
+  }
+</style>
+
+<style is:global>
+  /* === Dark Mode — Warm palette === */
+  html[data-theme="dark"] #why-casys {
+    background: var(--casys-warm-background);
+  }
+
+  html[data-theme="dark"] #why-casys h2 {
+    color: var(--casys-warm-text-primary);
+  }
+
+  html[data-theme="dark"] #why-casys .section-subtitle {
+    color: var(--casys-warm-text-secondary);
+  }
+
+  /* Filled cards — visible surface */
+  html[data-theme="dark"] #why-casys .diff-card {
+    background: var(--casys-warm-surface);
+  }
+
+  /* Hero — warm accent tint */
+  html[data-theme="dark"] #why-casys .card-hero {
+    background: rgba(255, 184, 111, 0.1);
+  }
+
+  html[data-theme="dark"] #why-casys .card-hero h3,
+  html[data-theme="dark"] #why-casys .card-hero .description,
+  html[data-theme="dark"] #why-casys .card-hero .highlight-item {
+    color: var(--casys-warm-text-primary);
+    opacity: 1;
+  }
+
+  html[data-theme="dark"] #why-casys .card-hero .highlight-item .material-symbols-rounded {
+    color: var(--casys-warm-accent);
+    opacity: 1;
+  }
+
+  html[data-theme="dark"] #why-casys .card-hero .icon {
+    color: var(--casys-warm-accent);
+    opacity: 1;
+  }
+
+  html[data-theme="dark"] #why-casys .card-hero .card-number {
+    background: var(--casys-warm-accent);
+    color: var(--casys-warm-background);
+  }
+
+  /* Regular cards */
+  html[data-theme="dark"] #why-casys .card-number {
+    background: var(--casys-warm-accent);
+    color: var(--casys-warm-background);
+  }
+
+  html[data-theme="dark"] #why-casys .icon {
+    color: var(--casys-warm-accent);
+  }
+
+  html[data-theme="dark"] #why-casys h3 {
+    color: var(--casys-warm-text-primary);
+  }
+
+  html[data-theme="dark"] #why-casys .description,
+  html[data-theme="dark"] #why-casys .highlight-item {
+    color: var(--casys-warm-text-secondary);
+  }
+
+  html[data-theme="dark"] #why-casys .highlight-item .material-symbols-rounded {
+    color: var(--casys-warm-accent-hover);
+  }
+
+  /* Bottom line */
+  html[data-theme="dark"] #why-casys .bottom-line {
+    border-top-color: rgba(255, 184, 111, 0.1);
+  }
+
+  html[data-theme="dark"] #why-casys .bottom-text {
+    color: var(--casys-warm-text-secondary);
+  }
+
+  html[data-theme="dark"] #why-casys .cta-primary {
+    background: var(--casys-warm-accent);
+    color: var(--casys-warm-background);
+  }
+
+  html[data-theme="dark"] #why-casys .cta-primary:hover {
+    background: var(--casys-warm-accent-hover);
+  }
+
+  html[data-theme="dark"] #why-casys .cta-secondary {
+    color: var(--casys-warm-accent);
+    border-color: rgba(255, 184, 111, 0.15);
+  }
+
+  html[data-theme="dark"] #why-casys .cta-secondary:hover {
+    border-color: var(--casys-warm-accent);
+    background: rgba(255, 184, 111, 0.08);
+  }
+</style>

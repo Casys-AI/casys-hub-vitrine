@@ -1,0 +1,65 @@
+
+> casys-app@0.0.1 test /home/ubuntu/CascadeProjects/casys/apps/casys-app
+> vitest --coverage packages/infrastructure/src/adapters/server/ai/workflows/article-generation/utils/__tests__/fuzzy-matching.utils.test.ts
+
+
+ RUN  v3.2.4 /home/ubuntu/CascadeProjects/casys/apps/casys-app
+      Coverage enabled with v8
+
+No test files found, exiting with code 1
+
+filter: packages/infrastructure/src/adapters/server/ai/workflows/article-generation/utils/__tests__/fuzzy-matching.utils.test.ts
+include: **/*.{test,spec}.?(c|m)[jt]s?(x)
+exclude:  **/node_modules/**, **/dist/**, **/cypress/**, **/.{idea,git,cache,output,temp}/**, **/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build,eslint,prettier}.config.*
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |       0 |     2.85 |    2.85 |       0 |                   
+ casys-app         |       0 |      100 |     100 |       0 |                   
+  astro.config.mjs |       0 |      100 |     100 |       0 | 2-70              
+ ...src/components |       0 |        0 |       0 |       0 |                   
+  Footer.astro     |       0 |        0 |       0 |       0 | 1-135             
+  Header.astro     |       0 |        0 |       0 |       0 | 1-383             
+ ...pp/src/content |       0 |        0 |       0 |       0 |                   
+  config.ts        |       0 |        0 |       0 |       0 | 1-22              
+ ...atures/landing |       0 |        0 |       0 |       0 |                   
+  Benefits.astro   |       0 |        0 |       0 |       0 | 1-289             
+  Contact.astro    |       0 |        0 |       0 |       0 | 1-311             
+  FAQ.astro        |       0 |        0 |       0 |       0 | 1-310             
+  FinalCta.astro   |       0 |        0 |       0 |       0 | 1-266             
+  Hero.astro       |       0 |        0 |       0 |       0 | 1-523             
+  HowItWorks.astro |       0 |        0 |       0 |       0 | 1-274             
+  Pricing.astro    |       0 |        0 |       0 |       0 | 1-814             
+  ...olution.astro |       0 |        0 |       0 |       0 | 1-333             
+  ...elector.astro |       0 |        0 |       0 |       0 | 1-62              
+  ...alProof.astro |       0 |        0 |       0 |       0 | 1-403             
+  UseCases.astro   |       0 |        0 |       0 |       0 | 1-574             
+  WorksWith.astro  |       0 |        0 |       0 |       0 | 1-222             
+ ...es/landing bak |       0 |        0 |       0 |       0 |                   
+  Benefits.astro   |       0 |        0 |       0 |       0 | 1-98              
+  FAQ.astro        |       0 |        0 |       0 |       0 | 1-246             
+  FinalCta.astro   |       0 |        0 |       0 |       0 | 1-182             
+  Hero.astro       |       0 |        0 |       0 |       0 | 1-383             
+  HowItWorks.astro |       0 |        0 |       0 |       0 | 1-106             
+  Pricing.astro    |       0 |        0 |       0 |       0 | 1-667             
+  ...olution.astro |       0 |        0 |       0 |       0 | 1-341             
+  ...elector.astro |       0 |        0 |       0 |       0 | 1-165             
+  ...alProof.astro |       0 |        0 |       0 |       0 | 1-279             
+  UseCases.astro   |       0 |        0 |       0 |       0 | 1-315             
+  WorksWith.astro  |       0 |        0 |       0 |       0 | 1-102             
+ ...pp/src/layouts |       0 |        0 |       0 |       0 |                   
+  BlogLayout.astro |       0 |        0 |       0 |       0 | 1-223             
+  ...gLayout.astro |       0 |        0 |       0 |       0 | 1-246             
+ ...-app/src/pages |       0 |        0 |       0 |       0 |                   
+  index.astro      |       0 |        0 |       0 |       0 | 1-32              
+  lead.astro       |       0 |        0 |       0 |       0 | 1-17              
+ ...src/pages/blog |       0 |        0 |       0 |       0 |                   
+  [...slug].astro  |       0 |        0 |       0 |       0 | 1-227             
+  index.astro      |       0 |        0 |       0 |       0 | 1-147             
+ ...p/src/pages/fr |       0 |        0 |       0 |       0 |                   
+  index.astro      |       0 |        0 |       0 |       0 | 1-31              
+  lead.astro       |       0 |        0 |       0 |       0 | 1-17              
+-------------------|---------|----------|---------|---------|-------------------
+ ELIFECYCLE  Test failed. See above for more details.

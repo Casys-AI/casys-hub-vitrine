@@ -1,0 +1,40 @@
+---
+import SubsiteHero from '../../components/SubsiteHero.astro';
+import { useTranslations } from '../../i18n';
+
+const locale = (Astro as any).currentLocale ?? 'en';
+const t = useTranslations(locale).engineHero;
+
+const terminalLines = `<code><span class="t-prompt">$</span> casys engine score --intent "deploy to staging"</code>
+<code class="t-dim" style="margin-top:4px">  casys/engine v0.1</code>
+<code class="t-dim">&nbsp;</code>
+<code><span class="t-dim">  SHGAT-TF</span> <span class="t-accent">16 heads</span> <span class="t-dim">&times;</span> <span class="t-accent">64D</span></code>
+<code><span class="t-dim">  &#9500;</span> <span class="t-key">Message passing:</span> L0 (218) &#8594; L1 (26) &#8594; L2 (1)</code>
+<code><span class="t-dim">  &#9492;</span> <span class="t-ok">Scoring complete:</span> <span class="t-accent">2.3s</span></code>
+<code class="t-dim">&nbsp;</code>
+<code><span class="t-dim">  Rank  Tool                Score</span></code>
+<code><span class="t-ok">  #1</span>    <span class="t-key">deploy:staging</span>      <span class="t-accent">0.847</span></code>
+<code><span class="t-ok">  #2</span>    <span class="t-key">docker:build</span>        <span class="t-accent">0.723</span></code>
+<code><span class="t-ok">  #3</span>    <span class="t-key">k8s:apply</span>           <span class="t-accent">0.691</span></code>
+<code class="t-dim">&nbsp;</code>
+<code><span class="t-ok">  Done</span> in <span class="t-accent">2.3s</span> &middot; 16 heads &middot; 3 levels</code>`;
+---
+
+<SubsiteHero
+  sectionId="engine-hero"
+  tagline={t.tagline}
+  title={{ line1: t.heroTitle1, line2: t.heroTitle2 }}
+  subtitle={t.heroSubtitle}
+  ctas={[
+    { text: t.ctaPrimary, href: '#how-it-works', icon: 'arrow_downward', variant: 'primary' },
+    { text: t.ctaDocs, href: '/docs/shgat/introduction/', icon: 'description', variant: 'secondary' },
+    { text: t.ctaSecondary, href: 'https://github.com/Casys-AI/shgat', icon: '', variant: 'secondary' },
+  ]}
+  stats={[
+    { value: '920', label: t.statTools },
+    { value: '70.8%', label: t.statHit },
+    { value: '258K', label: t.statLatency },
+  ]}
+  terminalTitle="casys-engine"
+  terminalContent={terminalLines}
+/>

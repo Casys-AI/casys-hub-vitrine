@@ -1,0 +1,16 @@
+---
+import LandingLayout from '../layouts/LandingLayout.astro';
+import McpServerContent from '../features/mcp-server/McpServerContent.astro';
+
+const locale = (Astro as any).currentLocale ?? 'en';
+const pageTitle = locale === 'fr'
+  ? 'Framework MCP Production — @casys/mcp-server | Casys AI'
+  : 'Production MCP Server Framework — @casys/mcp-server | Casys AI';
+const description = locale === 'fr'
+  ? 'Framework MCP production-grade avec middleware composable, auth OAuth2, double transport. Le Hono pour MCP.'
+  : 'Production-grade MCP server framework with composable middleware, OAuth2 auth, dual transport. The Hono for MCP.';
+---
+
+<LandingLayout title={pageTitle} description={description}>
+  <McpServerContent />
+</LandingLayout>

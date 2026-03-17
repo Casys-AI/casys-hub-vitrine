@@ -1,0 +1,254 @@
+---
+import { useTranslations } from '../../i18n';
+const locale = (Astro as any).currentLocale ?? 'en';
+const t = useTranslations(locale).hero;
+
+function isExternalUrl(url: string): boolean {
+  return /^https?:\/\//.test(url);
+}
+---
+
+<section id="hero">
+  <div class="hero-container">
+    <div class="gradient-orb" aria-hidden="true"></div>
+
+    <div class="hero-statement">
+      <p class="hero-kicker">{t.kicker}</p>
+      <h1 class="hero-title">
+        <span class="title-line-1">{t.titleLine1}</span>
+        <span class="title-line-2">{t.titleLine2}</span>
+      </h1>
+      <p class="hero-subtitle">{t.subtitle}</p>
+    </div>
+
+    <div class="proof-bar">
+      {t.proofs.map((proof, i) => (
+        <>
+          {i > 0 && <span class="proof-separator" aria-hidden="true"></span>}
+          <a
+            href={proof.url}
+            class="proof-badge"
+            target={isExternalUrl(proof.url) ? '_blank' : undefined}
+            rel={isExternalUrl(proof.url) ? 'noopener noreferrer' : undefined}
+          >
+            <span class="badge-name">{proof.name}</span>
+            <span class="badge-stat">{proof.stat}</span>
+          </a>
+        </>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  /* ===== EDITORIAL AUTHORITY HERO ===== */
+  section {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--md-sys-color-surface);
+    overflow: hidden;
+  }
+
+  .hero-container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px 48px 48px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .hero-statement {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+  }
+
+  /* Kicker: SEO-friendly, small caps, accent */
+  .hero-kicker {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--md-sys-color-primary);
+    margin: 0 0 16px;
+  }
+
+  /* Title: massive, centered, mixed fonts */
+  .hero-title {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: clamp(3rem, 7vw, 5.5rem);
+    font-weight: 500;
+    font-optical-sizing: auto;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    text-align: center;
+    margin: 0;
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .title-line-1 { display: block; }
+
+  .title-line-2 {
+    display: block;
+    font-family: 'Instrument Serif', Georgia, serif;
+    font-style: italic;
+    color: var(--md-sys-color-primary);
+  }
+
+  .hero-subtitle {
+    font-size: clamp(1.125rem, 2vw, 1.375rem);
+    line-height: 1.6;
+    color: var(--md-sys-color-on-surface-variant);
+    text-align: center;
+    max-width: 600px;
+    margin: 0;
+  }
+
+  /* Proof bar */
+  .proof-bar {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 20px 32px;
+    background: var(--md-sys-color-surface-container-lowest);
+    border-radius: 12px;
+    border: 1px solid var(--md-sys-color-outline-variant);
+  }
+
+  .proof-badge {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    text-decoration: none;
+    transition: opacity 200ms ease-out;
+  }
+
+  .proof-badge:hover { opacity: 0.8; }
+
+  .proof-badge:focus-visible {
+    outline: 2px solid var(--md-sys-color-primary);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+
+  .badge-name {
+    font-family: 'JetBrains Mono', 'Geist Mono', monospace;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .badge-stat {
+    font-size: 0.6875rem;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .proof-separator {
+    width: 1px;
+    height: 32px;
+    background: var(--md-sys-color-outline-variant);
+  }
+
+  /* Gradient orb background */
+  .gradient-orb {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(1200px, 80vw);
+    height: min(1200px, 80vh);
+    background:
+      radial-gradient(circle at 30% 40%, rgba(245, 158, 11, 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 70% 60%, rgba(20, 184, 166, 0.12) 0%, transparent 50%);
+    filter: blur(80px);
+    opacity: 0.5;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* Mobile */
+  @media (max-width: 768px) {
+    .hero-container {
+      padding: 24px 16px 32px;
+      gap: 32px;
+    }
+
+    .hero-title {
+      font-size: clamp(2rem, 8vw, 3rem);
+    }
+
+    .proof-bar {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      padding: 12px;
+      width: auto;
+    }
+
+    .proof-badge {
+      align-items: center;
+      text-align: center;
+      padding: 10px 8px;
+    }
+
+    .proof-separator {
+      display: none;
+    }
+
+    .gradient-orb {
+      width: min(500px, 90vw);
+      height: min(500px, 90vh);
+      filter: blur(60px);
+    }
+  }
+
+  @media (max-width: 380px) {
+    .hero-container { padding: 16px 12px 24px; }
+    .hero-title { font-size: 1.75rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cta-primary, .cta-secondary, .proof-badge {
+      transition-duration: 0ms;
+    }
+  }
+</style>
+
+<style is:global>
+  /* ===== DARK MODE ===== */
+  html[data-theme="dark"] #hero {
+    background: var(--casys-warm-background);
+  }
+
+  html[data-theme="dark"] #hero .hero-kicker { color: var(--casys-warm-accent); }
+  html[data-theme="dark"] #hero .hero-title { color: var(--casys-warm-text-primary); }
+  html[data-theme="dark"] #hero .title-line-2 { color: var(--casys-warm-accent); }
+  html[data-theme="dark"] #hero .hero-subtitle { color: var(--casys-warm-text-secondary); }
+
+  /* Proof bar */
+  html[data-theme="dark"] #hero .proof-bar {
+    background: var(--casys-warm-surface);
+    border-color: rgba(255, 184, 111, 0.1);
+  }
+
+  html[data-theme="dark"] #hero .badge-name { color: var(--casys-warm-text-primary); }
+  html[data-theme="dark"] #hero .badge-stat { color: var(--casys-warm-text-muted); }
+  html[data-theme="dark"] #hero .proof-separator { background: var(--casys-warm-border-accent); }
+
+  /* Gradient Orb */
+  html[data-theme="dark"] #hero .gradient-orb {
+    background:
+      radial-gradient(circle at 30% 40%, rgba(255, 184, 111, 0.08) 0%, transparent 50%),
+      radial-gradient(circle at 70% 60%, rgba(212, 165, 116, 0.06) 0%, transparent 50%);
+    filter: blur(100px);
+    opacity: 0.4;
+  }
+</style>

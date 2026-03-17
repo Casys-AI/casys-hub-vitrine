@@ -1,0 +1,329 @@
+---
+import { useTranslations } from '../../i18n';
+const locale = (Astro as any).currentLocale ?? 'en';
+const content = useTranslations(locale).faq;
+
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": content.faqs.map((faq) => ({
+    "@type": "Question",
+    "name": faq.q,
+    "acceptedAnswer": {
+      "@type": "Answer",
+      "text": faq.a,
+    },
+  })),
+};
+---
+
+<script type="application/ld+json" set:html={JSON.stringify(faqJsonLd)} />
+
+<section id="faq">
+  <div class="container">
+    <!-- Section Header -->
+    <div class="section-header">
+      <h2>{content.title}</h2>
+      <p class="section-subtitle">{content.subtitle}</p>
+    </div>
+
+    <!-- Category Filter -->
+    <div class="category-filter">
+      <button class="category-btn active" data-category="all">
+        <span>{content.allLabel}</span>
+      </button>
+      {content.categories.map((category) => (
+        <button class="category-btn" data-category={category}>
+          <span>{category}</span>
+        </button>
+      ))}
+    </div>
+
+    <!-- FAQ List -->
+    <div class="faq-list">
+      {content.faqs.map((faq) => (
+        <details class="faq-item" data-category={faq.category}>
+          <summary class="faq-question">
+            <div class="question-content">
+              <span class="category-tag">{faq.category}</span>
+              <span class="question-text">{faq.q}</span>
+            </div>
+            <span class="material-symbols-rounded expand-icon">expand_more</span>
+          </summary>
+          <p class="faq-answer">{faq.a}</p>
+        </details>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  /* ========================================
+     FAQ - Editorial/Refined Aesthetic
+     Font: Fraunces for headlines
+     Palette: Warm orange for dark mode
+     ======================================== */
+
+  section {
+    padding: 56px 0;
+    background: var(--md-sys-color-surface-container-low);
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* Left-aligned header - editorial style */
+  .section-header {
+    text-align: left;
+    margin-bottom: 48px;
+    max-width: 600px;
+  }
+
+  h2 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 2.5rem;
+    font-weight: 600;
+    font-optical-sizing: auto;
+    color: var(--md-sys-color-on-surface);
+    margin: 0 0 12px;
+    letter-spacing: -0.02em;
+  }
+
+  .section-subtitle {
+    font-size: 1.1rem;
+    color: var(--md-sys-color-on-surface-variant);
+    margin: 0;
+    line-height: 1.6;
+  }
+
+  /* Category Filter - Clean style */
+  .category-filter {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 32px;
+  }
+
+  .category-btn {
+    padding: 8px 16px;
+    background: var(--md-sys-color-surface-container-lowest);
+    color: var(--md-sys-color-on-surface-variant);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 200ms ease-out, background 200ms ease-out;
+    font-family: inherit;
+  }
+
+  .category-btn:hover {
+    border-color: var(--md-sys-color-primary);
+  }
+
+  .category-btn.active {
+    background: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+    border-color: var(--md-sys-color-primary);
+  }
+
+  /* FAQ List - Clean style */
+  .faq-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .faq-item {
+    background: var(--md-sys-color-surface-container-lowest);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: 12px;
+    padding: 20px 24px;
+    cursor: pointer;
+    transition: border-color 200ms ease-out;
+  }
+
+  .faq-item:hover {
+    border-color: var(--md-sys-color-primary);
+  }
+
+  .faq-item.hidden {
+    display: none;
+  }
+
+  .faq-question {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    list-style: none;
+  }
+
+  .faq-question::-webkit-details-marker {
+    display: none;
+  }
+
+  .question-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+  }
+
+  .category-tag {
+    display: inline-block;
+    padding: 3px 8px;
+    background: var(--md-sys-color-surface-container-high);
+    color: var(--md-sys-color-primary);
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    width: fit-content;
+  }
+
+  .question-text {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .expand-icon {
+    transition: transform 200ms ease-out;
+    font-size: 24px;
+    color: var(--md-sys-color-primary);
+    flex-shrink: 0;
+  }
+
+  .faq-item[open] .expand-icon {
+    transform: rotate(180deg);
+  }
+
+  .faq-answer {
+    font-size: 0.95rem;
+    color: var(--md-sys-color-on-surface-variant);
+    line-height: 1.7;
+    margin: 16px 0 0 0;
+    padding-top: 16px;
+    border-top: 1px solid var(--md-sys-color-outline-variant);
+  }
+
+  /* Mobile Responsiveness */
+  @media (max-width: 768px) {
+    section {
+      padding: 32px 0;
+    }
+
+    .category-filter {
+      margin-bottom: 24px;
+    }
+
+    .faq-item {
+      padding: 16px 20px;
+    }
+
+    .question-text {
+      font-size: 1rem;
+    }
+
+    .faq-answer {
+      font-size: 0.9rem;
+    }
+  }
+</style>
+
+<style is:global>
+  /* ========================================
+     FAQ - DARK MODE
+     Warm orange palette (#FFB86F, #D4A574)
+     ======================================== */
+
+  html[data-theme="dark"] #faq {
+    background: var(--casys-warm-background);
+  }
+
+  html[data-theme="dark"] #faq h2 {
+    color: var(--casys-warm-text-primary);
+  }
+
+  html[data-theme="dark"] #faq .section-subtitle {
+    color: var(--casys-warm-text-secondary);
+  }
+
+  /* Category Buttons */
+  html[data-theme="dark"] #faq .category-btn {
+    background: var(--casys-warm-surface);
+    border-color: rgba(255, 184, 111, 0.1);
+    color: var(--casys-warm-text-secondary);
+  }
+
+  html[data-theme="dark"] #faq .category-btn:hover {
+    border-color: var(--casys-warm-border-accent-hover);
+  }
+
+  html[data-theme="dark"] #faq .category-btn.active {
+    background: var(--casys-warm-accent);
+    color: var(--casys-warm-surface);
+    border-color: var(--casys-warm-accent);
+  }
+
+  /* FAQ Items */
+  html[data-theme="dark"] #faq .faq-item {
+    background: var(--casys-warm-surface);
+    border-color: rgba(255, 184, 111, 0.1);
+  }
+
+  html[data-theme="dark"] #faq .faq-item:hover {
+    border-color: var(--casys-warm-border-accent-hover);
+  }
+
+  html[data-theme="dark"] #faq .question-text {
+    color: var(--casys-warm-text-primary);
+  }
+
+  html[data-theme="dark"] #faq .category-tag {
+    background: rgba(255, 184, 111, 0.1);
+    color: var(--casys-warm-accent);
+  }
+
+  html[data-theme="dark"] #faq .expand-icon {
+    color: var(--casys-warm-accent);
+  }
+
+  html[data-theme="dark"] #faq .faq-answer {
+    color: var(--casys-warm-text-secondary);
+    border-top-color: rgba(255, 184, 111, 0.1);
+  }
+</style>
+
+<script>
+  // Category filter functionality
+  const categoryButtons = document.querySelectorAll('.category-btn');
+  const faqItems = document.querySelectorAll('.faq-item');
+
+  categoryButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      const selectedCategory = button.getAttribute('data-category');
+
+      // Update active button
+      categoryButtons.forEach((btn) => btn.classList.remove('active'));
+      button.classList.add('active');
+
+      // Filter FAQ items
+      faqItems.forEach((item) => {
+        const itemCategory = item.getAttribute('data-category');
+
+        if (selectedCategory === 'all' || itemCategory === selectedCategory) {
+          item.classList.remove('hidden');
+        } else {
+          item.classList.add('hidden');
+        }
+      });
+    });
+  });
+</script>

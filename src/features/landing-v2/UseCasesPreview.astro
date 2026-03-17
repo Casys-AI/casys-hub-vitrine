@@ -1,0 +1,356 @@
+---
+/**
+ * UseCasesPreview — Homepage showcase rows (zigzag layout)
+ *
+ * Replaces stacked cards with alternating image/text feature rows.
+ */
+import { useTranslations } from '../../i18n';
+import { useCases } from '../../content/use-cases';
+
+const locale = (Astro as any).currentLocale ?? 'en';
+const t = useTranslations(locale).useCases;
+const localePath = locale === 'en' ? '' : `/${locale}`;
+---
+
+<section id="use-cases-preview">
+  <div class="container">
+    <div class="section-header">
+      <h2>{t.heroTitle}</h2>
+      <p class="section-subtitle">{t.heroSubtitle}</p>
+    </div>
+
+    <div class="showcase-list">
+      {useCases.map((uc, index) => (
+        <article class={`showcase-row ${index % 2 === 1 ? 'reverse' : ''}`}>
+          {(uc.diagram || uc.visual) && (
+            <a href={`${localePath}/use-cases/${uc.id}`} class="showcase-media">
+              <img
+                src={uc.visual || `/diagrams/${uc.diagram}.svg`}
+                alt={uc.title[locale] || uc.title.en}
+                loading="lazy"
+                class="showcase-image"
+              />
+            </a>
+          )}
+
+          <a href={`${localePath}/use-cases/${uc.id}`} class="showcase-copy">
+            <span class="case-tag">
+              <span class="material-symbols-rounded tag-icon">{uc.icon}</span>
+              {uc.tag}
+            </span>
+
+            <h3>{uc.title[locale] || uc.title.en}</h3>
+            <p class="case-excerpt">{uc.punchline[locale] || uc.punchline.en}</p>
+
+            <span class="read-link">
+              {locale === 'fr' ? 'Lire le cas' : locale === 'zh' ? '阅读案例' : locale === 'zh-TW' ? '閱讀案例' : 'Read case study'}
+              <span aria-hidden="true">&rarr;</span>
+            </span>
+          </a>
+        </article>
+      ))}
+    </div>
+
+    <div class="view-all-wrapper">
+      <a href={`${localePath}/use-cases`} class="view-all-link">
+        {locale === 'fr' ? 'Tous les cas' : locale === 'zh' ? '所有案例' : locale === 'zh-TW' ? '所有案例' : 'All case studies'}
+        <span aria-hidden="true">&rarr;</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<style>
+  section {
+    padding: 56px 0;
+    background: var(--md-sys-color-surface-container-lowest);
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  .section-header {
+    text-align: left;
+    margin-bottom: 48px;
+    max-width: 620px;
+  }
+
+  h2 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 2.5rem;
+    font-weight: 600;
+    color: var(--md-sys-color-on-surface);
+    margin: 0 0 12px;
+    letter-spacing: -0.02em;
+  }
+
+  .section-subtitle {
+    font-size: 1.1rem;
+    color: var(--md-sys-color-on-surface-variant);
+    margin: 0;
+    line-height: 1.6;
+  }
+
+  .showcase-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .showcase-row {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    align-items: center;
+    gap: 32px;
+  }
+
+  .showcase-row + .showcase-row {
+    margin-top: 40px;
+    padding-top: 40px;
+    border-top: 1px solid var(--md-sys-color-outline-variant);
+  }
+
+  .showcase-row.reverse {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  }
+
+  .showcase-row.reverse .showcase-media {
+    order: 2;
+  }
+
+  .showcase-row.reverse .showcase-copy {
+    order: 1;
+  }
+
+  .showcase-media {
+    display: block;
+    min-height: 240px;
+    background: #08080a;
+    border-radius: 14px;
+    overflow: hidden;
+    text-decoration: none;
+    transition: transform 260ms ease-out;
+  }
+
+  .showcase-media:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  }
+
+  .showcase-media:focus-visible {
+    outline: 3px solid var(--md-sys-color-primary);
+    outline-offset: 4px;
+  }
+
+  .showcase-image {
+    width: 100%;
+    height: 100%;
+    min-height: 240px;
+    object-fit: contain;
+    padding: 18px 20px;
+  }
+
+  .showcase-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .showcase-copy,
+  .showcase-copy * {
+    text-decoration: none;
+  }
+
+  .showcase-copy:focus-visible {
+    outline: 3px solid var(--md-sys-color-primary);
+    outline-offset: 4px;
+    border-radius: 4px;
+  }
+
+  .case-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--md-sys-color-primary);
+    background: var(--md-sys-color-primary-container);
+    padding: 5px 10px;
+    border-radius: 6px;
+    align-self: flex-start;
+  }
+
+  .tag-icon {
+    font-size: 13px;
+  }
+
+  h3 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--md-sys-color-on-surface);
+    margin: 0;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+  }
+
+  .case-excerpt {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.65;
+    color: var(--md-sys-color-on-surface-variant);
+    max-width: 64ch;
+  }
+
+  .read-link {
+    margin-top: 8px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+    color: var(--md-sys-color-primary);
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: gap 200ms ease-out;
+  }
+
+  .showcase-copy:hover .read-link {
+    gap: 10px;
+  }
+
+  .view-all-wrapper {
+    margin-top: 44px;
+    text-align: center;
+  }
+
+  .view-all-link {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 12px 24px;
+    text-decoration: none;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--md-sys-color-primary);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: 10px;
+    transition: border-color 200ms ease-out, background 200ms ease-out;
+  }
+
+  .view-all-link:hover {
+    border-color: var(--md-sys-color-primary);
+    background: var(--md-sys-color-surface-container-high);
+  }
+
+  .view-all-link:focus-visible {
+    outline: 3px solid var(--md-sys-color-primary);
+    outline-offset: 4px;
+  }
+
+  @media (max-width: 900px) {
+    .showcase-row,
+    .showcase-row.reverse {
+      grid-template-columns: 1fr;
+      gap: 18px;
+    }
+
+    .showcase-row.reverse .showcase-media,
+    .showcase-row.reverse .showcase-copy {
+      order: initial;
+    }
+
+    .showcase-media,
+    .showcase-image {
+      min-height: 220px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    section {
+      padding: 32px 0;
+    }
+
+    h2 {
+      font-size: 2rem;
+    }
+
+    .showcase-row + .showcase-row {
+      margin-top: 32px;
+      padding-top: 32px;
+    }
+
+    h3 {
+      font-size: 1.3rem;
+    }
+
+    .case-excerpt {
+      font-size: 0.95rem;
+    }
+
+    .view-all-wrapper {
+      margin-top: 32px;
+    }
+
+    .view-all-link {
+      width: 100%;
+    }
+  }
+</style>
+
+<style is:global>
+  html[data-theme="dark"] #use-cases-preview {
+    background: var(--casys-warm-background);
+  }
+
+  html[data-theme="dark"] #use-cases-preview h2 {
+    color: var(--casys-warm-text-primary);
+  }
+
+  html[data-theme="dark"] #use-cases-preview .section-subtitle {
+    color: var(--casys-warm-text-secondary);
+  }
+
+  html[data-theme="dark"] #use-cases-preview .showcase-row + .showcase-row {
+    border-top-color: var(--casys-warm-border-accent);
+  }
+
+  html[data-theme="dark"] #use-cases-preview .showcase-media {
+    background: #08080a;
+  }
+
+  html[data-theme="dark"] #use-cases-preview .case-tag {
+    color: var(--casys-warm-accent);
+    background: var(--casys-warm-border-accent);
+  }
+
+  html[data-theme="dark"] #use-cases-preview h3 {
+    color: var(--casys-warm-text-primary);
+  }
+
+  html[data-theme="dark"] #use-cases-preview .case-excerpt {
+    color: var(--casys-warm-text-secondary);
+  }
+
+  html[data-theme="dark"] #use-cases-preview .read-link,
+  html[data-theme="dark"] #use-cases-preview .view-all-link {
+    color: var(--casys-warm-accent);
+  }
+
+  html[data-theme="dark"] #use-cases-preview .view-all-link {
+    border-color: var(--casys-warm-border-accent);
+  }
+
+  html[data-theme="dark"] #use-cases-preview .view-all-link:hover {
+    border-color: var(--casys-warm-accent);
+    background: var(--casys-warm-border-accent);
+  }
+</style>

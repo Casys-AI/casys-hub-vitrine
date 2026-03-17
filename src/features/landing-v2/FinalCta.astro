@@ -1,0 +1,234 @@
+---
+import { useTranslations } from '../../i18n';
+const locale = (Astro as any).currentLocale ?? 'en';
+const content = useTranslations(locale).finalCta;
+---
+
+<section id="final-cta">
+  <div class="container">
+    <div class="content">
+      <h2>{content.title}</h2>
+      <p class="subtitle">{content.subtitle}</p>
+
+      <!-- CTAs -->
+      <div class="ctas-group">
+        {content.ctas.map((cta) => (
+          <a href={cta.url} class="cta-card">
+            <span class="material-symbols-rounded cta-icon">{cta.icon}</span>
+            <div class="cta-content">
+              <div class="cta-text">{cta.text}</div>
+              <div class="cta-subtext">{cta.subtext}</div>
+            </div>
+          </a>
+        ))}
+      </div>
+
+      <!-- Trust Badges -->
+      <div class="trust-badges">
+        {content.trustBadges.map((badge) => (
+          <div class="trust-badge">
+            <span class="material-symbols-rounded">{badge.icon}</span>
+            <span>{badge.text}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  /* ========================================
+     FINAL CTA - Editorial/Refined Aesthetic
+     Font: Fraunces for headlines
+     Palette: Warm orange for dark mode
+     ======================================== */
+
+  section {
+    padding: 64px 0;
+    background: var(--md-sys-color-surface-container-low);
+  }
+
+  .container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  .content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 40px;
+  }
+
+  h2 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 2.5rem;
+    font-weight: 600;
+    font-optical-sizing: auto;
+    color: var(--md-sys-color-on-surface);
+    margin: 0;
+    max-width: 800px;
+    letter-spacing: -0.02em;
+  }
+
+  .subtitle {
+    font-size: 1.1rem;
+    color: var(--md-sys-color-on-surface-variant);
+    margin: 0;
+    line-height: 1.6;
+  }
+
+  /* CTAs */
+  .ctas-group {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .cta-card {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 24px 32px;
+    background: var(--md-sys-color-surface-container-lowest);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: 16px;
+    text-decoration: none;
+    transition: border-color 200ms ease-out, box-shadow 200ms ease-out;
+    min-width: 300px;
+  }
+
+  .cta-card:hover {
+    border-color: var(--md-sys-color-primary);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  }
+
+  .cta-icon {
+    font-size: 36px;
+    color: var(--md-sys-color-primary);
+    flex-shrink: 0;
+  }
+
+  .cta-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: left;
+  }
+
+  .cta-text {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .cta-subtext {
+    font-size: 0.9rem;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  /* Trust Badges */
+  .trust-badges {
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .trust-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .trust-badge .material-symbols-rounded {
+    font-size: 20px;
+    color: var(--md-sys-color-primary);
+  }
+
+  /* Mobile Responsiveness */
+  @media (max-width: 768px) {
+    section {
+      padding: 40px 0;
+    }
+
+    h2 {
+      font-size: 2rem;
+    }
+
+    .ctas-group {
+      flex-direction: column;
+      gap: 16px;
+      width: 100%;
+    }
+
+    .cta-card {
+      min-width: unset;
+      width: 100%;
+      padding: 20px 24px;
+    }
+
+    .trust-badges {
+      flex-direction: column;
+      gap: 16px;
+    }
+  }
+</style>
+
+<style is:global>
+  /* ========================================
+     FINAL CTA - DARK MODE
+     Warm orange palette (#FFB86F, #D4A574)
+     ======================================== */
+
+  html[data-theme="dark"] #final-cta {
+    background: var(--casys-warm-background);
+  }
+
+  html[data-theme="dark"] #final-cta h2 {
+    color: var(--casys-warm-text-primary);
+  }
+
+  html[data-theme="dark"] #final-cta .subtitle {
+    color: var(--casys-warm-text-secondary);
+  }
+
+  /* CTA Cards */
+  html[data-theme="dark"] #final-cta .cta-card {
+    background: var(--casys-warm-surface);
+    border-color: rgba(255, 184, 111, 0.1);
+  }
+
+  html[data-theme="dark"] #final-cta .cta-card:hover {
+    border-color: var(--casys-warm-border-accent-hover);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  }
+
+  html[data-theme="dark"] #final-cta .cta-icon {
+    color: var(--casys-warm-accent);
+  }
+
+  html[data-theme="dark"] #final-cta .cta-text {
+    color: var(--casys-warm-text-primary);
+  }
+
+  html[data-theme="dark"] #final-cta .cta-subtext {
+    color: var(--casys-warm-text-secondary);
+  }
+
+  /* Trust Badges */
+  html[data-theme="dark"] #final-cta .trust-badge {
+    color: var(--casys-warm-text-secondary);
+  }
+
+  html[data-theme="dark"] #final-cta .trust-badge .material-symbols-rounded {
+    color: var(--casys-warm-accent);
+  }
+</style>
