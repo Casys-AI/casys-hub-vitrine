@@ -547,11 +547,11 @@ export const zh: Translations = {
         description: "这个工作流直接运行在 ERPNext 上，所以它展示的是真实运营约束，而不是玩具级场景。",
       },
     ],
-    whatItShowsTitle: "这个演示展示了什么",
+    whatItShowsTitle: "技术细节",
     whatItShows: [
-      "Casys 可以把真实业务系统接到 MCP 应用上。",
-      "我们在意的是执行可见性，而不只是漂亮演示。",
-      "同样的架构可以应用到 ERPNext 之外的其他工作流。",
+      "连接 ERPNext 的实时看板 — 不是模型，是通过 MCP 工具进行的真实 CRUD 操作。",
+      "每个工具调用端到端追踪：谁调用了什么，使用了哪些参数，发生了什么。",
+      "将 ERPNext 替换为其他 ERP — 代理层和 UI 组件保持不变。",
     ],
     stackTitle: "由 Casys 技术栈驱动",
     stackItems: [

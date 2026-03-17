@@ -602,11 +602,11 @@ export const en = {
         description: "The workflow runs on top of ERPNext, so the demo reflects real operational constraints instead of a toy setup.",
       },
     ],
-    whatItShowsTitle: "What this demo shows",
+    whatItShowsTitle: "Under the hood",
     whatItShows: [
-      "Casys can connect real business systems to MCP apps.",
-      "We care about execution visibility, not just pretty demos.",
-      "The same architecture can be applied to other workflows beyond ERPNext.",
+      "Live Kanban connected to ERPNext — not a mockup, real CRUD operations via MCP tools.",
+      "Every tool call traced end-to-end: who called what, with which parameters, and what happened.",
+      "Swap ERPNext for another ERP — the agent layer and UI components stay the same.",
     ],
     stackTitle: "Powered by the Casys stack",
     stackItems: [

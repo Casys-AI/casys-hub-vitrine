@@ -8,6 +8,7 @@
  */
 import { useTranslations } from '../../i18n';
 import { useCases } from '../../content/use-cases';
+import ExcalidrawDiagram from '../../components/ExcalidrawDiagram.astro';
 
 const locale = (Astro as any).currentLocale ?? 'en';
 const t = useTranslations(locale).useCases;
@@ -37,16 +38,27 @@ const localePath = locale === 'en' ? '' : `/${locale}`;
       <div class="cases-grid">
         {useCases.map((uc, index) => (
           <a href={`${localePath}/use-cases/${uc.id}`} class="case-card">
-            {(uc.diagram || uc.visual) && (
-              <div class="card-thumbnail">
+            <div class="card-thumbnail">
+              {uc.diagram ? (
+                <div class="thumb-diagram">
+                  <ExcalidrawDiagram src={uc.diagram} alt={uc.title[locale] || uc.title.en} />
+                </div>
+              ) : uc.visual ? (
                 <img
-                  src={uc.visual || `/diagrams/${uc.diagram}.svg`}
+                  src={uc.visual}
                   alt={uc.title[locale] || uc.title.en}
                   loading="lazy"
                   class="thumb-img"
                 />
-              </div>
-            )}
+              ) : (
+                <img
+                  src={`/og/use-case/${uc.id}.png`}
+                  alt={uc.title[locale] || uc.title.en}
+                  loading="lazy"
+                  class="thumb-img"
+                />
+              )}
+            </div>
             <div class="card-body">
               <div class="card-number" aria-hidden="true">
                 {String(index + 1).padStart(2, '0')}
@@ -279,6 +291,32 @@ const localePath = locale === 'en' ? '' : `/${locale}`;
     overflow: hidden;
     background: var(--md-sys-color-surface-container-low, #f3f3f3);
     border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  }
+
+  .thumb-diagram {
+    padding: 8px;
+    height: 100%;
+  }
+
+  .thumb-diagram :global(.excalidraw-figure) {
+    margin: 0;
+    height: 100%;
+  }
+
+  .thumb-diagram :global(.excalidraw-wrapper) {
+    max-width: 100%;
+    height: 100%;
+    border-radius: 6px;
+  }
+
+  .thumb-diagram :global(.excalidraw-wrapper svg) {
+    height: 100%;
+    width: auto;
+    margin: 0 auto;
+  }
+
+  .thumb-diagram :global(.excalidraw-caption) {
+    display: none;
   }
 
   .thumb-img {

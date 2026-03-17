@@ -128,10 +128,13 @@ function isExternalUrl(url: string): boolean {
     flex-direction: column;
     gap: 2px;
     text-decoration: none;
-    transition: opacity 200ms ease-out;
+    transition: opacity 200ms ease-out, transform 200ms ease-out;
   }
 
-  .proof-badge:hover { opacity: 0.8; }
+  .proof-badge:hover {
+    opacity: 1;
+    transform: translateY(-1px);
+  }
 
   .proof-badge:focus-visible {
     outline: 2px solid var(--md-sys-color-primary);
@@ -166,10 +169,11 @@ function isExternalUrl(url: string): boolean {
     width: min(1200px, 80vw);
     height: min(1200px, 80vh);
     background:
-      radial-gradient(circle at 30% 40%, rgba(245, 158, 11, 0.15) 0%, transparent 50%),
-      radial-gradient(circle at 70% 60%, rgba(20, 184, 166, 0.12) 0%, transparent 50%);
+      radial-gradient(circle at 25% 35%, rgba(128, 0, 128, 0.1) 0%, transparent 45%),
+      radial-gradient(circle at 75% 55%, rgba(219, 189, 219, 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 50% 80%, rgba(245, 158, 11, 0.08) 0%, transparent 40%);
     filter: blur(80px);
-    opacity: 0.5;
+    opacity: 0.6;
     z-index: 0;
     pointer-events: none;
   }
