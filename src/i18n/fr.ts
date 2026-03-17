@@ -62,12 +62,12 @@ export const fr: Translations = {
     titleLine1: "On branche l'IA",
     titleLine2: "sur vos métiers",
     subtitle:
-      "Des agents IA branchés sur vos ERP, CRM et outils internes. Stack observable, open source, déjà en production.",
+      "Des agents IA branchés sur vos ERP, CRM et outils internes. Stack observable et open source.",
     proofs: [
       { name: "Démo ERPNext", stat: "Workflow métier live", url: "#featured-demo" },
-      { name: "Stack publiée", stat: "npm + JSR, open source", url: "#projects" },
+      { name: "Open source", stat: "Code, issues, roadmap publics", url: "#projects" },
       { name: "Observable", stat: "Chaque appel tracé", url: "#what-we-do" },
-      { name: "Prêt pour la prod", stat: "Déployé, pas prototypé", url: "#what-we-do" },
+      { name: "Packages publiés", stat: "npm + JSR, versionnés", url: "#use-cases-preview" },
     ],
   },
   featuredDemo: {
@@ -80,7 +80,7 @@ export const fr: Translations = {
       "Au lieu de demander au visiteur d'imaginer le futur, on montre un workflow qu'il peut inspecter: une surface ERP connectée à un agent avec une exécution observable derrière.",
     bullets: [
       "Kanban interactif et actions métier, pas juste une capture de chat.",
-      "Projet public qui commence déjà à attirer de l'intérêt sur GitHub.",
+      "Open source sur GitHub — code, issues et roadmap sont publics.",
       "Un exemple concret de l'approche Casys sur des workflows métier.",
     ],
     stats: [
@@ -436,7 +436,7 @@ export const fr: Translations = {
         description: "On connecte plusieurs domaines pour des perspectives uniques",
         highlights: [
           "Knowledge Management (2013+) → Graph DB → Agents IA",
-          "La fertilisation croisée génère des perspectives inédites",
+          "Chaque domaine a nourri le suivant — le KM a façonné nos graphes, les graphes ont façonné notre routage agent",
           "Une expertise qui se renforce à chaque vague technologique",
         ],
       },
@@ -468,7 +468,7 @@ export const fr: Translations = {
         title: "Recherche Pratique",
         description: "On livre des systèmes en production qui résolvent de vrais problèmes",
         highlights: [
-          "Prêt pour la production, pas juste des prototypes",
+          "Publié sur npm et JSR, pas dans un repo privé",
           "Éprouvé en conditions réelles",
           "On utilise nos propres outils",
         ],

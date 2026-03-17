@@ -61,12 +61,12 @@ export const zh: Translations = {
     kicker: "AI 智能体集成商",
     titleLine1: "将 AI 接入",
     titleLine2: "您的业务系统",
-    subtitle: "AI 智能体接入您的 ERP、CRM 和内部工具。可观测技术栈，开源，已在生产环境运行。",
+    subtitle: "AI 智能体接入您的 ERP、CRM 和内部工具。可观测的开源技术栈。",
     proofs: [
       { name: "ERPNext 演示", stat: "真实业务工作流", url: "#featured-demo" },
-      { name: "已发布技术栈", stat: "npm + JSR，开源", url: "#projects" },
+      { name: "开源", stat: "代码、议题、路线图公开", url: "#projects" },
       { name: "可观测", stat: "每次调用可追踪", url: "#what-we-do" },
-      { name: "生产就绪", stat: "已部署，非原型", url: "#what-we-do" },
+      { name: "已发布包", stat: "npm + JSR，版本化", url: "#use-cases-preview" },
     ],
   },
   featuredDemo: {
@@ -79,7 +79,7 @@ export const zh: Translations = {
       "我们不要求访客去想象未来，而是直接展示一个可以检查的工作流：一个由智能体连接的 ERP 界面，背后有可观测的执行路径。",
     bullets: [
       "可点击的看板和业务动作，不只是聊天界面截图。",
-      "公开开发，并且已经在 GitHub 上获得了早期关注。",
+      "在 GitHub 上开源 — 代码、议题和路线图都是公开的。",
       "这是 Casys 处理业务工作流的一种具体示例。",
     ],
     stats: [
@@ -379,7 +379,7 @@ export const zh: Translations = {
         description: "我们连接多个领域以获得独特洞察",
         highlights: [
           "KM 系统 (2013+) → 图数据库 → AI 代理",
-          "跨领域碰撞产生洞察",
+          "每个领域推动下一个 — KM 塑造了图谱工作，图谱塑造了代理路由",
           "专长跨技术浪潮持续累积",
         ],
       },
@@ -411,7 +411,7 @@ export const zh: Translations = {
         title: "务实研究",
         description: "我们发布解决实际问题的生产系统",
         highlights: [
-          "生产就绪，不仅是原型",
+          "已发布在 npm 和 JSR 上，不是私有仓库里的代码",
           "在真实环境中经过检验",
           "我们使用自己的工具",
         ],

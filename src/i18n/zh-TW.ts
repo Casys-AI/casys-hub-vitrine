@@ -61,12 +61,12 @@ export const zh_TW: Translations = {
     kicker: "AI 智慧體整合商",
     titleLine1: "將 AI 接入",
     titleLine2: "您的業務系統",
-    subtitle: "AI 智慧體接入您的 ERP、CRM 和內部工具。可觀測技術棧，開源，已在生產環境運行。",
+    subtitle: "AI 智慧體接入您的 ERP、CRM 和內部工具。可觀測的開源技術棧。",
     proofs: [
       { name: "ERPNext 示範", stat: "真實業務工作流", url: "#featured-demo" },
-      { name: "已發佈技術棧", stat: "npm + JSR，開源", url: "#projects" },
+      { name: "開源", stat: "程式碼、議題、路線圖公開", url: "#projects" },
       { name: "可觀測", stat: "每次呼叫可追蹤", url: "#what-we-do" },
-      { name: "生產就緒", stat: "已部署，非原型", url: "#what-we-do" },
+      { name: "已發佈套件", stat: "npm + JSR，版本化", url: "#use-cases-preview" },
     ],
   },
   featuredDemo: {
@@ -79,7 +79,7 @@ export const zh_TW: Translations = {
       "我們不要求訪客去想像未來，而是直接展示一個可以檢查的工作流：一個由智慧體連接的 ERP 介面，背後有可觀測的執行路徑。",
     bullets: [
       "可點擊的看板和業務動作，不只是聊天畫面截圖。",
-      "公開開發，而且已經在 GitHub 上獲得早期關注。",
+      "在 GitHub 上開源 — 程式碼、議題和路線圖都是公開的。",
       "這是 Casys 處理業務工作流的一個具體示例。",
     ],
     stats: [
@@ -379,7 +379,7 @@ export const zh_TW: Translations = {
         description: "我們連結多個領域以獲得獨特洞察",
         highlights: [
           "KM 系統 (2013+) → 圖資料庫 → AI 代理",
-          "跨領域碰撞產生洞察",
+          "每個領域推動下一個 — KM 塑造了圖譜工作，圖譜塑造了代理路由",
           "專長跨技術浪潮持續累積",
         ],
       },
@@ -411,7 +411,7 @@ export const zh_TW: Translations = {
         title: "務實研究",
         description: "我們發布解決實際問題的生產系統",
         highlights: [
-          "生產就緒，不僅是原型",
+          "已發佈在 npm 和 JSR 上，不是私有倉庫裡的程式碼",
           "在真實環境中經過檢驗",
           "我們使用自己的工具",
         ],

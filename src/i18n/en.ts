@@ -60,12 +60,12 @@ export const en = {
     titleLine1: "We wire AI",
     titleLine2: "into your business",
     subtitle:
-      "AI agents wired into your ERP, CRM, and internal tools. Observable stack, open source, already in production.",
+      "AI agents wired into your ERP, CRM, and internal tools. Observable, open-source stack.",
     proofs: [
       { name: "ERPNext demo", stat: "Live business workflow", url: "#featured-demo" },
-      { name: "Published stack", stat: "npm + JSR, open source", url: "#projects" },
+      { name: "Open source", stat: "Code, issues, roadmap public", url: "#projects" },
       { name: "Observable", stat: "Every call traced", url: "#what-we-do" },
-      { name: "Production-ready", stat: "Deployed, not prototyped", url: "#what-we-do" },
+      { name: "Published packages", stat: "npm + JSR, versioned", url: "#use-cases-preview" },
     ],
   },
   featuredDemo: {
@@ -78,7 +78,7 @@ export const en = {
       "Instead of asking visitors to imagine the future, show a workflow they can inspect: an agent-connected ERP surface with observable execution behind it.",
     bullets: [
       "Interactive kanban and business actions, not just a chat screenshot.",
-      "Built in public and already getting early GitHub traction.",
+      "Open source on GitHub — code, issues, and roadmap are public.",
       "A concrete example of the Casys approach to business workflows.",
     ],
     stats: [
@@ -433,7 +433,7 @@ export const en = {
         description: "We connect multiple domains for unique insights",
         highlights: [
           "KM Systems (2013+) → Graph DB → AI Agents",
-          "Cross-pollination creates insights",
+          "Each domain informed the next — KM shaped our graph work, graphs shaped our agent routing",
           "Expertise compounds through tech waves",
         ],
       },
@@ -465,7 +465,7 @@ export const en = {
         title: "Practical Research",
         description: "We ship production systems that solve real problems",
         highlights: [
-          "Production-ready, not just prototypes",
+          "Published on npm and JSR, not sitting in a private repo",
           "Battle-tested in real environments",
           "We use our own tools",
         ],
