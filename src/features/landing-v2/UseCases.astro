@@ -8,7 +8,6 @@
  */
 import { useTranslations } from '../../i18n';
 import { useCases } from '../../content/use-cases';
-import ExcalidrawDiagram from '../../components/ExcalidrawDiagram.astro';
 
 const locale = (Astro as any).currentLocale ?? 'en';
 const t = useTranslations(locale).useCases;
@@ -39,25 +38,12 @@ const localePath = locale === 'en' ? '' : `/${locale}`;
         {useCases.map((uc, index) => (
           <a href={`${localePath}/use-cases/${uc.id}`} class="case-card">
             <div class="card-thumbnail">
-              {uc.diagram ? (
-                <div class="thumb-diagram">
-                  <ExcalidrawDiagram src={uc.diagram} alt={uc.title[locale] || uc.title.en} />
-                </div>
-              ) : uc.visual ? (
-                <img
-                  src={uc.visual}
-                  alt={uc.title[locale] || uc.title.en}
-                  loading="lazy"
-                  class="thumb-img"
-                />
-              ) : (
-                <img
-                  src={`/og/use-case/${uc.id}.png`}
-                  alt={uc.title[locale] || uc.title.en}
-                  loading="lazy"
-                  class="thumb-img og-thumbnail"
-                />
-              )}
+              <img
+                src={`/og/use-case/${uc.id}.png`}
+                alt={uc.title[locale] || uc.title.en}
+                loading="lazy"
+                class="thumb-img og-thumbnail"
+              />
             </div>
             <div class="card-body">
               <div class="card-number" aria-hidden="true">

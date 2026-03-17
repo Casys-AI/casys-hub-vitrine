@@ -1,7 +1,6 @@
 ---
 import { useTranslations } from '../../i18n';
 import { useCases } from '../../content/use-cases';
-import ExcalidrawDiagram from '../../components/ExcalidrawDiagram.astro';
 
 const locale = (Astro as any).currentLocale ?? 'en';
 const t = useTranslations(locale).useCases;
@@ -64,25 +63,12 @@ const allCasesLabel =
         <article class="case-card">
           <a href={`${localePath}/use-cases/${uc.id}`} class="case-card-link">
             <div class="case-media">
-              {uc.diagram ? (
-                <div class="case-diagram">
-                  <ExcalidrawDiagram src={uc.diagram} alt={uc.title[locale] || uc.title.en} />
-                </div>
-              ) : uc.visual ? (
-                <img
-                  src={uc.visual}
-                  alt={uc.title[locale] || uc.title.en}
-                  loading="lazy"
-                  class="case-image"
-                />
-              ) : (
-                <img
-                  src={`/og/use-case/${uc.id}.png`}
-                  alt={uc.title[locale] || uc.title.en}
-                  loading="lazy"
-                  class="case-image og-thumbnail"
-                />
-              )}
+              <img
+                src={`/og/use-case/${uc.id}.png`}
+                alt={uc.title[locale] || uc.title.en}
+                loading="lazy"
+                class="case-image og-thumbnail"
+              />
             </div>
 
             <div class="case-copy">
