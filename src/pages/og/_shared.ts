@@ -15,75 +15,17 @@ let fontData: ArrayBuffer | null = null;
 let fontDataBold: ArrayBuffer | null = null;
 const require = createRequire(import.meta.url);
 
-async function readLocalFileAsArrayBuffer(filePath: string | URL): Promise<ArrayBuffer> {
+async function readLocalFileAsArrayBuffer(filePath: string): Promise<ArrayBuffer> {
   const buf = await fs.readFile(filePath);
   return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
 }
 
-async function getKatexFontCandidates(filename: string): Promise<Array<string | URL>> {
-  const candidates: Array<string | URL> = [
-    join(process.cwd(), 'node_modules/katex/dist/fonts', filename),
-  ];
-
-  // Bun store: node_modules/.bun/katex@VERSION/node_modules/katex/dist/fonts/
-  try {
-    const bunStoreEntries = await fs.readdir(join(process.cwd(), 'node_modules/.bun'), {
-      withFileTypes: true,
-    });
-
-    for (const entry of bunStoreEntries) {
-      if (!entry.isDirectory() || !entry.name.startsWith('katex@')) {
-        continue;
-      }
-
-      candidates.push(
-        join(process.cwd(), 'node_modules/.bun', entry.name, 'node_modules/katex/dist/fonts', filename),
-      );
-    }
-  } catch {
-    // Bun store not present.
-  }
-
-  // pnpm store: node_modules/.pnpm/katex@VERSION/node_modules/katex/dist/fonts/
-  try {
-    const pnpmStoreEntries = await fs.readdir(join(process.cwd(), 'node_modules/.pnpm'), {
-      withFileTypes: true,
-    });
-
-    for (const entry of pnpmStoreEntries) {
-      if (!entry.isDirectory() || !entry.name.startsWith('katex@')) {
-        continue;
-      }
-
-      candidates.push(
-        join(process.cwd(), 'node_modules/.pnpm', entry.name, 'node_modules/katex/dist/fonts', filename),
-      );
-    }
-  } catch {
-    // pnpm store not present.
-  }
-
-  return candidates;
-}
-
-async function readFirstAvailableArrayBuffer(paths: Array<string | URL>): Promise<ArrayBuffer> {
-  for (const filePath of paths) {
-    try {
-      return await readLocalFileAsArrayBuffer(filePath);
-    } catch {
-      // Try the next candidate path.
-    }
-  }
-
-  throw new Error(`Unable to load local OG font from any known path: ${paths.join(', ')}`);
-}
-
 async function loadFonts() {
   if (!fontData) {
-    fontData = await readFirstAvailableArrayBuffer(await getKatexFontCandidates('KaTeX_SansSerif-Regular.ttf'));
+    fontData = await readLocalFileAsArrayBuffer(join(process.cwd(), 'public/fonts/Inter-Regular.ttf'));
   }
   if (!fontDataBold) {
-    fontDataBold = await readFirstAvailableArrayBuffer(await getKatexFontCandidates('KaTeX_SansSerif-Bold.ttf'));
+    fontDataBold = await readLocalFileAsArrayBuffer(join(process.cwd(), 'public/fonts/Inter-Bold.ttf'));
   }
   return { fontData: fontData!, fontDataBold: fontDataBold! };
 }
@@ -115,8 +57,8 @@ export async function generateOgImage(element: any): Promise<Response> {
     width: 1200,
     height: 630,
     fonts: [
-      { name: 'Geist', data: fonts.fontData, weight: 600, style: 'normal' as const },
-      { name: 'Geist', data: fonts.fontDataBold, weight: 700, style: 'normal' as const },
+      { name: 'Inter', data: fonts.fontData, weight: 400, style: 'normal' as const },
+      { name: 'Inter', data: fonts.fontDataBold, weight: 700, style: 'normal' as const },
     ],
   });
 
