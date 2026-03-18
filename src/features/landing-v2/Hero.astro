@@ -19,6 +19,17 @@ const t = useTranslations(locale).hero;
       <p class="hero-subtitle">{t.subtitle}</p>
     </div>
 
+    <div class="hero-actions">
+      <a href={t.cta.primary.url} class="cta-primary">
+        <span class="material-symbols-rounded" aria-hidden="true">{t.cta.primary.icon}</span>
+        {t.cta.primary.text}
+      </a>
+      <a href={t.cta.secondary.url} class="cta-secondary">
+        <span class="material-symbols-rounded" aria-hidden="true">{t.cta.secondary.icon}</span>
+        {t.cta.secondary.text}
+      </a>
+    </div>
+
     <div class="proof-bar">
       {t.proofs.map((proof, i) => (
         <>
@@ -29,8 +40,11 @@ const t = useTranslations(locale).hero;
             target={isExternalUrl(proof.url) ? '_blank' : undefined}
             rel={isExternalUrl(proof.url) ? 'noopener noreferrer' : undefined}
           >
-            <span class="badge-name">{proof.name}</span>
-            <span class="badge-stat">{proof.stat}</span>
+            <span class="badge-icon material-symbols-rounded" aria-hidden="true">{proof.icon}</span>
+            <div class="badge-text">
+              <span class="badge-name">{proof.name}</span>
+              <span class="badge-stat">{proof.stat}</span>
+            </div>
           </a>
         </>
       ))}
@@ -110,34 +124,104 @@ const t = useTranslations(locale).hero;
     margin: 0;
   }
 
-  /* Proof bar */
+  /* ===== CTA BUTTONS ===== */
+  .hero-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .cta-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 28px;
+    background: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    text-decoration: none;
+    border-radius: 10px;
+    transition: background 200ms ease-out, transform 200ms ease-out, box-shadow 200ms ease-out;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+
+  .cta-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    filter: brightness(1.05);
+  }
+
+  .cta-primary .material-symbols-rounded {
+    font-size: 20px;
+  }
+
+  .cta-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 28px;
+    background: transparent;
+    color: var(--md-sys-color-on-surface-variant);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    text-decoration: none;
+    border-radius: 10px;
+    border: 1px solid var(--md-sys-color-outline-variant);
+    transition: color 200ms ease-out, border-color 200ms ease-out, background 200ms ease-out;
+  }
+
+  .cta-secondary:hover {
+    color: var(--md-sys-color-on-surface);
+    border-color: var(--md-sys-color-outline);
+    background: var(--md-sys-color-surface-container-lowest);
+  }
+
+  .cta-secondary .material-symbols-rounded {
+    font-size: 18px;
+  }
+
+  /* ===== PROOF BAR ===== */
   .proof-bar {
     display: flex;
     align-items: center;
-    gap: 24px;
-    padding: 20px 32px;
+    gap: 0;
+    padding: 0;
     background: var(--md-sys-color-surface-container-lowest);
-    border-radius: 12px;
+    border-radius: 14px;
     border: 1px solid var(--md-sys-color-outline-variant);
   }
 
   .proof-badge {
     display: flex;
-    flex-direction: column;
-    gap: 2px;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 24px;
     text-decoration: none;
-    transition: opacity 200ms ease-out, transform 200ms ease-out;
+    border-radius: 14px;
+    transition: background 200ms ease-out;
   }
 
   .proof-badge:hover {
-    opacity: 1;
-    transform: translateY(-1px);
+    background: var(--md-sys-color-surface-container-low);
   }
 
   .proof-badge:focus-visible {
     outline: 2px solid var(--md-sys-color-primary);
-    outline-offset: 3px;
-    border-radius: 4px;
+    outline-offset: -2px;
+    border-radius: 14px;
+  }
+
+  .badge-icon {
+    font-size: 22px;
+    color: var(--md-sys-color-primary);
+    flex-shrink: 0;
+  }
+
+  .badge-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
   }
 
   .badge-name {
@@ -156,6 +240,7 @@ const t = useTranslations(locale).hero;
     width: 1px;
     height: 32px;
     background: var(--md-sys-color-outline-variant);
+    flex-shrink: 0;
   }
 
   /* Gradient orb background */
@@ -176,7 +261,7 @@ const t = useTranslations(locale).hero;
     pointer-events: none;
   }
 
-  /* Mobile */
+  /* ===== RESPONSIVE ===== */
   @media (max-width: 768px) {
     .hero-container {
       padding: 24px 16px 32px;
@@ -187,18 +272,27 @@ const t = useTranslations(locale).hero;
       font-size: clamp(2rem, 8vw, 3rem);
     }
 
+    .hero-actions {
+      flex-direction: column;
+      width: 100%;
+      max-width: 320px;
+    }
+
+    .cta-primary,
+    .cta-secondary {
+      width: 100%;
+      justify-content: center;
+    }
+
     .proof-bar {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 0;
-      padding: 12px;
       width: auto;
     }
 
     .proof-badge {
-      align-items: center;
-      text-align: center;
-      padding: 10px 8px;
+      padding: 12px 16px;
     }
 
     .proof-separator {
@@ -235,12 +329,40 @@ const t = useTranslations(locale).hero;
   html[data-theme="dark"] #hero .title-line-2 { color: var(--casys-warm-accent); }
   html[data-theme="dark"] #hero .hero-subtitle { color: var(--casys-warm-text-secondary); }
 
+  /* CTAs */
+  html[data-theme="dark"] #hero .cta-primary {
+    background: #FFB86F;
+    color: #1a1815;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+
+  html[data-theme="dark"] #hero .cta-primary:hover {
+    background: #D4A574;
+    box-shadow: 0 4px 16px rgba(255, 184, 111, 0.2);
+  }
+
+  html[data-theme="dark"] #hero .cta-secondary {
+    color: var(--casys-warm-text-secondary);
+    border-color: rgba(255, 184, 111, 0.15);
+  }
+
+  html[data-theme="dark"] #hero .cta-secondary:hover {
+    color: var(--casys-warm-text-primary);
+    border-color: rgba(255, 184, 111, 0.3);
+    background: rgba(255, 184, 111, 0.06);
+  }
+
   /* Proof bar */
   html[data-theme="dark"] #hero .proof-bar {
     background: var(--casys-warm-surface);
     border-color: rgba(255, 184, 111, 0.1);
   }
 
+  html[data-theme="dark"] #hero .proof-badge:hover {
+    background: rgba(255, 184, 111, 0.06);
+  }
+
+  html[data-theme="dark"] #hero .badge-icon { color: #FFB86F; }
   html[data-theme="dark"] #hero .badge-name { color: var(--casys-warm-text-primary); }
   html[data-theme="dark"] #hero .badge-stat { color: var(--casys-warm-text-muted); }
   html[data-theme="dark"] #hero .proof-separator { background: var(--casys-warm-border-accent); }

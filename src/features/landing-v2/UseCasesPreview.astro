@@ -6,6 +6,7 @@ const locale = (Astro as any).currentLocale ?? 'en';
 const t = useTranslations(locale).useCases;
 const featuredDemo = useTranslations(locale).featuredDemo;
 const localePath = locale === 'en' ? '' : `/${locale}`;
+const ogSuffix = locale === 'en' ? '' : `-${locale}`;
 
 const readCaseLabel =
   locale === 'fr'
@@ -62,29 +63,18 @@ const allCasesLabel =
       {useCases.map((uc) => (
         <article class="case-card">
           <a href={`${localePath}/use-cases/${uc.id}`} class="case-card-link">
-            <div class="case-media">
-              <img
-                src={`/og/use-case/${uc.id}.png`}
-                alt={uc.title[locale] || uc.title.en}
-                loading="lazy"
-                class="case-image og-thumbnail"
-              />
-            </div>
-
-            <div class="case-copy">
-              <span class="case-tag">
-                <span class="material-symbols-rounded tag-icon">{uc.icon}</span>
-                {uc.tag}
-              </span>
-
-              <h3 class="case-title">{uc.title[locale] || uc.title.en}</h3>
-              <p class="case-excerpt">{uc.punchline[locale] || uc.punchline.en}</p>
-
+            <img
+              src={`/og/use-case/${uc.id}${ogSuffix}.png`}
+              alt={uc.title[locale] || uc.title.en}
+              loading="lazy"
+              class="case-image og-thumbnail"
+            />
+            <span class="case-overlay">
               <span class="read-link">
                 {readCaseLabel}
                 <span aria-hidden="true">&rarr;</span>
               </span>
-            </div>
+            </span>
           </a>
         </article>
       ))}
@@ -259,15 +249,9 @@ const allCasesLabel =
   }
 
   .case-card-link {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
+    display: block;
+    position: relative;
     color: inherit;
-    text-decoration: none;
-  }
-
-  .case-card-link,
-  .case-card-link * {
     text-decoration: none;
   }
 
@@ -283,66 +267,25 @@ const allCasesLabel =
     border-radius: 16px;
   }
 
-  .case-media {
-    min-height: 220px;
-    background: var(--md-sys-color-surface-container-lowest);
-    overflow: hidden;
-  }
-
-  .case-diagram {
-    padding: 12px;
-  }
-
-  .case-diagram :global(.excalidraw-figure) {
-    margin: 0;
-  }
-
-  .case-diagram :global(.excalidraw-wrapper) {
-    max-width: 100%;
-    border-radius: 8px;
-  }
-
-  .case-diagram :global(.excalidraw-caption) {
-    display: none;
-  }
-
   .case-image {
     width: 100%;
-    height: 100%;
-    min-height: 220px;
-    object-fit: contain;
-    padding: 20px 22px;
+    display: block;
+    aspect-ratio: 1200 / 630;
+    object-fit: cover;
   }
 
-  .case-copy {
+  .case-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 16px 22px;
+    background: linear-gradient(to top, rgba(250, 249, 246, 0.95) 0%, transparent 100%);
     display: flex;
-    flex: 1;
-    flex-direction: column;
-    gap: 14px;
-    padding: 22px;
-  }
-
-  .case-tag {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    align-self: flex-start;
-    padding: 5px 10px;
-    border-radius: 6px;
-    background: var(--md-sys-color-primary-container);
-    color: var(--md-sys-color-primary);
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-  }
-
-  .tag-icon {
-    font-size: 13px;
+    justify-content: flex-end;
   }
 
   .read-link {
-    margin-top: auto;
     min-height: 44px;
     display: inline-flex;
     align-items: center;
@@ -493,18 +436,13 @@ const allCasesLabel =
     color: var(--casys-warm-accent);
   }
 
-  html[data-theme="dark"] #use-cases-preview .case-media {
-    background: #08080a;
-  }
-
   html[data-theme="dark"] #use-cases-preview .og-thumbnail {
     filter: invert(1) hue-rotate(180deg);
     opacity: 0.9;
   }
 
-  html[data-theme="dark"] #use-cases-preview .case-tag {
-    color: var(--casys-warm-accent);
-    background: var(--casys-warm-border-accent);
+  html[data-theme="dark"] #use-cases-preview .case-overlay {
+    background: linear-gradient(to top, rgba(10, 9, 8, 0.95) 0%, transparent 100%);
   }
 
   html[data-theme="dark"] #use-cases-preview .view-all-link {

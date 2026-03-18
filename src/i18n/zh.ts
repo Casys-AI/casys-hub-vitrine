@@ -50,11 +50,15 @@ export const zh: Translations = {
     titleLine1: "将 AI 接入",
     titleLine2: "您的业务系统",
     subtitle: "AI 智能体接入您的 ERP、CRM 和内部工具。可观测的开源技术栈。",
+    cta: {
+      primary: { text: "查看我们的工作", icon: "arrow_forward", url: "#use-cases-preview" },
+      secondary: { text: "联系我们", icon: "mail", url: "#contact" },
+    },
     proofs: [
-      { name: "ERPNext 演示", stat: "真实业务工作流", url: "#featured-demo" },
-      { name: "开源", stat: "代码、议题、路线图公开", url: "https://github.com/Casys-AI" },
-      { name: "可观测", stat: "每次调用可追踪", url: "#why-casys" },
-      { name: "已发布包", stat: "npm + JSR，版本化", url: "#use-cases-preview" },
+      { name: "5 个案例", stat: "真实演示，真实工作流", url: "#use-cases-preview", icon: "web_asset" },
+      { name: "开源", stat: "代码、议题、路线图公开", url: "https://github.com/Casys-AI", icon: "code" },
+      { name: "15+ 年", stat: "KM → 图数据库 → AI 智能体", url: "#why-casys", icon: "timeline" },
+      { name: "已发布包", stat: "npm + JSR，版本化", url: "https://jsr.io/@casys", icon: "package_2" },
     ],
   },
   featuredDemo: {

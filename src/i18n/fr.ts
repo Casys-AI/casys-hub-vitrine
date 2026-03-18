@@ -51,11 +51,15 @@ export const fr: Translations = {
     titleLine2: "sur vos métiers",
     subtitle:
       "Des agents IA branchés sur vos ERP, CRM et outils internes. Stack observable et open source.",
+    cta: {
+      primary: { text: "Voir nos réalisations", icon: "arrow_forward", url: "#use-cases-preview" },
+      secondary: { text: "Nous contacter", icon: "mail", url: "#contact" },
+    },
     proofs: [
-      { name: "Démo ERPNext", stat: "Workflow métier live", url: "#featured-demo" },
-      { name: "Open source", stat: "Code, issues, roadmap publics", url: "https://github.com/Casys-AI" },
-      { name: "Observable", stat: "Chaque appel tracé", url: "#why-casys" },
-      { name: "Packages publiés", stat: "npm + JSR, versionnés", url: "#use-cases-preview" },
+      { name: "5 cas concrets", stat: "Démos live, vrais workflows", url: "#use-cases-preview", icon: "web_asset" },
+      { name: "Open source", stat: "Code, issues, roadmap publics", url: "https://github.com/Casys-AI", icon: "code" },
+      { name: "15+ ans", stat: "KM → Graphes → Agents IA", url: "#why-casys", icon: "timeline" },
+      { name: "Packages publiés", stat: "npm + JSR, versionnés", url: "https://jsr.io/@casys", icon: "package_2" },
     ],
   },
   featuredDemo: {

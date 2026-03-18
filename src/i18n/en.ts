@@ -49,11 +49,15 @@ export const en = {
     titleLine2: "into your business",
     subtitle:
       "AI agents wired into your ERP, CRM, and internal tools. Observable, open-source stack.",
+    cta: {
+      primary: { text: "See our work", icon: "arrow_forward", url: "#use-cases-preview" },
+      secondary: { text: "Talk to us", icon: "mail", url: "#contact" },
+    },
     proofs: [
-      { name: "ERPNext demo", stat: "Live business workflow", url: "#featured-demo" },
-      { name: "Open source", stat: "Code, issues, roadmap public", url: "https://github.com/Casys-AI" },
-      { name: "Observable", stat: "Every call traced", url: "#why-casys" },
-      { name: "Published packages", stat: "npm + JSR, versioned", url: "#use-cases-preview" },
+      { name: "5 use cases", stat: "Live demos, real workflows", url: "#use-cases-preview", icon: "web_asset" },
+      { name: "Open source", stat: "Code, issues, roadmap public", url: "https://github.com/Casys-AI", icon: "code" },
+      { name: "15+ years", stat: "KM → Graphs → AI Agents", url: "#why-casys", icon: "timeline" },
+      { name: "Published packages", stat: "npm + JSR, versioned", url: "https://jsr.io/@casys", icon: "package_2" },
     ],
   },
   featuredDemo: {

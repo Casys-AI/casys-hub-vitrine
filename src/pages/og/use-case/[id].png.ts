@@ -9,8 +9,20 @@ import type { APIRoute, GetStaticPaths } from 'astro';
 import { generateOgImage } from '../_shared';
 import { useCases } from '../../../content/use-cases';
 
+const locales = ['en', 'fr', 'zh', 'zh-TW'] as const;
+
 export const getStaticPaths: GetStaticPaths = () => {
-  return useCases.map((uc) => ({ params: { id: uc.id } }));
+  const paths = [];
+  for (const uc of useCases) {
+    // English: backward-compatible path (no suffix)
+    paths.push({ params: { id: uc.id }, props: { locale: 'en' } });
+    // Other locales: suffixed path
+    for (const loc of locales) {
+      if (loc === 'en') continue;
+      paths.push({ params: { id: `${uc.id}-${loc}` }, props: { locale: loc } });
+    }
+  }
+  return paths;
 };
 
 const tagColors: Record<string, { bg: string; fg: string; accent: string }> = {
@@ -21,13 +33,16 @@ const tagColors: Record<string, { bg: string; fg: string; accent: string }> = {
   'MCP E-Invoice': { bg: '#fce7f3', fg: '#9d174d', accent: '#ec4899' },
 };
 
-export const GET: APIRoute = async ({ params }) => {
-  const uc = useCases.find((u) => u.id === params.id);
+export const GET: APIRoute = async ({ params, props }) => {
+  const locale = (props as any).locale || 'en';
+  // Strip locale suffix to find the use case
+  const baseId = params.id!.replace(/-(?:fr|zh|zh-TW)$/, '');
+  const uc = useCases.find((u) => u.id === baseId);
   if (!uc) return new Response('Not found', { status: 404 });
 
   const colors = tagColors[uc.tag] || { bg: '#f3e8ff', fg: '#6b21a8', accent: '#9333ea' };
-  const title = uc.title.en;
-  const punchline = uc.punchline.en;
+  const title = uc.title[locale] || uc.title.en;
+  const punchline = uc.punchline[locale] || uc.punchline.en;
 
   return generateOgImage({
     type: 'div',
