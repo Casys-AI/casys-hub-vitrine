@@ -63,19 +63,19 @@ export const zh: Translations = {
   },
   featuredDemo: {
     title: "看实际效果",
-    subtitle: "一个真实工作流，比模糊的平台承诺更有说服力。",
+    subtitle: "一个工作流，比平台承诺更有说服力。",
     eyebrow: "现场演示",
     name: "MCP ERPNext",
-    tagline: "建立在真实业务流程之上的交互式 MCP 应用。",
+    tagline: "建立在业务流程之上的交互式 MCP 应用。",
     description:
-      "我们不要求访客去想象未来，而是直接展示一个可以检查的工作流：一个由智能体连接的 ERP 界面，背后有可观测的执行路径。",
+      "一个可以检查的工作流：由智能体连接的 ERP 界面，背后有可观测的执行路径。",
     bullets: [
-      "可点击的看板和业务动作，不只是聊天界面截图。",
+      "可点击的看板和业务动作。",
       "在 GitHub 上开源 — 代码、议题和路线图都是公开的。",
-      "这是 Casys 处理业务工作流的一种具体示例。",
+      "Casys 处理业务工作流的一个示例。",
     ],
     stats: [
-      { value: "真实 UI", label: "可点击工作流界面" },
+      { value: "交互式", label: "可点击工作流界面" },
       { value: "可观测", label: "底层执行可见" },
       { value: "公开构建", label: "已经在 GitHub 获得关注" },
     ],
@@ -91,7 +91,7 @@ export const zh: Translations = {
   },
   socialProof: {
     title: "实际成果",
-    subtitle: "用成果说话,不靠承诺",
+    subtitle: "用成果说话",
     items: [
       {
         type: "stat",
@@ -207,66 +207,6 @@ export const zh: Translations = {
       },
     ],
   },
-  whatWeDo: {
-    title: "我们的方法",
-    subtitle: "我们将 AI 集成到真实业务工作流中。不是 POC，是真正运行的系统。",
-    cards: [
-      {
-        id: "consulting",
-        icon: "engineering",
-        title: "AI 工作流集成",
-        subtitle: "从您的系统到可运营的技术栈",
-        description: "我们将您现有的工具（ERP、CRM、业务系统）连接到可观测的 MCP 工作流。架构、部署、加固——直到生产环境。",
-        researchAreas: [
-          {
-            name: "业务集成",
-            description: "ERP、计费系统、内部工具——我们接入已有的一切。",
-          },
-          {
-            name: "MCP 架构",
-            description: "为生产环境设计的服务器、应用与工作流界面。",
-          },
-          {
-            name: "部署与加固",
-            description: "安全审查、压力测试、伴随式上线。",
-          },
-          {
-            name: "持续迭代",
-            description: "部署之后我们依然在。工作流随您的业务一起演进。",
-          },
-        ],
-        philosophy: [
-          { icon: "handshake", text: "直接对接构建者——没有销售层挡在您和代码之间" },
-          { icon: "verified", text: "先有证明，再谈咨询" },
-          { icon: "code", text: "我们交付的一切都基于我们的开源技术栈" },
-        ],
-      },
-      {
-        id: "opensource",
-        icon: "visibility",
-        title: "可观测性与护栏",
-        subtitle: "执行前和执行中",
-        projects: [
-          "端到端追踪每一次调用",
-          "在运行前校验工具边界",
-          "让路由逻辑可见，而不是神秘化",
-        ],
-        highlights: ["更少盲点", "该确定的地方保持确定", "支持自托管"],
-      },
-      {
-        id: "research",
-        icon: "hub",
-        title: "基于轨迹的学习",
-        subtitle: "驱动我们集成的底层技术",
-        services: [
-          "工具路由随着每次执行不断改进",
-          "重复出现的工作流模式被自动捕获",
-          "即使在学习过程中，可观测性依然保持系统可读",
-        ],
-        highlights: ["持续学习", "没有黑箱", "公开构建"],
-      },
-    ],
-  },
   projects: {
     title: "开源技术栈",
     subtitle: "支撑这些工作流的已发布构件。",
@@ -379,10 +319,10 @@ export const zh: Translations = {
         id: "continuity",
         icon: "timeline",
         title: "15+ 年持续发展",
-        description: "不是追逐热潮的 AI 新手",
+        description: "跨技术浪潮持续深耕",
         highlights: [
           "15+ 年的实绩",
-          "深度专长，而非表面热潮",
+          "深度专长，持续累积",
           "每个阶段都建立在前一个之上",
         ],
       },
@@ -401,10 +341,10 @@ export const zh: Translations = {
         id: "practical",
         icon: "rocket_launch",
         title: "务实研究",
-        description: "我们发布解决实际问题的生产系统",
+        description: "发布解决生产问题的系统",
         highlights: [
-          "已发布在 npm 和 JSR 上，不是私有仓库里的代码",
-          "在真实环境中经过检验",
+          "已发布在 npm 和 JSR 上",
+          "在生产环境中经过检验",
           "我们使用自己的工具",
         ],
       },
@@ -445,19 +385,19 @@ export const zh: Translations = {
   },
   faq: {
     title: "常见问题",
-    subtitle: "这个首页真正想表达什么，以及它不想表达什么。",
+    subtitle: "关于 Casys、技术栈和合作方式的常见问题。",
     categories: ["平台", "技术栈", "咨询", "通用"],
     allLabel: "全部",
     faqs: [
       {
         category: "平台",
-        q: "Casys 实际上在做什么？",
-        a: "Casys 是一家 AI 智能体集成商。我们将 AI 智能体连接到您的真实业务系统 — ERP、CRM、内部工具 — 使用可观测的开源技术栈。技术深度在底层的技术栈和学习层中。",
+        q: "Casys 在做什么？",
+        a: "Casys 是一家 AI 智能体集成商。我们将 AI 智能体连接到您的业务系统 — ERP、CRM、内部工具 — 使用可观测的开源技术栈。技术深度在底层的技术栈和学习层中。",
       },
       {
         category: "平台",
         q: "MCP ERPNext 就是产品本身吗？",
-        a: "不是。MCP ERPNext 被放在最前面，是因为它足够具体、可交互、而且能让人快速理解。它展示了 Casys 方法在真实工作流中的样子，但并不代表公司只是在做 ERP 连接器。",
+        a: "不是。MCP ERPNext 被放在最前面，是因为它可交互、而且能让人快速理解。它展示了 Casys 方法在工作流中的样子，但并不代表公司只是在做 ERP 连接器。",
       },
       {
         category: "技术栈",
@@ -472,7 +412,7 @@ export const zh: Translations = {
       {
         category: "技术栈",
         q: "为什么你们一直强调轨迹？",
-        a: "因为轨迹让系统既能调试，也能改进。没有轨迹，团队只有零散感受；有了轨迹，就能检查失败、比较工作流，并学习哪些工具真的相关。",
+        a: "轨迹让系统既能调试，也能改进。有了轨迹，就能检查失败、比较工作流，并学习哪些工具相关。",
       },
       {
         category: "咨询",
@@ -482,17 +422,17 @@ export const zh: Translations = {
       {
         category: "咨询",
         q: "你们只做 ERPNext 吗？",
-        a: "不是。ERPNext 只是一个具体示例。同样的方法适用于其他业务系统、工业工作流、知识密集型流程，以及多工具智能体环境。",
+        a: "ERPNext 是一个示例。同样的方法适用于其他业务系统、工业工作流、知识密集型流程，以及多工具智能体环境。",
       },
       {
         category: "通用",
         q: "Casys 适合谁？",
-        a: "适合 CTO、技术负责人，以及需要真实工作流可靠落地的工程团队，而不是只做一个好看的演示。这通常意味着多工具、多系统，以及对可观测性的明确需求。",
+        a: "CTO、技术负责人，以及需要工作流可靠落地的工程团队。这通常意味着多工具、多系统，以及对可观测性的明确需求。",
       },
       {
         category: "通用",
         q: "你们和一般的 MCP 咨询有什么不同？",
-        a: "我们不只是讲协议。我们发布技术栈，展示具体工作流证明，并构建让这些工作流在生产环境中可理解的可观测层。",
+        a: "我们发布技术栈，展示工作流证明，并构建让这些工作流在生产环境中可理解的可观测层。",
       },
       {
         category: "通用",
@@ -506,21 +446,12 @@ export const zh: Translations = {
       },
     ],
   },
-  interlude: {
-    ariaLabel: "关键数据",
-    quote: "我们不做演示。我们构建自己的 agent 在生产中实际使用的基础设施。",
-    stats: [
-      { value: "508+", label: "MCP 工具" },
-      { value: "15+", label: "年经验" },
-      { value: "100%", label: "开源" },
-    ],
-  },
   mcpErpnextPage: {
     eyebrow: "ERPNext 演示",
-    title: "建立在 ERPNext 之上的具体 MCP 工作流",
+    title: "建立在 ERPNext 之上的 MCP 工作流",
     subtitle: "这是一个清晰示例，展示 Casys 技术栈如何驱动交互式业务工作流。",
     intro:
-      "MCP ERPNext 把真实业务系统变成一个可检查的 MCP 应用界面。因此它是一个很强的演示：足够具体可以展示，足够技术化也有意义。",
+      "MCP ERPNext 把业务系统变成可检查的 MCP 应用界面——可以展示，技术上也有意义。",
     video: {
       src: "/videos/mcp-erpnext-demo.mp4",
       caption: "MCP ERPNext 的短视频演示。",
@@ -528,20 +459,20 @@ export const zh: Translations = {
     proofs: [
       {
         title: "交互式界面",
-        description: "这是可点击的工作流 UI，而不是只靠提示词驱动的假模型。",
+        description: "可点击的工作流 UI，由 MCP 工具驱动。",
       },
       {
         title: "可观测执行",
-        description: "真正重要的不只是界面，而是背后那条可以追踪的执行路径。",
+        description: "每条执行路径端到端可追踪。",
       },
       {
-        title: "连接真实系统",
-        description: "这个工作流直接运行在 ERPNext 上，所以它展示的是真实运营约束，而不是玩具级场景。",
+        title: "连接业务系统",
+        description: "工作流直接运行在 ERPNext 上，展示运营约束下的表现。",
       },
     ],
     whatItShowsTitle: "技术细节",
     whatItShows: [
-      "连接 ERPNext 的实时看板 — 不是模型，是通过 MCP 工具进行的真实 CRUD 操作。",
+      "连接 ERPNext 的实时看板 — 通过 MCP 工具进行 CRUD 操作。",
       "每个工具调用端到端追踪：谁调用了什么，使用了哪些参数，发生了什么。",
       "将 ERPNext 替换为其他 ERP — 代理层和 UI 组件保持不变。",
     ],
@@ -697,17 +628,9 @@ const html = renderComposite(descriptor);`,
   // ========================================
   // SUBSITE: MCP-SERVER
   // ========================================
-  mcpServerHeader: {
-    features: "功能",
-    quickstart: "快速开始",
-    pipeline: "流水线",
-    install: "安装",
-    docs: "文档",
-    workWithUs: "合作咨询",
-  },
   mcpServerHero: {
     tagline: "MCP 的 Hono",
-    heroTitle1: "交付真正可扩展的",
+    heroTitle1: "交付可扩展的",
     heroTitle2: "MCP 服务器",
     heroSubtitle:
       "不再为每个 MCP 服务器重新实现认证、限流和中间件。一个框架，默认可组合，从第一天起即可用于生产。",
@@ -731,13 +654,6 @@ const html = renderComposite(descriptor);`,
   // ========================================
   // SUBSITE: MCP-STD
   // ========================================
-  mcpStdHeader: {
-    categories: "分类",
-    catalog: "目录",
-    quickstart: "快速开始",
-    install: "安装",
-    workWithUs: "合作咨询",
-  },
   mcpStdHero: {
     tagline: "MCP 标准工具箱",
     heroTitle1: "508 个工具。",
@@ -1153,7 +1069,7 @@ const html = renderComposite(descriptor);`,
         icon: "database",
         title: "图数据库",
         description:
-          "建模关系型数据库无法表达的复杂关系。我们设计、部署和优化处理真实生产流量的 Neo4j 实例。",
+          "建模关系型数据库无法表达的复杂关系。我们设计、部署和优化处理生产流量的 Neo4j 实例。",
       },
       {
         icon: "smart_toy",
@@ -1180,13 +1096,13 @@ const html = renderComposite(descriptor);`,
         icon: "science",
         title: "能上线的研究",
         description:
-          "我们发布所学，交付所建。我们推荐的每项技术都经过真实工作负载的验证，而非仅限于基准测试。",
+          "我们发布所学，交付所建。我们推荐的每项技术都经过生产工作负载的验证。",
       },
       {
         icon: "emoji_objects",
         title: "务实，不炒作",
         description:
-          '我们不贩卖"AI 转型"。我们用具体的工程方法解决具体的基础设施问题。让工作成果说话。',
+          '用工程方法解决基础设施问题。让工作成果说话。',
       },
     ],
     ctaTitle: "从一个问题开始",
@@ -1207,14 +1123,6 @@ const html = renderComposite(descriptor);`,
   // ========================================
   // SUBSITE: MCP-BRIDGE
   // ========================================
-  mcpBridgeHeader: {
-    features: "功能",
-    architecture: "架构",
-    quickstart: "快速开始",
-    install: "安装",
-    docs: "文档",
-    workWithUs: "合作咨询",
-  },
   mcpBridgeHero: {
     tagline: "MCP Apps \u2192 消息平台",
     heroTitle1: "MCP Apps 触达",
@@ -1299,7 +1207,7 @@ const html = renderComposite(descriptor);`,
     pageTitle: "生产环境案例",
     heroTitle: "生产环境案例",
     heroSubtitle:
-      "我们为生产环境构建 MCP 基础设施。以下是实际案例——真实的挑战、真实的解决方案、真实的指标。",
+      "我们为生产环境构建 MCP 基础设施。以下是案例——挑战、解决方案、指标。",
     labelChallenge: "挑战",
     labelApproach: "解决方案",
     labelResult: "成果",

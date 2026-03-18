@@ -63,20 +63,20 @@ export const fr: Translations = {
     ],
   },
   featuredDemo: {
-    title: "Voir le concret",
-    subtitle: "Un workflow réel vaut mieux qu'une promesse de plateforme floue.",
+    title: "En action",
+    subtitle: "Un workflow MCP sur un ERP, inspectable de bout en bout.",
     eyebrow: "Démo live",
     name: "MCP ERPNext",
-    tagline: "Une app MCP interactive branchée sur un vrai workflow métier.",
+    tagline: "Une app MCP interactive branchée sur un workflow ERPNext.",
     description:
-      "Au lieu de demander au visiteur d'imaginer le futur, on montre un workflow qu'il peut inspecter: une surface ERP connectée à un agent avec une exécution observable derrière.",
+      "Un workflow ERP connecté à un agent MCP avec une exécution observable. Le visiteur peut inspecter chaque étape.",
     bullets: [
-      "Kanban interactif et actions métier, pas juste une capture de chat.",
+      "Kanban interactif avec actions métier directes.",
       "Open source sur GitHub — code, issues et roadmap sont publics.",
-      "Un exemple concret de l'approche Casys sur des workflows métier.",
+      "L'approche Casys appliquée à un workflow métier.",
     ],
     stats: [
-      { value: "Vraie UI", label: "Surface workflow cliquable" },
+      { value: "UI interactive", label: "Surface workflow cliquable" },
       { value: "Observable", label: "Visibilité sur l'exécution" },
       { value: "Projet public", label: "Déjà suivi sur GitHub" },
     ],
@@ -93,7 +93,7 @@ export const fr: Translations = {
   },
   socialProof: {
     title: "Références",
-    subtitle: "Du concret, pas des promesses",
+    subtitle: "Des preuves vérifiables",
     items: [
       {
         type: "stat",
@@ -228,71 +228,6 @@ export const fr: Translations = {
           url: "#contact",
           icon: "mail",
         },
-      },
-    ],
-  },
-  whatWeDo: {
-    title: "Notre Approche",
-    subtitle:
-      "On intègre l'IA dans des workflows métier réels. Pas des POC, des systèmes qui tournent.",
-    cards: [
-      {
-        id: "consulting",
-        icon: "engineering",
-        title: "Intégration de workflows IA",
-        subtitle: "De vos systèmes à une stack opérationnelle",
-        description:
-          "On connecte vos outils existants (ERP, CRM, métier) à des workflows MCP observables. Architecture, déploiement, durcissement — jusqu'à la production.",
-        researchAreas: [
-          {
-            name: "Intégrations métier",
-            description: "ERP, systèmes de facturation, outils internes — on se branche sur ce qui existe.",
-          },
-          {
-            name: "Architecture MCP",
-            description: "Serveurs, apps et surfaces de workflow conçus pour la production.",
-          },
-          {
-            name: "Déploiement & durcissement",
-            description: "Revue de sécurité, tests de charge, mise en prod accompagnée.",
-          },
-          {
-            name: "Itération continue",
-            description: "On reste après le déploiement. Les workflows évoluent avec votre métier.",
-          },
-        ],
-        philosophy: [
-          {
-            icon: "handshake",
-            text: "Accès direct aux builders — pas de couche commerciale entre vous et le code",
-          },
-          { icon: "verified", text: "Consulting après la preuve, pas avant" },
-          { icon: "code", text: "Tout ce qu'on livre s'appuie sur notre stack open source" },
-        ],
-      },
-      {
-        id: "opensource",
-        icon: "visibility",
-        title: "Observabilité & garde-fous",
-        subtitle: "Avant et pendant l'exécution",
-        projects: [
-          "Tracer chaque appel de bout en bout",
-          "Valider les frontières des outils avant runtime",
-          "Rendre le routage visible au lieu de le rendre magique",
-        ],
-        highlights: ["Moins d'angles morts", "Déterministe quand il faut", "Compatible self-hosted"],
-      },
-      {
-        id: "research",
-        icon: "hub",
-        title: "Apprentissage par les traces",
-        subtitle: "Ce qui tourne sous nos intégrations",
-        services: [
-          "Le routage d'outils s'améliore à chaque exécution",
-          "Les patterns de workflow récurrents sont capturés automatiquement",
-          "L'observabilité garde le système lisible même quand il apprend",
-        ],
-        highlights: ["Apprentissage continu", "Pas de boîte noire", "Construit en public"],
       },
     ],
   },
@@ -436,7 +371,7 @@ export const fr: Translations = {
         id: "continuity",
         icon: "timeline",
         title: "15+ Ans de Continuité",
-        description: "Pas des nouveaux venus qui surfent la vague IA",
+        description: "15+ ans de réalisations vérifiables",
         highlights: [
           "15+ ans de réalisations vérifiables",
           "Expertise de fond, pas d'effet de mode",
@@ -458,10 +393,10 @@ export const fr: Translations = {
         id: "practical",
         icon: "rocket_launch",
         title: "Recherche Pratique",
-        description: "On livre des systèmes en production qui résolvent de vrais problèmes",
+        description: "Des systèmes en production, publiés et versionnés",
         highlights: [
           "Publié sur npm et JSR, pas dans un repo privé",
-          "Éprouvé en conditions réelles",
+          "Éprouvé en production",
           "On utilise nos propres outils",
         ],
       },
@@ -469,17 +404,17 @@ export const fr: Translations = {
         id: "accessible",
         icon: "handshake",
         title: "Accessible par Design",
-        description: "Pas de corporate overhead",
+        description: "Accès direct, tarification transparente",
         highlights: [
           "Tarification transparente",
-          "Pas d'engagements minimums",
+          "Engagement flexible",
           "Accès direct aux builders",
         ],
       },
     ],
     bottomLine: {
       text:
-        "Un petit cabinet avec une expertise profonde en gestion de contexte et systèmes agentiques. On construit de vrais outils, on partage ce qu'on apprend, on accompagne les équipes quand c'est utile.",
+        "Un petit cabinet avec une expertise profonde en gestion de contexte et systèmes agentiques. On construit des outils, on partage ce qu'on apprend, on accompagne les équipes quand c'est utile.",
       cta: {
         primary: {
           text: "Nous Contacter",
@@ -496,7 +431,7 @@ export const fr: Translations = {
   },
   blog: {
     title: "Recherche, architecture et notes de terrain",
-    subtitle: "Ce qu'on apprend en construisant des systèmes IA observables pour workflows réels.",
+    subtitle: "Ce qu'on apprend en construisant des systèmes IA observables pour workflows métier.",
     readMore: "Lire",
     viewAll: "Voir tous les articles",
   },
@@ -509,12 +444,12 @@ export const fr: Translations = {
       {
         category: "Plateforme",
         q: "Casys fait quoi exactement ?",
-        a: "Casys est un intégrateur IA agentic. On connecte des agents IA à vos systèmes métier réels — ERP, CRM, outils internes — avec une stack observable et open source. La profondeur technique vit dans la stack et dans la couche d'apprentissage.",
+        a: "Casys est un intégrateur IA agentic. On connecte des agents IA à vos systèmes métier — ERP, CRM, outils internes — avec une stack observable et open source. La profondeur technique vit dans la stack et dans la couche d'apprentissage.",
       },
       {
         category: "Plateforme",
         q: "MCP ERPNext, c'est le produit ?",
-        a: "Non. MCP ERPNext est la preuve mise en avant parce qu'elle est concrète, interactive, et compréhensible rapidement. Elle montre à quoi ressemble l'approche Casys sur un vrai workflow sans réduire la société à un simple connecteur ERP.",
+        a: "Non. MCP ERPNext est la preuve mise en avant parce qu'elle est interactive et compréhensible rapidement. Elle montre à quoi ressemble l'approche Casys sur un workflow métier sans réduire la société à un simple connecteur ERP.",
       },
       {
         category: "Stack",
@@ -539,17 +474,17 @@ export const fr: Translations = {
       {
         category: "Consulting",
         q: "Vous travaillez uniquement avec ERPNext ?",
-        a: "Non. ERPNext est un exemple concret. La même approche s'applique à d'autres systèmes métier, workflows industriels, opérations riches en connaissances, et environnements agents multi-outils.",
+        a: "Non. ERPNext est un exemple. La même approche s'applique à d'autres systèmes métier, workflows industriels, opérations riches en connaissances, et environnements agents multi-outils.",
       },
       {
         category: "Général",
         q: "Casys s'adresse à qui ?",
-        a: "Aux CTO, tech leads, et équipes d'ingénierie qui ont besoin de workflows réellement fiables, pas seulement impressionnants en démo. En général, ça veut dire plusieurs outils, plusieurs systèmes, et un besoin fort d'observabilité.",
+        a: "Aux CTO, tech leads, et équipes d'ingénierie qui ont besoin de workflows fiables et observables. En général, ça veut dire plusieurs outils, plusieurs systèmes, et un besoin d'observabilité.",
       },
       {
         category: "Général",
         q: "Qu'est-ce qui vous différencie d'un consulting MCP générique ?",
-        a: "On ne parle pas seulement du protocole. On publie la stack, on montre des preuves de workflow concrètes, et on construit la couche d'observabilité qui rend ces workflows compréhensibles en production.",
+        a: "On publie la stack, on montre des preuves de workflow, et on construit la couche d'observabilité qui rend ces workflows compréhensibles en production.",
       },
       {
         category: "Général",
@@ -559,26 +494,17 @@ export const fr: Translations = {
       {
         category: "Général",
         q: "Comment sont structurés vos engagements?",
-        a: "On offre plusieurs options flexibles: workshops focused (1 jour), projets custom (déploiement complet), ou partnerships ongoing (accès direct aux praticiens). Pas d'engagements minimums lourds. On optimise pour vitesse d'itération et accessibilité, pas maximisation des marges. Contactez-nous pour discuter de votre besoin spécifique.",
+        a: "On offre plusieurs options flexibles: workshops focused (1 jour), projets custom (déploiement complet), ou partnerships ongoing (accès direct aux praticiens). Engagements flexibles, optimisés pour la vitesse d'itération. Contactez-nous pour discuter de votre besoin spécifique.",
       },
-    ],
-  },
-  interlude: {
-    ariaLabel: "Chiffres clés",
-    quote: "On ne construit pas des démos. On construit l'infrastructure que nos propres agents utilisent en production.",
-    stats: [
-      { value: "508+", label: "Outils MCP" },
-      { value: "15+", label: "Ans d'expertise" },
-      { value: "100%", label: "Open source" },
     ],
   },
   mcpErpnextPage: {
     eyebrow: "Démo ERPNext",
-    title: "Un workflow MCP concret sur ERPNext",
+    title: "Un workflow MCP sur ERPNext",
     subtitle:
       "Un exemple clair de la manière dont la stack Casys peut piloter un workflow métier interactif.",
     intro:
-      "MCP ERPNext transforme un vrai système métier en surface MCP inspectable. C'est une démo forte: assez concrète pour être montrée, assez technique pour compter.",
+      "MCP ERPNext transforme un système ERPNext en surface MCP inspectable. Technique et démontrable.",
     video: {
       src: "/videos/mcp-erpnext-demo.mp4",
       caption: "Courte vidéo de démonstration de MCP ERPNext.",
@@ -586,20 +512,20 @@ export const fr: Translations = {
     proofs: [
       {
         title: "Surface interactive",
-        description: "Une UI de workflow cliquable au lieu d'une simple maquette pilotée par prompt.",
+        description: "Une UI de workflow cliquable avec actions métier directes.",
       },
       {
         title: "Exécution observable",
         description: "L'intérêt n'est pas seulement l'interface, mais le chemin d'exécution traçable derrière.",
       },
       {
-        title: "Connecté à un vrai système",
-        description: "Le workflow tourne sur ERPNext, donc la démo reflète de vraies contraintes opérationnelles et pas un setup jouet.",
+        title: "Connecté à ERPNext",
+        description: "Le workflow tourne sur ERPNext, donc la démo reflète les contraintes opérationnelles du système.",
       },
     ],
     whatItShowsTitle: "Sous le capot",
     whatItShows: [
-      "Kanban live connecté à ERPNext — pas une maquette, de vraies opérations CRUD via des outils MCP.",
+      "Kanban live connecté à ERPNext — opérations CRUD via des outils MCP.",
       "Chaque appel d'outil tracé de bout en bout : qui a appelé quoi, avec quels paramètres, et ce qui s'est passé.",
       "Remplacez ERPNext par un autre ERP — la couche agent et les composants UI restent les mêmes.",
     ],
@@ -763,7 +689,7 @@ const html = renderComposite(descriptor);`,
   contact: {
     title: "Prêt à brancher l'IA sur votre métier ?",
     subtitle:
-      "Commencez par une preuve concrète, puis choisissez jusqu'où vous voulez aller. Réponse sous 24h.",
+      "Commencez par une preuve, puis choisissez jusqu'où vous voulez aller. Réponse sous 24h.",
     trustBadges: [
       { icon: "check_circle", text: "Stack open source" },
       { icon: "check_circle", text: "Chaque appel tracé" },
@@ -835,14 +761,6 @@ const html = renderComposite(descriptor);`,
   // ========================================
   // SUBSITE: MCP-SERVER
   // ========================================
-  mcpServerHeader: {
-    features: "Fonctionnalites",
-    quickstart: "Demarrage",
-    pipeline: "Pipeline",
-    install: "Installer",
-    docs: "Docs",
-    workWithUs: "Travaillons ensemble",
-  },
   mcpServerHero: {
     tagline: "Le Hono pour MCP",
     heroTitle1: "Livrez des Serveurs MCP",
@@ -870,13 +788,6 @@ const html = renderComposite(descriptor);`,
   // ========================================
   // SUBSITE: MCP-STD
   // ========================================
-  mcpStdHeader: {
-    categories: "Categories",
-    catalog: "Catalogue",
-    quickstart: "Demarrage",
-    install: "Installer",
-    workWithUs: "Travaillons ensemble",
-  },
   mcpStdHero: {
     tagline: "La Boite a Outils MCP",
     heroTitle1: "508 Outils.",
@@ -1085,7 +996,7 @@ const html = renderComposite(descriptor);`,
   },
   engineBenchmarks: {
     title: "Des Chiffres,",
-    titleAccent: "Pas des Promesses",
+    titleAccent: "Mesurables",
     subtitle: "Benchmarke sur 920 noeuds sur 1 165 classes de vocabulaire. Toutes les metriques proviennent de traces de production, 24 notebooks de recherche.",
     cards: [
       {
@@ -1297,7 +1208,7 @@ const html = renderComposite(descriptor);`,
       },
     ],
     evidenceTitle: "Preuves Experimentales",
-    evidenceSubtitle: "24 notebooks, 41 visualisations. De vraies experiences, pas du marketing.",
+    evidenceSubtitle: "24 notebooks, 41 visualisations. Experiences reproductibles.",
     residualCaption: "Balayage des poids residuels : Hit@1 sur differentes configurations residuelles.",
     pcaCaption: "PCA 3 panneaux : embeddings bruts vs message-passing seul vs residuel V\u2192E complet.",
     gammaCaption: "\u03B3(n) adaptatif = \u03C3(a\u00B7log(n+1)+b) apprend des poids residuels par noeud bases sur le fan-out. Contribution originale \u2014 aucun precedent dans la litterature GNN.",
@@ -1314,7 +1225,7 @@ const html = renderComposite(descriptor);`,
       "Nous construisons des syst\u00e8mes qui connectent la connaissance \u00e0 l'action depuis plus de quinze ans \u2014 des premiers chatbots sur mIRC au knowledge management en entreprise, jusqu'aux r\u00e9seaux d'attention sur graphes pour la pertinence des outils. Quand les LLM sont arriv\u00e9s, le probl\u00e8me n'a pas chang\u00e9 : contexte en entr\u00e9e, action en sortie. MCP est l'expression la plus r\u00e9cente de ce principe, et la plus cons\u00e9quente. Casys AI aide les \u00e9quipes techniques \u00e0 livrer des int\u00e9grations IA fiables \u2014 sans d\u00e9pendance fournisseur, sans bo\u00eete noire.",
     expertiseTitle: "Ce que nous faisons",
     expertiseSubtitle:
-      "L'infrastructure qui connecte les syst\u00e8mes IA aux donn\u00e9es, outils et workflows du monde r\u00e9el \u2014 con\u00e7ue pour l'observabilit\u00e9 et le d\u00e9terminisme en production.",
+      "L'infrastructure qui connecte les syst\u00e8mes IA aux donn\u00e9es, outils et workflows m\u00e9tier \u2014 con\u00e7ue pour l'observabilit\u00e9 et le d\u00e9terminisme en production.",
     areas: [
       {
         icon: "hub",
@@ -1326,7 +1237,7 @@ const html = renderComposite(descriptor);`,
         icon: "database",
         title: "Bases de Donn\u00e9es Graphe",
         description:
-          "Mod\u00e9liser les relations complexes que les bases relationnelles ne peuvent pas exprimer. Nous concevons, d\u00e9ployons et optimisons des instances Neo4j en trafic de production r\u00e9el.",
+          "Mod\u00e9liser les relations complexes que les bases relationnelles ne peuvent pas exprimer. Nous concevons, d\u00e9ployons et optimisons des instances Neo4j en production.",
       },
       {
         icon: "smart_toy",
@@ -1353,13 +1264,13 @@ const html = renderComposite(descriptor);`,
         icon: "science",
         title: "Recherche qui livre",
         description:
-          "Nous publions ce que nous apprenons et livrons ce que nous construisons. Chaque technique que nous recommandons a \u00e9t\u00e9 test\u00e9e sur des charges r\u00e9elles, pas seulement sur des benchmarks.",
+          "Nous publions ce que nous apprenons et livrons ce que nous construisons. Chaque technique que nous recommandons a \u00e9t\u00e9 test\u00e9e en production.",
       },
       {
         icon: "emoji_objects",
-        title: "Du Concret, Pas du Buzz",
+        title: "Ing\u00e9nierie, pas marketing",
         description:
-          "Nous ne vendons pas de la \"transformation IA.\" Nous r\u00e9solvons des probl\u00e8mes d'infrastructure sp\u00e9cifiques avec des m\u00e9thodes d'ing\u00e9nierie sp\u00e9cifiques. Le travail parle de lui-m\u00eame.",
+          "Nous r\u00e9solvons des probl\u00e8mes d'infrastructure sp\u00e9cifiques avec des m\u00e9thodes d'ing\u00e9nierie sp\u00e9cifiques. Le travail parle de lui-m\u00eame.",
       },
     ],
     ctaTitle: "Commencez par un probl\u00e8me",
@@ -1380,14 +1291,6 @@ const html = renderComposite(descriptor);`,
   // ========================================
   // SUBSITE: MCP-BRIDGE
   // ========================================
-  mcpBridgeHeader: {
-    features: "Fonctionnalites",
-    architecture: "Architecture",
-    quickstart: "Demarrage",
-    install: "Installer",
-    docs: "Docs",
-    workWithUs: "Travaillons ensemble",
-  },
   mcpBridgeHero: {
     tagline: "MCP Apps \u2192 Plateformes Messagerie",
     heroTitle1: "Vos MCP Apps sur",
@@ -1504,7 +1407,7 @@ const html = renderComposite(descriptor);`,
     pageTitle: "Cas d'Usage en Production",
     heroTitle: "Cas d'Usage en Production",
     heroSubtitle:
-      "On construit de l'infrastructure MCP pour la production. Voici ce que ça donne — des vrais défis, des vraies solutions, des vraies métriques.",
+      "Infrastructure MCP pour la production. Voici ce que ça donne — défis, solutions, métriques.",
     labelChallenge: "Défi",
     labelApproach: "Solution",
     labelResult: "Résultat",

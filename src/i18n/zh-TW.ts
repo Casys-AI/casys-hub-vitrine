@@ -63,19 +63,19 @@ export const zh_TW: Translations = {
   },
   featuredDemo: {
     title: "看實際效果",
-    subtitle: "一個真實工作流，比模糊的平台承諾更有說服力。",
+    subtitle: "一個工作流，比平台承諾更有說服力。",
     eyebrow: "現場示範",
     name: "MCP ERPNext",
-    tagline: "建立在真實業務流程上的互動式 MCP App。",
+    tagline: "建立在業務流程上的互動式 MCP App。",
     description:
-      "我們不要求訪客去想像未來，而是直接展示一個可以檢查的工作流：一個由智慧體連接的 ERP 介面，背後有可觀測的執行路徑。",
+      "一個可以檢查的工作流：由智慧體連接的 ERP 介面，背後有可觀測的執行路徑。",
     bullets: [
-      "可點擊的看板和業務動作，不只是聊天畫面截圖。",
+      "可點擊的看板和業務動作。",
       "在 GitHub 上開源 — 程式碼、議題和路線圖都是公開的。",
-      "這是 Casys 處理業務工作流的一個具體示例。",
+      "Casys 處理業務工作流的一個示例。",
     ],
     stats: [
-      { value: "真實 UI", label: "可點擊工作流介面" },
+      { value: "互動式", label: "可點擊工作流介面" },
       { value: "可觀測", label: "底層執行可見" },
       { value: "公開構建", label: "已經在 GitHub 獲得關注" },
     ],
@@ -91,7 +91,7 @@ export const zh_TW: Translations = {
   },
   socialProof: {
     title: "實際成果",
-    subtitle: "用成果說話，不靠承諾",
+    subtitle: "用成果說話",
     items: [
       {
         type: "stat",
@@ -207,66 +207,6 @@ export const zh_TW: Translations = {
       },
     ],
   },
-  whatWeDo: {
-    title: "我們的方法",
-    subtitle: "我們將 AI 整合到真實業務工作流中。不是 POC，是真正運行的系統。",
-    cards: [
-      {
-        id: "consulting",
-        icon: "engineering",
-        title: "AI 工作流整合",
-        subtitle: "從您的系統到可營運的技術棧",
-        description: "我們將您現有的工具（ERP、CRM、業務系統）連接到可觀測的 MCP 工作流。架構、部署、強化——直到生產環境。",
-        researchAreas: [
-          {
-            name: "業務整合",
-            description: "ERP、帳務系統、內部工具——我們接入已有的一切。",
-          },
-          {
-            name: "MCP 架構",
-            description: "為生產環境設計的伺服器、應用與工作流介面。",
-          },
-          {
-            name: "部署與強化",
-            description: "安全審查、壓力測試、陪伴式上線。",
-          },
-          {
-            name: "持續迭代",
-            description: "部署之後我們依然在。工作流隨您的業務一起演進。",
-          },
-        ],
-        philosophy: [
-          { icon: "handshake", text: "直接對接建造者——沒有銷售層擋在您和程式碼之間" },
-          { icon: "verified", text: "先有證明，再談諮詢" },
-          { icon: "code", text: "我們交付的一切都基於我們的開源技術棧" },
-        ],
-      },
-      {
-        id: "opensource",
-        icon: "visibility",
-        title: "可觀測性與護欄",
-        subtitle: "執行前與執行中",
-        projects: [
-          "端到端追蹤每一次呼叫",
-          "在執行前驗證工具邊界",
-          "讓路由邏輯可見，而不是神秘化",
-        ],
-        highlights: ["更少盲點", "該確定的地方保持確定", "支援自託管"],
-      },
-      {
-        id: "research",
-        icon: "hub",
-        title: "基於軌跡的學習",
-        subtitle: "驅動我們整合的底層技術",
-        services: [
-          "工具路由隨著每次執行不斷改進",
-          "重複出現的工作流模式被自動捕獲",
-          "即使在學習過程中，可觀測性依然保持系統可讀",
-        ],
-        highlights: ["持續學習", "沒有黑箱", "公開建造"],
-      },
-    ],
-  },
   projects: {
     title: "開源技術棧",
     subtitle: "支撐這些工作流的已發佈構件。",
@@ -379,10 +319,10 @@ export const zh_TW: Translations = {
         id: "continuity",
         icon: "timeline",
         title: "15+ 年持續發展",
-        description: "不是追逐熱潮的 AI 新手",
+        description: "跨技術浪潮持續深耕",
         highlights: [
           "15+ 年的實績",
-          "深度專長，而非表面熱潮",
+          "深度專長，持續累積",
           "每個階段都建立在前一個之上",
         ],
       },
@@ -401,10 +341,10 @@ export const zh_TW: Translations = {
         id: "practical",
         icon: "rocket_launch",
         title: "務實研究",
-        description: "我們發布解決實際問題的生產系統",
+        description: "發布解決生產問題的系統",
         highlights: [
-          "已發佈在 npm 和 JSR 上，不是私有倉庫裡的程式碼",
-          "在真實環境中經過檢驗",
+          "已發佈在 npm 和 JSR 上",
+          "在生產環境中經過檢驗",
           "我們使用自己的工具",
         ],
       },
@@ -445,19 +385,19 @@ export const zh_TW: Translations = {
   },
   faq: {
     title: "常見問題",
-    subtitle: "這個首頁真正想表達什麼，以及它不想表達什麼。",
+    subtitle: "關於 Casys、技術棧和合作方式的常見問題。",
     categories: ["平台", "技術棧", "諮詢", "通用"],
     allLabel: "全部",
     faqs: [
       {
         category: "平台",
-        q: "Casys 實際上在做什麼？",
-        a: "Casys 是一家 AI 智慧體整合商。我們將 AI 智慧體連接到您的真實業務系統 — ERP、CRM、內部工具 — 使用可觀測的開源技術棧。技術深度在底層的技術棧與學習層中。",
+        q: "Casys 在做什麼？",
+        a: "Casys 是一家 AI 智慧體整合商。我們將 AI 智慧體連接到您的業務系統 — ERP、CRM、內部工具 — 使用可觀測的開源技術棧。技術深度在底層的技術棧與學習層中。",
       },
       {
         category: "平台",
         q: "MCP ERPNext 就是產品本身嗎？",
-        a: "不是。MCP ERPNext 被放在最前面，是因為它夠具體、可互動，而且能讓人快速理解。它展示了 Casys 方法在真實工作流中的樣子，但不代表公司只是在做 ERP 連接器。",
+        a: "不是。MCP ERPNext 被放在最前面，是因為它可互動，而且能讓人快速理解。它展示了 Casys 方法在工作流中的樣子，但不代表公司只是在做 ERP 連接器。",
       },
       {
         category: "技術棧",
@@ -472,7 +412,7 @@ export const zh_TW: Translations = {
       {
         category: "技術棧",
         q: "為什麼你們一直強調軌跡？",
-        a: "因為軌跡讓系統既能除錯，也能改善。沒有軌跡，團隊只剩零散感受；有了軌跡，就能檢查失敗、比較工作流，並學習哪些工具真的相關。",
+        a: "軌跡讓系統既能除錯，也能改善。有了軌跡，就能檢查失敗、比較工作流，並學習哪些工具相關。",
       },
       {
         category: "諮詢",
@@ -482,17 +422,17 @@ export const zh_TW: Translations = {
       {
         category: "諮詢",
         q: "你們只做 ERPNext 嗎？",
-        a: "不是。ERPNext 只是具體示例。同樣的方法也適用於其他業務系統、工業工作流、知識密集型流程，以及多工具智慧體環境。",
+        a: "ERPNext 是一個示例。同樣的方法也適用於其他業務系統、工業工作流、知識密集型流程，以及多工具智慧體環境。",
       },
       {
         category: "通用",
         q: "Casys 適合誰？",
-        a: "適合 CTO、技術負責人，以及需要真實工作流可靠落地的工程團隊，而不是只做一個好看的示範。這通常意味著多工具、多系統，以及對可觀測性的明確需求。",
+        a: "CTO、技術負責人，以及需要工作流可靠落地的工程團隊。這通常意味著多工具、多系統，以及對可觀測性的明確需求。",
       },
       {
         category: "通用",
         q: "你們和一般的 MCP 顧問有什麼不同？",
-        a: "我們不只是談協議。我們發佈技術棧、展示具體工作流證明，並打造讓這些工作流在生產環境中可理解的可觀測層。",
+        a: "我們發佈技術棧、展示工作流證明，並打造讓這些工作流在生產環境中可理解的可觀測層。",
       },
       {
         category: "通用",
@@ -506,21 +446,12 @@ export const zh_TW: Translations = {
       },
     ],
   },
-  interlude: {
-    ariaLabel: "關鍵數據",
-    quote: "我們不做示範。我們打造自己的 agent 在生產環境中實際使用的基礎設施。",
-    stats: [
-      { value: "508+", label: "MCP 工具" },
-      { value: "15+", label: "年經驗" },
-      { value: "100%", label: "開源" },
-    ],
-  },
   mcpErpnextPage: {
     eyebrow: "ERPNext 示範",
-    title: "建立在 ERPNext 之上的具體 MCP 工作流",
+    title: "建立在 ERPNext 之上的 MCP 工作流",
     subtitle: "這是一個清楚示例，展示 Casys 技術棧如何驅動互動式業務工作流。",
     intro:
-      "MCP ERPNext 把真實業務系統變成可檢查的 MCP App 介面。因此它是一個很強的示範：夠具體可以展示，夠技術化也有意義。",
+      "MCP ERPNext 把業務系統變成可檢查的 MCP App 介面——可以展示，技術上也有意義。",
     video: {
       src: "/videos/mcp-erpnext-demo.mp4",
       caption: "MCP ERPNext 的短影片示範。",
@@ -528,20 +459,20 @@ export const zh_TW: Translations = {
     proofs: [
       {
         title: "互動式介面",
-        description: "這是可點擊的工作流 UI，而不是只靠提示詞驅動的模型樣板。",
+        description: "可點擊的工作流 UI，由 MCP 工具驅動。",
       },
       {
         title: "可觀測執行",
-        description: "真正重要的不只是介面，而是背後那條可追蹤的執行路徑。",
+        description: "每條執行路徑端到端可追蹤。",
       },
       {
-        title: "連接真實系統",
-        description: "這個工作流直接運行在 ERPNext 上，所以它展示的是真實營運約束，而不是玩具級場景。",
+        title: "連接業務系統",
+        description: "工作流直接運行在 ERPNext 上，展示營運約束下的表現。",
       },
     ],
     whatItShowsTitle: "技術細節",
     whatItShows: [
-      "連接 ERPNext 的即時看板 — 不是模型，是透過 MCP 工具進行的真實 CRUD 操作。",
+      "連接 ERPNext 的即時看板 — 透過 MCP 工具進行 CRUD 操作。",
       "每個工具調用端到端追蹤：誰調用了什麼，使用了哪些參數，發生了什麼。",
       "將 ERPNext 替換為其他 ERP — 代理層和 UI 元件保持不變。",
     ],
@@ -697,17 +628,9 @@ const html = renderComposite(descriptor);`,
   // ========================================
   // SUBSITE: MCP-SERVER
   // ========================================
-  mcpServerHeader: {
-    features: "功能",
-    quickstart: "快速開始",
-    pipeline: "管線",
-    install: "安裝",
-    docs: "文件",
-    workWithUs: "合作諮詢",
-  },
   mcpServerHero: {
     tagline: "MCP 的 Hono",
-    heroTitle1: "交付真正可擴展的",
+    heroTitle1: "交付可擴展的",
     heroTitle2: "MCP 伺服器",
     heroSubtitle:
       "不再為每個 MCP 伺服器重新實作認證、限流和中介軟體。一個框架，預設可組合，從第一天起即可用於生產。",
@@ -731,13 +654,6 @@ const html = renderComposite(descriptor);`,
   // ========================================
   // SUBSITE: MCP-STD
   // ========================================
-  mcpStdHeader: {
-    categories: "分類",
-    catalog: "目錄",
-    quickstart: "快速開始",
-    install: "安裝",
-    workWithUs: "合作諮詢",
-  },
   mcpStdHero: {
     tagline: "MCP 標準工具箱",
     heroTitle1: "508 個工具。",
@@ -1153,7 +1069,7 @@ const html = renderComposite(descriptor);`,
         icon: "database",
         title: "圖資料庫",
         description:
-          "建模關聯式資料庫無法表達的複雜關係。我們設計、部署和最佳化處理真實生產流量的 Neo4j 實例。",
+          "建模關聯式資料庫無法表達的複雜關係。我們設計、部署和最佳化處理生產流量的 Neo4j 實例。",
       },
       {
         icon: "smart_toy",
@@ -1180,13 +1096,13 @@ const html = renderComposite(descriptor);`,
         icon: "science",
         title: "能上線的研究",
         description:
-          "我們發布所學，交付所建。我們推薦的每項技術都經過真實工作負載的驗證，而非僅限於基準測試。",
+          "我們發布所學，交付所建。我們推薦的每項技術都經過生產工作負載的驗證。",
       },
       {
         icon: "emoji_objects",
         title: "務實，不炒作",
         description:
-          '我們不販賣「AI 轉型」。我們用具體的工程方法解決具體的基礎設施問題。讓工作成果說話。',
+          '用工程方法解決基礎設施問題。讓工作成果說話。',
       },
     ],
     ctaTitle: "從一個問題開始",
@@ -1207,14 +1123,6 @@ const html = renderComposite(descriptor);`,
   // ========================================
   // SUBSITE: MCP-BRIDGE
   // ========================================
-  mcpBridgeHeader: {
-    features: "功能",
-    architecture: "架構",
-    quickstart: "快速開始",
-    install: "安裝",
-    docs: "文件",
-    workWithUs: "合作諮詢",
-  },
   mcpBridgeHero: {
     tagline: "MCP Apps \u2192 訊息平台",
     heroTitle1: "MCP Apps 觸及",
@@ -1299,7 +1207,7 @@ const html = renderComposite(descriptor);`,
     pageTitle: "生產環境案例",
     heroTitle: "生產環境案例",
     heroSubtitle:
-      "我們為生產環境建構 MCP 基礎設施。以下是實際案例——真實的挑戰、真實的解決方案、真實的指標。",
+      "我們為生產環境建構 MCP 基礎設施。以下是案例——挑戰、解決方案、指標。",
     labelChallenge: "挑戰",
     labelApproach: "解決方案",
     labelResult: "成果",

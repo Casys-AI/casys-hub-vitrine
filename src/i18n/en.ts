@@ -54,7 +54,7 @@ export const en = {
       secondary: { text: "Talk to us", icon: "mail", url: "#contact" },
     },
     proofs: [
-      { name: "5 use cases", stat: "Live demos, real workflows", url: "#use-cases-preview", icon: "web_asset" },
+      { name: "5 use cases", stat: "Live demos, production workflows", url: "#use-cases-preview", icon: "web_asset" },
       { name: "Open source", stat: "Code, issues, roadmap public", url: "https://github.com/Casys-AI", icon: "code" },
       { name: "15+ years", stat: "KM → Graphs → AI Agents", url: "#why-casys", icon: "timeline" },
       { name: "Published packages", stat: "npm + JSR, versioned", url: "https://jsr.io/@casys", icon: "package_2" },
@@ -62,19 +62,19 @@ export const en = {
   },
   featuredDemo: {
     title: "See It In Action",
-    subtitle: "One concrete workflow is worth more than a vague platform claim.",
+    subtitle: "One workflow is worth more than a platform claim.",
     eyebrow: "Live demo",
     name: "MCP ERPNext",
-    tagline: "An interactive MCP app on top of a real business workflow.",
+    tagline: "An interactive MCP app on top of a business workflow.",
     description:
       "Instead of asking visitors to imagine the future, show a workflow they can inspect: an agent-connected ERP surface with observable execution behind it.",
     bullets: [
-      "Interactive kanban and business actions, not just a chat screenshot.",
+      "Interactive kanban with business actions.",
       "Open source on GitHub — code, issues, and roadmap are public.",
-      "A concrete example of the Casys approach to business workflows.",
+      "The Casys approach applied to a business workflow.",
     ],
     stats: [
-      { value: "Real UI", label: "Clickable workflow surface" },
+      { value: "Live UI", label: "Clickable workflow surface" },
       { value: "Observable", label: "Execution visibility underneath" },
       { value: "Built public", label: "Early GitHub traction" },
     ],
@@ -91,7 +91,7 @@ export const en = {
   },
   socialProof: {
     title: "Track Record",
-    subtitle: "Proof of work, not promises",
+    subtitle: "Verified track record",
     items: [
       {
         type: "stat",
@@ -225,71 +225,6 @@ export const en = {
           url: "#contact",
           icon: "mail",
         },
-      },
-    ],
-  },
-  whatWeDo: {
-    title: "Our Approach",
-    subtitle:
-      "We integrate AI into real business workflows. Not POCs — systems that run in production.",
-    cards: [
-      {
-        id: "consulting",
-        icon: "engineering",
-        title: "AI Workflow Integration",
-        subtitle: "From your systems to an operational stack",
-        description:
-          "We connect your existing tools (ERP, CRM, line-of-business) to observable MCP workflows. Architecture, deployment, hardening — all the way to production.",
-        researchAreas: [
-          {
-            name: "Business integrations",
-            description: "ERP, billing systems, internal tools — we plug into what already exists.",
-          },
-          {
-            name: "MCP architecture",
-            description: "Servers, apps, and workflow surfaces designed for production.",
-          },
-          {
-            name: "Deployment & hardening",
-            description: "Security review, load testing, guided production rollout.",
-          },
-          {
-            name: "Continuous iteration",
-            description: "We stay after deployment. Workflows evolve with your business.",
-          },
-        ],
-        philosophy: [
-          {
-            icon: "handshake",
-            text: "Direct builder access — no sales layer between you and the code",
-          },
-          { icon: "verified", text: "Consulting after the proof, not before" },
-          { icon: "code", text: "Everything we ship is built on our open-source stack" },
-        ],
-      },
-      {
-        id: "opensource",
-        icon: "visibility",
-        title: "Observability & Guardrails",
-        subtitle: "Before and during execution",
-        projects: [
-          "Trace every call end-to-end",
-          "Validate tool boundaries before runtime",
-          "Keep routing visible instead of magical",
-        ],
-        highlights: ["Fewer blind spots", "Deterministic where it matters", "Self-hosted friendly"],
-      },
-      {
-        id: "research",
-        icon: "hub",
-        title: "Trace-Based Learning",
-        subtitle: "What powers our integrations under the hood",
-        services: [
-          "Tool routing improves with every execution",
-          "Recurring workflow patterns are captured automatically",
-          "Observability keeps the system legible even as it learns",
-        ],
-        highlights: ["Continuous learning", "No black box", "Built in public"],
       },
     ],
   },
@@ -433,10 +368,10 @@ export const en = {
         id: "continuity",
         icon: "timeline",
         title: "15+ Years Continuity",
-        description: "Not AI newcomers riding the hype wave",
+        description: "Building context systems since 2013",
         highlights: [
           "15+ years track record",
-          "Deep expertise, not surface-level hype",
+          "Deep expertise across each phase",
           "Each phase builds on the last",
         ],
       },
@@ -455,10 +390,10 @@ export const en = {
         id: "practical",
         icon: "rocket_launch",
         title: "Practical Research",
-        description: "We ship production systems that solve real problems",
+        description: "We ship production systems that solve business problems",
         highlights: [
-          "Published on npm and JSR, not sitting in a private repo",
-          "Battle-tested in real environments",
+          "Published on npm and JSR",
+          "Battle-tested in production environments",
           "We use our own tools",
         ],
       },
@@ -476,7 +411,7 @@ export const en = {
     ],
     bottomLine: {
       text:
-        "A small firm with deep expertise across context management and agentic systems. We build real tools, share what we learn, and help teams when needed.",
+        "A small firm with deep expertise across context management and agentic systems. We build tools, share what we learn, and help teams when needed.",
       cta: {
         primary: {
           text: "Get in Touch",
@@ -499,19 +434,19 @@ export const en = {
   },
   faq: {
     title: "Frequently Asked Questions",
-    subtitle: "What the home page is actually claiming, and what it is not.",
+    subtitle: "Common questions about Casys, the stack, and consulting.",
     categories: ["Platform", "Stack", "Consulting", "General"],
     allLabel: "All",
     faqs: [
       {
         category: "Platform",
-        q: "What does Casys actually do?",
-        a: "Casys is an agentic AI integrator. We connect AI agents to your real business systems — ERP, CRM, internal tools — with an observable, open-source stack. The technical depth lives in the stack and the learning layer underneath.",
+        q: "What does Casys do?",
+        a: "Casys is an agentic AI integrator. We connect AI agents to your business systems — ERP, CRM, internal tools — with an observable, open-source stack. The technical depth lives in the stack and the learning layer underneath.",
       },
       {
         category: "Platform",
         q: "Is MCP ERPNext the product?",
-        a: "No. MCP ERPNext is the featured proof because it is concrete, interactive, and easy to understand quickly. It shows what the Casys approach looks like on a real workflow without pretending the whole company is an ERP connector.",
+        a: "No. MCP ERPNext is the featured proof because it is interactive and easy to understand quickly. It shows what the Casys approach looks like on a production workflow without pretending the whole company is an ERP connector.",
       },
       {
         category: "Stack",
@@ -526,27 +461,27 @@ export const en = {
       {
         category: "Stack",
         q: "Why do traces matter so much?",
-        a: "Trace data is what makes the system debuggable and improvable. Without traces, teams are left with anecdotes. With traces, you can inspect failures, compare workflows, and learn which tools are actually relevant.",
+        a: "Trace data is what makes the system debuggable and improvable. Without traces, teams are left with anecdotes. With traces, you can inspect failures, compare workflows, and learn which tools are relevant.",
       },
       {
         category: "Consulting",
         q: "When does consulting make sense?",
-        a: "After the proof is clear and you want the same rigor on your own workflows. Typical work includes architecture review, integration design, deployment hardening, and hands-on implementation help.",
+        a: "When you want the same rigor on your own workflows. Typical work includes architecture review, integration design, deployment hardening, and hands-on implementation help.",
       },
       {
         category: "Consulting",
         q: "Do you only work with ERPNext?",
-        a: "No. ERPNext is one concrete example. The same approach applies to other business systems, industrial workflows, knowledge-heavy operations, and multi-tool agent environments.",
+        a: "No. ERPNext is one example. The same approach applies to other business systems, industrial workflows, knowledge-heavy operations, and multi-tool agent environments.",
       },
       {
         category: "General",
         q: "Who is Casys for?",
-        a: "CTOs, tech leads, and engineering teams that need real workflows to be trustworthy, not just impressive in a demo. That usually means complex tools, multiple systems, and a need for observability.",
+        a: "CTOs, tech leads, and engineering teams that need workflows to be trustworthy and observable. That usually means complex tools, multiple systems, and a need for traceability.",
       },
       {
         category: "General",
         q: "What makes Casys different from generic MCP consulting?",
-        a: "We do not just talk about the protocol. We publish the stack, show concrete workflow proofs, and build the observability layer that makes those workflows understandable in production.",
+        a: "We publish the stack, show workflow proofs, and build the observability layer that makes those workflows understandable in production.",
       },
       {
         category: "General",
@@ -560,22 +495,13 @@ export const en = {
       },
     ],
   },
-  interlude: {
-    ariaLabel: "Key figures",
-    quote: "We don't build demos. We build the infrastructure our own agents use in production.",
-    stats: [
-      { value: "508+", label: "MCP Tools" },
-      { value: "15+", label: "Years of expertise" },
-      { value: "100%", label: "Open source" },
-    ],
-  },
   mcpErpnextPage: {
     eyebrow: "ERPNext demo",
-    title: "A concrete MCP workflow on top of ERPNext",
+    title: "MCP workflow on ERPNext",
     subtitle:
       "A clear example of how the Casys stack can drive an interactive business workflow.",
     intro:
-      "MCP ERPNext turns a real line-of-business system into an inspectable MCP app surface. That makes it a strong demo: concrete enough to show, technical enough to matter.",
+      "MCP ERPNext turns a line-of-business system into an inspectable MCP app surface. Interactive enough to explore, technical enough to evaluate.",
     video: {
       src: "/videos/mcp-erpnext-demo.mp4",
       caption: "Short demo video of MCP ERPNext.",
@@ -590,13 +516,13 @@ export const en = {
         description: "The interesting part is not only the UI, but the traceable execution path behind it.",
       },
       {
-        title: "Connected to a real system",
-        description: "The workflow runs on top of ERPNext, so the demo reflects real operational constraints instead of a toy setup.",
+        title: "Connected to ERPNext",
+        description: "The workflow runs on top of ERPNext, so the demo reflects operational constraints of a production ERP.",
       },
     ],
     whatItShowsTitle: "Under the hood",
     whatItShows: [
-      "Live Kanban connected to ERPNext — not a mockup, real CRUD operations via MCP tools.",
+      "Live Kanban connected to ERPNext — CRUD operations via MCP tools.",
       "Every tool call traced end-to-end: who called what, with which parameters, and what happened.",
       "Swap ERPNext for another ERP — the agent layer and UI components stay the same.",
     ],
@@ -760,7 +686,7 @@ const html = renderComposite(descriptor);`,
   contact: {
     title: "Ready to wire AI into your business?",
     subtitle:
-      "Start with a concrete proof, then decide how deep you want to go. 24h response time.",
+      "Start with a proof of concept, then decide how deep you want to go. 24h response time.",
     trustBadges: [
       { icon: "check_circle", text: "Open-source stack" },
       { icon: "check_circle", text: "Trace every call" },
@@ -832,18 +758,10 @@ const html = renderComposite(descriptor);`,
   // ========================================
   // SUBSITE: MCP-SERVER
   // ========================================
-  mcpServerHeader: {
-    features: "Features",
-    quickstart: "Quick Start",
-    pipeline: "Pipeline",
-    install: "Install",
-    docs: "Docs",
-    workWithUs: "Work With Us",
-  },
   mcpServerHero: {
     tagline: "The Hono for MCP",
     heroTitle1: "Ship MCP Servers",
-    heroTitle2: "That Actually Scale",
+    heroTitle2: "That Scale",
     heroSubtitle:
       "Stop reinventing auth, rate limiting, and middleware for every MCP server. One framework, composable by default, production-ready from day one.",
     statFeatures: "Built-in features",
@@ -867,13 +785,6 @@ const html = renderComposite(descriptor);`,
   // ========================================
   // SUBSITE: MCP-STD
   // ========================================
-  mcpStdHeader: {
-    categories: "Categories",
-    catalog: "Catalog",
-    quickstart: "Quick Start",
-    install: "Install",
-    workWithUs: "Work With Us",
-  },
   mcpStdHero: {
     tagline: "The MCP Standard Toolbox",
     heroTitle1: "508 Tools.",
@@ -1080,7 +991,7 @@ const html = renderComposite(descriptor);`,
   },
   engineBenchmarks: {
     title: "Numbers,",
-    titleAccent: "Not Promises",
+    titleAccent: "Verified",
     subtitle: "Benchmarked on 920 nodes across 1,165 vocabulary classes. All metrics from production traces, 24 notebooks of research.",
     cards: [
       {
@@ -1259,7 +1170,7 @@ const html = renderComposite(descriptor);`,
     titleLine1: "SuperHyperGraph",
     titleLine2: "Attention Networks",
     description:
-      "Why a hypergraph? Regular graphs model pairwise relations (tool A calls tool B). Hypergraphs model N-to-N: one composite groups multiple leaves, one leaf belongs to multiple composites. This captures the real structure of agentic tool ecosystems.",
+      "Why a hypergraph? Regular graphs model pairwise relations (tool A calls tool B). Hypergraphs model N-to-N: one composite groups multiple leaves, one leaf belongs to multiple composites. This captures the structure of agentic tool ecosystems.",
     features: [
       {
         icon: "hub",
@@ -1287,7 +1198,7 @@ const html = renderComposite(descriptor);`,
       },
     ],
     evidenceTitle: "Research Evidence",
-    evidenceSubtitle: "24 notebooks, 41 visualizations. Real experiments, not marketing.",
+    evidenceSubtitle: "24 notebooks, 41 visualizations. Full experiment logs.",
     residualCaption: "Residual weight sweep: Hit@1 across different residual configurations.",
     pcaCaption: "PCA 3-panel: raw embeddings vs message-passing-only vs full V\u2192E residual.",
     gammaCaption: "Adaptive \u03B3(n) = \u03C3(a\u00B7log(n+1)+b) learns per-node residual weights based on fan-out. Novel contribution \u2014 no precedent in GNN literature.",
@@ -1304,7 +1215,7 @@ const html = renderComposite(descriptor);`,
       "We have been building systems that connect knowledge to action for over fifteen years \u2014 from early chatbots on mIRC, to enterprise knowledge management, to graph attention networks for tool relevance. When LLMs arrived, the problem didn't change: context in, action out. MCP is the latest expression of that principle, and the most consequential. Casys AI helps engineering teams ship reliable AI integrations \u2014 no vendor lock-in, no black boxes.",
     expertiseTitle: "What We Do",
     expertiseSubtitle:
-      "Infrastructure that connects AI systems to real-world data, tools, and workflows \u2014 built for production observability and determinism.",
+      "Infrastructure that connects AI systems to data, tools, and workflows \u2014 built for production observability and determinism.",
     areas: [
       {
         icon: "hub",
@@ -1316,7 +1227,7 @@ const html = renderComposite(descriptor);`,
         icon: "database",
         title: "Graph Databases",
         description:
-          "Modeling complex relationships that relational databases cannot express. We design, deploy, and optimize Neo4j instances handling real production traffic.",
+          "Modeling complex relationships that relational databases cannot express. We design, deploy, and optimize Neo4j instances handling production traffic.",
       },
       {
         icon: "smart_toy",
@@ -1343,7 +1254,7 @@ const html = renderComposite(descriptor);`,
         icon: "science",
         title: "Research That Ships",
         description:
-          "We publish what we learn and ship what we build. Every technique we recommend has been tested against real workloads, not just benchmarks.",
+          "We publish what we learn and ship what we build. Every technique we recommend has been tested against production workloads.",
       },
       {
         icon: "emoji_objects",
@@ -1370,14 +1281,6 @@ const html = renderComposite(descriptor);`,
   // ========================================
   // SUBSITE: MCP-BRIDGE
   // ========================================
-  mcpBridgeHeader: {
-    features: "Features",
-    architecture: "Architecture",
-    quickstart: "Quick Start",
-    install: "Install",
-    docs: "Docs",
-    workWithUs: "Work With Us",
-  },
   mcpBridgeHero: {
     tagline: "MCP Apps \u2192 Messaging Platforms",
     heroTitle1: "MCP Apps Meet",
@@ -1494,7 +1397,7 @@ const html = renderComposite(descriptor);`,
     pageTitle: "Production Use Cases",
     heroTitle: "Production Use Cases",
     heroSubtitle:
-      "We build MCP infrastructure for production. Here's what that looks like — real challenges, real solutions, real metrics.",
+      "We build MCP infrastructure for production. Here's what that looks like.",
     labelChallenge: "Challenge",
     labelApproach: "Solution",
     labelResult: "Result",
