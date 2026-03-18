@@ -26,6 +26,8 @@ const t = useTranslations(locale).contact;
       class="contact-form"
       action="https://formspree.io/f/movnynen"
       method="POST"
+      data-msg-success={t.successMessage}
+      data-msg-error={t.errorMessage}
     >
       <div class="form-grid">
         <div class="form-group">
@@ -422,7 +424,6 @@ const t = useTranslations(locale).contact;
     submitBtn.classList.add('loading');
 
     contactFeedback.classList.remove('visible', 'success', 'error');
-    const lang = document.documentElement.lang;
 
     try {
       const response = await fetch('https://formspree.io/f/movnynen', {
@@ -441,11 +442,7 @@ const t = useTranslations(locale).contact;
       }
 
       // Success
-      contactFeedback.textContent = lang === 'fr'
-        ? 'Message envoyé ! Nous vous répondrons rapidement.'
-        : lang === 'zh'
-        ? '消息已发送！我们会尽快回复。'
-        : 'Message sent! We\'ll reply soon.';
+      contactFeedback.textContent = contactForm.dataset.msgSuccess || 'Message sent!';
       contactFeedback.classList.add('visible', 'success');
 
       // Reset form
@@ -458,11 +455,7 @@ const t = useTranslations(locale).contact;
 
     } catch (error) {
       // Error
-      contactFeedback.textContent = lang === 'fr'
-        ? 'Erreur lors de l\'envoi. Veuillez réessayer.'
-        : lang === 'zh'
-        ? '发送失败，请重试。'
-        : 'Error sending message. Please try again.';
+      contactFeedback.textContent = contactForm.dataset.msgError || 'Error sending message.';
       contactFeedback.classList.add('visible', 'error');
 
       setTimeout(() => {

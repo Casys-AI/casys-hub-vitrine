@@ -7,50 +7,65 @@
  * For other pages, emits all locales (assumes all static pages exist).
  */
 import { getCollection } from 'astro:content';
-import { buildPublicUrl } from '../lib/public-url';
+import { buildPublicUrl, LOCALES, type Locale } from '../lib/public-url';
 
 export interface Props {
   siteUrl?: string;
 }
 
 const { siteUrl } = Astro.props;
-const LOCALES = ['en', 'fr', 'zh', 'zh-TW'] as const;
+const BLOG_SLUG_GROUPS: Array<Record<Locale, string>> = [
+  {
+    en: 'mcp-gateway-guide',
+    fr: 'guide-mcp-gateway',
+    zh: 'mcp-gateway-guide',
+    'zh-TW': 'mcp-gateway-guide',
+  },
+  {
+    en: 'mcp-server-guide',
+    fr: 'serveur-mcp-production-guide',
+    zh: 'mcp-server-guide',
+    'zh-TW': 'mcp-server-guide',
+  },
+];
 
 const pathname = Astro.url.pathname;
 
-function getBasePath(path: string): string {
-  for (const prefix of ['/fr', '/zh-TW', '/zh']) {
-    if (path === prefix || path === `${prefix}/`) {
-      return '/';
-    }
-    if (path.startsWith(`${prefix}/`)) {
-      return path.slice(prefix.length);
-    }
-  }
-  return path;
+function getBlogSlugGroup(slug: string): Record<Locale, string> | undefined {
+  return BLOG_SLUG_GROUPS.find((group) => Object.values(group).includes(slug));
 }
 
-const basePath = getBasePath(pathname);
+// Strip locale prefix to get the base path
+const localeStripped = pathname.replace(/^\/(fr|zh-TW|zh)(\/|$)/, '/');
+const basePath = localeStripped === '' ? '/' : localeStripped;
 
 // For blog pages: only declare alternates for locales that have this slug
 const blogMatch = basePath.match(/^\/blog\/(.+?)\/?\s*$/);
-let activeLocales: readonly string[] = LOCALES;
+let activeLocales: readonly Locale[] = LOCALES;
+let blogPathForLocale = (locale: Locale) => `/blog/${blogMatch?.[1] ?? ''}`;
 
 if (blogMatch) {
   const slug = blogMatch[1];
+  const slugGroup = getBlogSlugGroup(slug);
   const allBlogPosts = await getCollection('blog', ({ data }) => !data.draft);
   const existingLocales = LOCALES.filter((locale) => {
+    const localizedSlug = slugGroup?.[locale] ?? slug;
     const prefix = locale === 'en' ? 'en' : locale;
-    return allBlogPosts.some((post) => post.id === `${prefix}/${slug}.mdx` || post.id === `${prefix}/${slug}.md`);
+    return allBlogPosts.some((post) => post.id === `${prefix}/${localizedSlug}.mdx` || post.id === `${prefix}/${localizedSlug}.md`);
   });
   activeLocales = existingLocales.length > 0 ? existingLocales : LOCALES;
+  blogPathForLocale = (locale: Locale) => `/blog/${slugGroup?.[locale] ?? slug}`;
 }
 ---
 
 {activeLocales.map((locale) => (
-  <link rel="alternate" hreflang={locale} href={buildPublicUrl(pathname, locale, siteUrl)} />
+  <link
+    rel="alternate"
+    hreflang={locale}
+    href={buildPublicUrl(blogMatch ? blogPathForLocale(locale) : pathname, locale, siteUrl)}
+  />
 ))}
 {activeLocales.includes('en')
-  ? <link rel="alternate" hreflang="x-default" href={buildPublicUrl(pathname, 'en', siteUrl)} />
-  : <link rel="alternate" hreflang="x-default" href={buildPublicUrl(pathname, activeLocales[0], siteUrl)} />
+  ? <link rel="alternate" hreflang="x-default" href={buildPublicUrl(blogMatch ? blogPathForLocale('en') : pathname, 'en', siteUrl)} />
+  : <link rel="alternate" hreflang="x-default" href={buildPublicUrl(blogMatch ? blogPathForLocale(activeLocales[0]) : pathname, activeLocales[0], siteUrl)} />
 }
