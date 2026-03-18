@@ -45,6 +45,7 @@ const ogSuffix = locale === 'en' ? '' : `-${locale}`;
               class="case-image og-thumbnail"
             />
             <span class="case-overlay">
+              <h3 class="case-title">{uc.title[locale] || uc.title.en}</h3>
               <span class="read-link">
                 {locale === 'fr' ? 'Lire le cas' : locale === 'zh' ? '阅读案例' : locale === 'zh-TW' ? '閱讀案例' : 'Read case study'}
                 <span class="material-symbols-rounded arrow-icon">arrow_forward</span>
@@ -247,10 +248,22 @@ const ogSuffix = locale === 'en' ? '' : `-${locale}`;
     bottom: 0;
     left: 0;
     right: 0;
-    padding: 16px 22px;
-    background: linear-gradient(to top, rgba(250, 249, 246, 0.95) 0%, transparent 100%);
+    padding: 20px 24px;
+    background: linear-gradient(to top, rgba(250, 249, 246, 0.97) 0%, rgba(250, 249, 246, 0.8) 60%, transparent 100%);
     display: flex;
-    justify-content: flex-end;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .case-title {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--md-sys-color-on-surface);
+    margin: 0;
+    letter-spacing: -0.02em;
+    line-height: 1.3;
   }
 
   .case-card:hover:not(.placeholder-card) {
@@ -492,7 +505,11 @@ const ogSuffix = locale === 'en' ? '' : `-${locale}`;
   }
 
   :global(html[data-theme="dark"]) .case-overlay {
-    background: linear-gradient(to top, rgba(10, 9, 8, 0.95) 0%, transparent 100%);
+    background: linear-gradient(to top, rgba(10, 9, 8, 0.97) 0%, rgba(10, 9, 8, 0.8) 60%, transparent 100%);
+  }
+
+  :global(html[data-theme="dark"]) .case-title {
+    color: var(--casys-warm-text-primary);
   }
 
   :global(html[data-theme="dark"]) .case-card:hover:not(.placeholder-card) {
