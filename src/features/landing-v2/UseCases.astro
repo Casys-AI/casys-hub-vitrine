@@ -12,6 +12,7 @@ import { useCases } from '../../content/use-cases';
 const locale = (Astro as any).currentLocale ?? 'en';
 const t = useTranslations(locale).useCases;
 const localePath = locale === 'en' ? '' : `/${locale}`;
+const ogSuffix = locale === 'en' ? '' : `-${locale}`;
 ---
 
 <section id="use-cases">
@@ -39,7 +40,7 @@ const localePath = locale === 'en' ? '' : `/${locale}`;
           <a href={`${localePath}/use-cases/${uc.id}`} class="case-card">
             <div class="card-thumbnail">
               <img
-                src={`/og/use-case/${uc.id}.png`}
+                src={`/og/use-case/${uc.id}${ogSuffix}.png`}
                 alt={uc.title[locale] || uc.title.en}
                 loading="lazy"
                 class="thumb-img og-thumbnail"

@@ -8,6 +8,11 @@
 import type { APIRoute, GetStaticPaths } from 'astro';
 import { generateOgImage } from '../_shared';
 import { useCases } from '../../../content/use-cases';
+import fs from 'node:fs';
+import { join } from 'node:path';
+
+const logoSvg = fs.readFileSync(join(process.cwd(), 'public/icons/logo.svg'));
+const logoDataUri = `data:image/svg+xml;base64,${Buffer.from(logoSvg).toString('base64')}`;
 
 const locales = ['en', 'fr', 'zh', 'zh-TW'] as const;
 
@@ -88,15 +93,12 @@ export const GET: APIRoute = async ({ params, props }) => {
                   style: { display: 'flex', alignItems: 'center' },
                   children: [
                     {
-                      type: 'div',
+                      type: 'img',
                       props: {
-                        style: {
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '50%',
-                          backgroundImage: 'linear-gradient(to right, #000000, #6e5e6e, #dbbddb)',
-                          marginRight: '14px',
-                        },
+                        src: logoDataUri,
+                        width: 40,
+                        height: 40,
+                        style: { marginRight: '14px' },
                       },
                     },
                     {
