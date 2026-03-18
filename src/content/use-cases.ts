@@ -28,17 +28,6 @@ export interface UseCase {
   visualCaption?: Record<string, string>;
 }
 
-/** Intro content for the paradigm shift framing */
-export const pageIntro = {
-  /** Stats bar — verifiable numbers from the codebase */
-  stats: [
-    { value: '508', label: { en: 'MCP tools shipped', fr: 'outils MCP livrés', zh: '已发布的 MCP 工具', 'zh-TW': '已發布的 MCP 工具' } },
-    { value: '4', label: { en: 'open-source packages', fr: 'packages open source', zh: '开源包', 'zh-TW': '開源套件' } },
-    { value: '137+', label: { en: 'tests passing', fr: 'tests passants', zh: '通过的测试', 'zh-TW': '通過的測試' } },
-    { value: '21ms', label: { en: 'p95 discovery latency', fr: 'latence p95 de découverte', zh: 'p95 发现延迟', 'zh-TW': 'p95 發現延遲' } },
-  ],
-};
-
 export const useCases: UseCase[] = [
   {
     id: 'chat-first-workflows',

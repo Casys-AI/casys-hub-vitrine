@@ -13,7 +13,7 @@ Multi-site Astro project deployed on Vercel, serving all Casys sub-sites from a 
 
 - **Astro 5** with `@astrojs/vercel` adapter (SSR hybrid)
 - **Starlight** for documentation sub-sites (mcp-std, mcp-server, engine)
-- **Preact islands** for interactive components (catalog, lead forms)
+- **Preact islands** for interactive components (catalog)
 - **Hostname-based rewrites** route each subdomain to its path prefix
 
 ### Routing strategy
@@ -85,7 +85,7 @@ lib/casys-hub-vitrine/
   src/
     components/     # Astro components (header, footer, etc.)
     content/        # Starlight content collections (docs)
-    islands/        # Preact islands (catalog, lead forms)
+    islands/        # Preact islands (catalog)
     layouts/        # Page layouts
     pages/          # Astro pages and routes
     styles/         # Global styles

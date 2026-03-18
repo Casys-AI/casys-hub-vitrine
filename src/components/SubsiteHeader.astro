@@ -66,14 +66,14 @@ const idPrefix = 'sh';
       </div>
     </nav>
 
-    <button id={`${idPrefix}-mobile-menu-btn`} class="sh-menu-btn" aria-label="Toggle menu" aria-expanded="false">
+    <button id={`${idPrefix}-mobile-menu-btn`} class="sh-menu-btn" aria-label="Toggle menu" aria-expanded="false" aria-controls={`${idPrefix}-mobile-menu`}>
       <span class="sh-menu-bar"></span>
       <span class="sh-menu-bar"></span>
     </button>
   </div>
 </header>
 
-<div id={`${idPrefix}-mobile-menu`} class="sh-mobile-menu">
+<div id={`${idPrefix}-mobile-menu`} class="sh-mobile-menu" hidden aria-hidden="true" inert>
   <nav class="sh-mobile-nav">
     {navLinks.map((link) => (
       <a href={link.href} class="sh-nav-link">
@@ -444,24 +444,65 @@ const idPrefix = 'sh';
   // Mobile menu toggle
   const shMenuBtn = document.getElementById('sh-mobile-menu-btn');
   const shMobileMenu = document.getElementById('sh-mobile-menu');
+  const shMobileMenuFirstLink = shMobileMenu?.querySelector('a');
+  let shMobileMenuHideTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  function setShMobileMenuState(isOpen: boolean, restoreFocus = false) {
+    if (!shMobileMenu) return;
+
+    if (shMobileMenuHideTimeout) {
+      clearTimeout(shMobileMenuHideTimeout);
+      shMobileMenuHideTimeout = null;
+    }
+
+    shMenuBtn?.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+
+    if (isOpen) {
+      shMobileMenu.hidden = false;
+      shMobileMenu.removeAttribute('aria-hidden');
+      shMobileMenu.removeAttribute('inert');
+      requestAnimationFrame(() => shMobileMenu.classList.add('open'));
+      document.body.style.overflow = 'hidden';
+      (shMobileMenuFirstLink as HTMLElement | null)?.focus();
+      return;
+    }
+
+    shMobileMenu.classList.remove('open');
+    shMobileMenu.setAttribute('aria-hidden', 'true');
+    shMobileMenu.setAttribute('inert', '');
+    document.body.style.removeProperty('overflow');
+    shMobileMenuHideTimeout = setTimeout(() => {
+      shMobileMenu.hidden = true;
+    }, 250);
+
+    if (restoreFocus) {
+      (shMenuBtn as HTMLElement | null)?.focus();
+    }
+  }
 
   shMenuBtn?.addEventListener('click', () => {
-    const isOpen = shMobileMenu?.classList.toggle('open');
-    shMenuBtn?.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    const isOpen = shMenuBtn?.getAttribute('aria-expanded') !== 'true';
+    setShMobileMenuState(isOpen);
   });
 
   shMobileMenu?.querySelectorAll('a').forEach(link => {
     link.addEventListener('click', () => {
-      shMobileMenu.classList.remove('open');
-      shMenuBtn?.setAttribute('aria-expanded', 'false');
+      setShMobileMenuState(false);
     });
   });
 
   document.addEventListener('click', (e) => {
     const target = e.target as Node;
-    if (!shMobileMenu?.contains(target) && !shMenuBtn?.contains(target) && shMobileMenu?.classList.contains('open')) {
-      shMobileMenu.classList.remove('open');
-      shMenuBtn?.setAttribute('aria-expanded', 'false');
+    if (!shMobileMenu?.contains(target) &&
+        !shMenuBtn?.contains(target) &&
+        shMenuBtn?.getAttribute('aria-expanded') === 'true') {
+      setShMobileMenuState(false, true);
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && shMenuBtn?.getAttribute('aria-expanded') === 'true') {
+      setShMobileMenuState(false, true);
     }
   });
 

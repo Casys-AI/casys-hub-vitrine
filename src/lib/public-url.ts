@@ -11,6 +11,10 @@ const LOCALE_PREFIXES: Record<Locale, string> = {
 };
 
 const SUBSITE_ORIGINS = [
+  { prefix: '/mcp-server', origin: 'https://mcp-server.casys.ai' },
+  { prefix: '/mcp-std', origin: 'https://mcp-std.casys.ai' },
+  { prefix: '/mcp-bridge', origin: 'https://mcp-bridge.casys.ai' },
+  { prefix: '/pml', origin: 'https://pml.casys.ai' },
   { prefix: '/engine', origin: 'https://engine.casys.ai' },
 ] as const;
 

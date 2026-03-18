@@ -5,6 +5,7 @@ import Analytics from '@vercel/analytics/astro';
 import Footer from '../components/Footer.astro';
 import HrefLang from '../components/HrefLang.astro';
 import { DEFAULT_SITE_URL, resolvePublicUrl } from '../lib/public-url';
+import { getOgLocale } from '../lib/locale-utils';
 
 export interface Props {
   title: string;
@@ -17,8 +18,7 @@ const pathname = Astro.url.pathname;
 const siteUrl = (import.meta.env.PUBLIC_SITE_URL as string | undefined)?.trim();
 const rootSiteUrl = (siteUrl || DEFAULT_SITE_URL).replace(/\/+$/, '');
 const canonicalUrl = resolvePublicUrl(pathname, siteUrl).canonicalUrl;
-const ogLocaleMap = { en: 'en_US', fr: 'fr_FR', zh: 'zh_CN', 'zh-TW': 'zh_TW' } as const;
-const ogLocale = ogLocaleMap[locale as keyof typeof ogLocaleMap] ?? 'en_US';
+const ogLocale = getOgLocale(locale);
 
 const metaDescriptions = {
   en: 'Procedural Memory Layer for AI Agents. One gateway, any model, full observability. Build AI workflows once, run with Claude, GPT, Gemini, or Ollama.',

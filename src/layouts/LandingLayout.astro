@@ -6,6 +6,7 @@ import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import HrefLang from '../components/HrefLang.astro';
 import { DEFAULT_SITE_URL, resolvePublicUrl } from '../lib/public-url';
+import { getOgLocale } from '../lib/locale-utils';
 
 export interface Props {
   title: string;
@@ -20,8 +21,7 @@ const rootSiteUrl = (siteUrl || DEFAULT_SITE_URL).replace(/\/+$/, '');
 const publicUrl = resolvePublicUrl(pathname, siteUrl);
 const canonicalUrl = publicUrl.canonicalUrl;
 const ogImageUrl = new URL('/og/home.png', publicUrl.origin).toString();
-const ogLocaleMap = { en: 'en_US', fr: 'fr_FR', zh: 'zh_CN', 'zh-TW': 'zh_TW' } as const;
-const ogLocale = ogLocaleMap[locale as keyof typeof ogLocaleMap] ?? 'en_US';
+const ogLocale = getOgLocale(locale);
 
 // Meta tags based on business positioning
 const metaTitles = {
@@ -65,21 +65,22 @@ const resolvedDescription = description || metaDescriptionFallback;
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" />
 
     <script>
-      // Auto language redirect (client-only): redirect to /fr, /zh-TW or /zh based on browser language
+      // Auto language redirect (client-only) on the root homepage only.
+      // Deep links should stay stable and must not be rewritten client-side.
       (function () {
         try {
-          var path = location.pathname;
-          if (!path.startsWith('/fr') && !path.startsWith('/zh-TW') && !path.startsWith('/zh')) {
-            var lang = (navigator.languages && navigator.languages[0]) || navigator.language || '';
-            lang = String(lang || '').toLowerCase();
-            var prefix = '';
-            if (lang.startsWith('fr')) prefix = '/fr';
-            else if (lang === 'zh-tw' || lang.startsWith('zh-hant')) prefix = '/zh-TW';
-            else if (lang.startsWith('zh')) prefix = '/zh';
-            if (prefix) {
-              var target = path === '/' ? prefix + '/' : (prefix + path);
-              location.replace(target + location.search + location.hash);
-            }
+          var path = location.pathname === '/' ? '/' : location.pathname.replace(/\/+$/, '');
+          if (path !== '/') return;
+
+          var lang = (navigator.languages && navigator.languages[0]) || navigator.language || '';
+          lang = String(lang || '').toLowerCase();
+          var prefix = '';
+          if (lang.startsWith('fr')) prefix = '/fr';
+          else if (lang === 'zh-tw' || lang.startsWith('zh-hant')) prefix = '/zh-TW';
+          else if (lang.startsWith('zh')) prefix = '/zh';
+
+          if (prefix) {
+            location.replace(prefix + '/' + location.search + location.hash);
           }
         } catch (_) { /* no-op */ }
       })();

@@ -1,11 +1,9 @@
 ---
 import { useTranslations } from '../../i18n';
+import { isExternalUrl } from '../../lib/url-utils';
 const locale = (Astro as any).currentLocale ?? 'en';
 const content = useTranslations(locale).projects;
 
-function isExternalUrl(url: string): boolean {
-  return /^https?:\/\//.test(url);
-}
 ---
 
 <section id="projects">

@@ -39,18 +39,6 @@ export const en = {
     description: "Agentic Architecture & Context Systems",
     tagline: "Open Source Tools & Consulting",
   },
-  subsiteFooter: {
-    product: "Product",
-    projects: "Projects",
-    consulting: "Consulting",
-    training: "Training",
-    openSource: "Open Source",
-    connect: "Connect",
-    contact: "Contact",
-    discord: "Discord",
-    description: "Agentic Architecture & Context Systems",
-    tagline: "Open Source Tools & Consulting",
-  },
 
   // ========================================
   // LANDING V2 SECTIONS
@@ -63,8 +51,8 @@ export const en = {
       "AI agents wired into your ERP, CRM, and internal tools. Observable, open-source stack.",
     proofs: [
       { name: "ERPNext demo", stat: "Live business workflow", url: "#featured-demo" },
-      { name: "Open source", stat: "Code, issues, roadmap public", url: "#projects" },
-      { name: "Observable", stat: "Every call traced", url: "#what-we-do" },
+      { name: "Open source", stat: "Code, issues, roadmap public", url: "https://github.com/Casys-AI" },
+      { name: "Observable", stat: "Every call traced", url: "#why-casys" },
       { name: "Published packages", stat: "npm + JSR, versioned", url: "#use-cases-preview" },
     ],
   },
@@ -1370,7 +1358,7 @@ const html = renderComposite(descriptor);`,
     },
     ctaSecondary: {
       text: "View Projects",
-      url: "/#projects",
+      url: "/use-cases",
       icon: "folder_open",
     },
   },
@@ -1511,6 +1499,6 @@ const html = renderComposite(descriptor);`,
     ctaSubtitle:
       "Describe your MCP infrastructure challenge. We'll tell you straight whether we can help — and exactly how we'd approach it.",
     ctaPrimary: { text: "Get in Touch", url: "/#contact", icon: "mail" },
-    ctaSecondary: { text: "View Projects", url: "/#projects", icon: "folder_open" },
+    ctaSecondary: { text: "View Projects", url: "/use-cases", icon: "folder_open" },
   },
 } as const;

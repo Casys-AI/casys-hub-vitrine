@@ -41,18 +41,6 @@ export const fr: Translations = {
     description: "Architecture Agentique & Systèmes de Contexte",
     tagline: "Outils Open Source & Consulting",
   },
-  subsiteFooter: {
-    product: "Produit",
-    projects: "Projets",
-    consulting: "Consulting",
-    training: "Formations",
-    openSource: "Open Source",
-    connect: "Liens",
-    contact: "Contact",
-    discord: "Discord",
-    description: "Architecture Agentique & Systèmes de Contexte",
-    tagline: "Outils Open Source & Consulting",
-  },
 
   // ========================================
   // LANDING V2 SECTIONS
@@ -65,8 +53,8 @@ export const fr: Translations = {
       "Des agents IA branchés sur vos ERP, CRM et outils internes. Stack observable et open source.",
     proofs: [
       { name: "Démo ERPNext", stat: "Workflow métier live", url: "#featured-demo" },
-      { name: "Open source", stat: "Code, issues, roadmap publics", url: "#projects" },
-      { name: "Observable", stat: "Chaque appel tracé", url: "#what-we-do" },
+      { name: "Open source", stat: "Code, issues, roadmap publics", url: "https://github.com/Casys-AI" },
+      { name: "Observable", stat: "Chaque appel tracé", url: "#why-casys" },
       { name: "Packages publiés", stat: "npm + JSR, versionnés", url: "#use-cases-preview" },
     ],
   },
@@ -1375,12 +1363,12 @@ const html = renderComposite(descriptor);`,
       "D\u00e9crivez votre d\u00e9fi d'infrastructure MCP, votre goulet d'\u00e9tranglement en graphes de connaissances ou votre question d'architecture agentique. Nous vous dirons franchement si nous pouvons aider \u2014 et exactement comment nous aborderions le probl\u00e8me.",
     ctaPrimary: {
       text: "Nous Contacter",
-      url: "/#contact",
+      url: "/fr/#contact",
       icon: "mail",
     },
     ctaSecondary: {
       text: "Voir les Projets",
-      url: "/#projects",
+      url: "/fr/use-cases",
       icon: "folder_open",
     },
   },
@@ -1520,7 +1508,7 @@ const html = renderComposite(descriptor);`,
     ctaTitle: "Un défi similaire ?",
     ctaSubtitle:
       "Décrivez votre défi d'infrastructure MCP. On vous dit franchement si on peut aider — et exactement comment on aborderait le problème.",
-    ctaPrimary: { text: "Nous Contacter", url: "/#contact", icon: "mail" },
-    ctaSecondary: { text: "Voir les Projets", url: "/#projects", icon: "folder_open" },
+    ctaPrimary: { text: "Nous Contacter", url: "/fr/#contact", icon: "mail" },
+    ctaSecondary: { text: "Voir les Projets", url: "/fr/use-cases", icon: "folder_open" },
   },
 };
