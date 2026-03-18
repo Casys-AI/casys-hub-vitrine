@@ -25,6 +25,7 @@ async function getKatexFontCandidates(filename: string): Promise<Array<string | 
     join(process.cwd(), 'node_modules/katex/dist/fonts', filename),
   ];
 
+  // Bun store: node_modules/.bun/katex@VERSION/node_modules/katex/dist/fonts/
   try {
     const bunStoreEntries = await fs.readdir(join(process.cwd(), 'node_modules/.bun'), {
       withFileTypes: true,
@@ -40,7 +41,26 @@ async function getKatexFontCandidates(filename: string): Promise<Array<string | 
       );
     }
   } catch {
-    // Bun store not present; keep root node_modules candidate only.
+    // Bun store not present.
+  }
+
+  // pnpm store: node_modules/.pnpm/katex@VERSION/node_modules/katex/dist/fonts/
+  try {
+    const pnpmStoreEntries = await fs.readdir(join(process.cwd(), 'node_modules/.pnpm'), {
+      withFileTypes: true,
+    });
+
+    for (const entry of pnpmStoreEntries) {
+      if (!entry.isDirectory() || !entry.name.startsWith('katex@')) {
+        continue;
+      }
+
+      candidates.push(
+        join(process.cwd(), 'node_modules/.pnpm', entry.name, 'node_modules/katex/dist/fonts', filename),
+      );
+    }
+  } catch {
+    // pnpm store not present.
   }
 
   return candidates;
