@@ -4,12 +4,13 @@ description: Middleware composable en modele oignon pour les appels d'outils MCP
 ---
 
 import { Aside, Steps } from '@astrojs/starlight/components';
+import ExcalidrawDiagram from '../../../../../components/ExcalidrawDiagram.astro';
 
 Chaque appel d'outil dans `@casys/mcp-server` traverse une chaine de middleware composable — le meme modele oignon que vous connaissez de Hono, Koa, ou Express. C'est ainsi que l'auth, le rate limiting, la validation, et votre logique personnalisee se composent ensemble sans s'emmeler.
 
 ## Comment ca marche
 
-<img src="/diagrams/mcp-server/mcp-middleware-pipeline.svg" alt="Pipeline Middleware MCP" style="width: 100%; max-width: 600px; margin: 24px auto; display: block;" />
+<ExcalidrawDiagram src="mcp-server/mcp-middleware-pipeline" alt="Pipeline Middleware MCP" />
 
 ```
 Request → Rate Limit → Auth → Custom Middlewares → Scope Check → Validation → Backpressure → Handler

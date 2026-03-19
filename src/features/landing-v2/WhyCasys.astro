@@ -7,6 +7,7 @@ const content = useTranslations(locale).whyCasys;
 
 <section id="why-casys">
   <div class="container">
+    <div id="what-we-do" class="legacy-anchor" aria-hidden="true"></div>
     <div class="section-header">
       <h2>{content.title}</h2>
       <p class="section-subtitle">{content.subtitle}</p>
@@ -73,6 +74,14 @@ const content = useTranslations(locale).whyCasys;
     max-width: 1200px;
     margin: 0 auto;
     padding: 0 24px;
+  }
+
+  .legacy-anchor {
+    display: block;
+    position: relative;
+    top: -96px;
+    height: 0;
+    visibility: hidden;
   }
 
   .section-header {

@@ -41,3 +41,40 @@ test('use-cases preview embeds the ERPNext demo and switches to a card grid', ()
   assert.equal(source.includes('showcase-row'), false);
   assert.equal(source.includes('reverse'), false);
 });
+
+test('hero proof links still resolve after the landing section merge', () => {
+  const translationFiles = [
+    'src/i18n/en.ts',
+    'src/i18n/fr.ts',
+    'src/i18n/zh.ts',
+    'src/i18n/zh-TW.ts',
+  ];
+
+  const landingSources = [
+    readSource('src/features/landing-v2/Hero.astro'),
+    readSource('src/features/landing-v2/WhyCasys.astro'),
+    readSource('src/features/landing-v2/UseCasesPreview.astro'),
+    readSource('src/features/landing-v2/FAQ.astro'),
+    readSource('src/features/landing-v2/Contact.astro'),
+  ].join('\n');
+
+  for (const file of translationFiles) {
+    const source = readSource(file);
+    const heroBlock = source.match(/hero:\s*\{[\s\S]*?proofs:\s*\[(?<proofs>[\s\S]*?)\n\s*\],\n\s*},\n\s*featuredDemo:/);
+
+    assert.ok(heroBlock?.groups?.proofs, `expected landing hero proofs block in ${file}`);
+
+    const anchorMatches = [...heroBlock.groups.proofs.matchAll(/url:\s*"(?<url>#[^"]+)"/g)];
+    assert.ok(anchorMatches.length > 0, `expected in-page hero proof links in ${file}`);
+
+    for (const match of anchorMatches) {
+      const anchor = match.groups?.url;
+      assert.ok(anchor, `expected hero proof URL in ${file}`);
+      assert.equal(
+        landingSources.includes(`id="${anchor.slice(1)}"`),
+        true,
+        `expected ${file} hero proof link ${anchor} to resolve on the landing page`,
+      );
+    }
+  }
+});

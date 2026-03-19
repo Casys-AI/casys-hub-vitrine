@@ -1,15 +1,16 @@
 ---
 title: Introduction
-description: Production-grade MCP server framework for Deno. The "Hono for MCP".
+description: Production-grade TypeScript framework for MCP servers with auth, middleware, and dual transport.
 ---
 
 import { Card, CardGrid, LinkCard, Aside } from '@astrojs/starlight/components';
+import ExcalidrawDiagram from '../../../../components/ExcalidrawDiagram.astro';
 
-The **"Hono for MCP"** — a production-grade framework for building MCP servers with composable middleware, OAuth2 auth, dual transport, and everything you need to go from prototype to production.
+Build MCP servers that start as local tools and grow into authenticated HTTP services without rewriting the core server.
 
 Built on the official [@modelcontextprotocol/sdk](https://github.com/modelcontextprotocol/sdk). Published on [JSR](https://jsr.io/@casys/mcp-server).
 
-<img src="/diagrams/mcp-server/mcp-architecture.svg" alt="MCP Server Architecture" style="width: 100%; max-width: 600px; margin: 24px auto; display: block;" />
+<ExcalidrawDiagram src="mcp-server/mcp-architecture" alt="MCP Server Architecture" />
 
 ## The problem
 

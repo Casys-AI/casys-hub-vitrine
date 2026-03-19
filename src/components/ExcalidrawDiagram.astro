@@ -1,6 +1,7 @@
 ---
 import fs from 'node:fs';
 import path from 'node:path';
+import { transformExcalidrawSvg } from '../lib/excalidraw-theme';
 
 interface Props {
   src: string;
@@ -19,170 +20,8 @@ try {
   console.error(`[ExcalidrawDiagram] Failed to read: ${svgPath}`);
 }
 
-// Transform SVG for theme support:
-// 1. Remove hardcoded width/height (keep viewBox for responsive sizing)
-// 2. Replace dark background rect with transparent
-// 3. Add CSS classes for theme-adaptive colors
 if (svgContent) {
-  // Remove fixed width/height from root <svg> to make responsive
-  svgContent = svgContent.replace(
-    /(<svg[^>]*?)(\s+width="\d+")?(\s+height="\d+")?/,
-    (match, svg) => {
-      return svg.replace(/\s+width="\d+"/, '').replace(/\s+height="\d+"/, '');
-    }
-  );
-
-  // Replace the background rect fill (#08080a or #0d1117) with a CSS class
-  svgContent = svgContent.replace(
-    /(<rect x="0" y="0"[^>]*?)fill="#08080a"/,
-    '$1class="excali-bg" fill="#08080a"'
-  );
-  svgContent = svgContent.replace(
-    /(<rect x="0" y="0"[^>]*?)fill="#0d1117"/,
-    '$1class="excali-bg" fill="#0d1117"'
-  );
-
-  // Replace dark card fills with classes
-  svgContent = svgContent.replace(
-    /fill="#1f1f23"/g,
-    'class="excali-card-primary" fill="#1f1f23"'
-  );
-  svgContent = svgContent.replace(
-    /fill="#2d2d35"/g,
-    'class="excali-card" fill="#2d2d35"'
-  );
-  svgContent = svgContent.replace(
-    /fill="#1a1a1e"/g,
-    'class="excali-card-inner" fill="#1a1a1e"'
-  );
-
-  // Replace neutral text color with class
-  svgContent = svgContent.replace(
-    /fill="#f0ede8"/g,
-    'class="excali-text" fill="#f0ede8"'
-  );
-
-  // Replace gray strokes/fills with class
-  svgContent = svgContent.replace(
-    /stroke="#666666"/g,
-    'class="excali-muted-stroke" stroke="#666666"'
-  );
-  svgContent = svgContent.replace(
-    /fill="#666666"/g,
-    'class="excali-muted-fill" fill="#666666"'
-  );
-
-  // Replace SHGAT-specific node background fills
-  svgContent = svgContent.replace(/fill="#1a3a1a"/g, 'class="excali-node-green" fill="#1a3a1a"');
-  svgContent = svgContent.replace(/fill="#3a2a0a"/g, 'class="excali-node-amber" fill="#3a2a0a"');
-  svgContent = svgContent.replace(/fill="#1a2744"/g, 'class="excali-node-blue" fill="#1a2744"');
-  svgContent = svgContent.replace(/fill="#2d2044"/g, 'class="excali-node-purple" fill="#2d2044"');
-  svgContent = svgContent.replace(/fill="#3a1a2e"/g, 'class="excali-node-pink" fill="#3a1a2e"');
-
-  // Replace light gray text (#e5e5e5 — used in context engineering diagrams)
-  svgContent = svgContent.replace(/fill="#e5e5e5"/g, 'class="excali-text-light" fill="#e5e5e5"');
-
-  // Replace warm gray text (#e7e5e4 — used in SHGAT diagrams)
-  svgContent = svgContent.replace(/fill="#e7e5e4"/g, 'class="excali-text-warm" fill="#e7e5e4"');
-
-  // Replace gray-500 labels/strokes (#6b7280)
-  svgContent = svgContent.replace(/fill="#6b7280"/g, 'class="excali-gray-fill" fill="#6b7280"');
-  svgContent = svgContent.replace(/stroke="#6b7280"/g, 'class="excali-gray-stroke" stroke="#6b7280"');
-
-  // Replace gray-400 (#9ca3af)
-  svgContent = svgContent.replace(/fill="#9ca3af"/g, 'class="excali-gray-light-fill" fill="#9ca3af"');
-
-  // Replace accent colors (too light for light mode) with classes
-  // Red
-  svgContent = svgContent.replace(/stroke="#ef4444"/g, 'class="excali-accent-red-stroke" stroke="#ef4444"');
-  svgContent = svgContent.replace(/fill="#ef4444"/g, 'class="excali-accent-red-fill" fill="#ef4444"');
-  // Blue (SHGAT)
-  svgContent = svgContent.replace(/stroke="#60a5fa"/g, 'class="excali-accent-blue-stroke" stroke="#60a5fa"');
-  svgContent = svgContent.replace(/fill="#60a5fa"/g, 'class="excali-accent-blue-fill" fill="#60a5fa"');
-  // Yellow/amber (SHGAT)
-  svgContent = svgContent.replace(/stroke="#fbbf24"/g, 'class="excali-accent-yellow-stroke" stroke="#fbbf24"');
-  svgContent = svgContent.replace(/fill="#fbbf24"/g, 'class="excali-accent-yellow-fill" fill="#fbbf24"');
-  // Green (SHGAT)
-  svgContent = svgContent.replace(/stroke="#4ade80"/g, 'class="excali-accent-green-stroke" stroke="#4ade80"');
-  svgContent = svgContent.replace(/fill="#4ade80"/g, 'class="excali-accent-green-fill" fill="#4ade80"');
-  // Purple (SHGAT)
-  svgContent = svgContent.replace(/stroke="#a78bfa"/g, 'class="excali-accent-purple-stroke" stroke="#a78bfa"');
-  svgContent = svgContent.replace(/fill="#a78bfa"/g, 'class="excali-accent-purple-fill" fill="#a78bfa"');
-  // Pink
-  svgContent = svgContent.replace(/stroke="#f472b6"/g, 'class="excali-accent-pink-stroke" stroke="#f472b6"');
-  svgContent = svgContent.replace(/fill="#f472b6"/g, 'class="excali-accent-pink-fill" fill="#f472b6"');
-
-  // Context Engineering diagram accent colors
-  // Green (#22c55e) — fails WCAG on light bg
-  svgContent = svgContent.replace(/stroke="#22c55e"/g, 'class="excali-ce-green-stroke" stroke="#22c55e"');
-  svgContent = svgContent.replace(/fill="#22c55e"/g, 'class="excali-ce-green-fill" fill="#22c55e"');
-  // Amber (#f59e0b) — fails WCAG on light bg
-  svgContent = svgContent.replace(/stroke="#f59e0b"/g, 'class="excali-ce-amber-stroke" stroke="#f59e0b"');
-  svgContent = svgContent.replace(/fill="#f59e0b"/g, 'class="excali-ce-amber-fill" fill="#f59e0b"');
-  // Blue (#4a9eed)
-  svgContent = svgContent.replace(/stroke="#4a9eed"/g, 'class="excali-ce-blue-stroke" stroke="#4a9eed"');
-  svgContent = svgContent.replace(/fill="#4a9eed"/g, 'class="excali-ce-blue-fill" fill="#4a9eed"');
-  // Purple (#8b5cf6)
-  svgContent = svgContent.replace(/stroke="#8b5cf6"/g, 'class="excali-ce-purple-stroke" stroke="#8b5cf6"');
-  svgContent = svgContent.replace(/fill="#8b5cf6"/g, 'class="excali-ce-purple-fill" fill="#8b5cf6"');
-  // Cyan (#06b6d4) — fails WCAG on light bg
-  svgContent = svgContent.replace(/stroke="#06b6d4"/g, 'class="excali-ce-cyan-stroke" stroke="#06b6d4"');
-  svgContent = svgContent.replace(/fill="#06b6d4"/g, 'class="excali-ce-cyan-fill" fill="#06b6d4"');
-
-  // Context Engineering dark card backgrounds
-  svgContent = svgContent.replace(/fill="#1a4d2e"/g, 'class="excali-ce-card-green" fill="#1a4d2e"');
-  svgContent = svgContent.replace(/fill="#1e3a5f"/g, 'class="excali-ce-card-blue" fill="#1e3a5f"');
-  svgContent = svgContent.replace(/fill="#5c3d1a"/g, 'class="excali-ce-card-amber" fill="#5c3d1a"');
-  svgContent = svgContent.replace(/fill="#2d1b69"/g, 'class="excali-ce-card-purple" fill="#2d1b69"');
-  svgContent = svgContent.replace(/fill="#5c1a1a"/g, 'class="excali-ce-card-red" fill="#5c1a1a"');
-  svgContent = svgContent.replace(/fill="#1a4d4d"/g, 'class="excali-ce-card-cyan" fill="#1a4d4d"');
-
-  // Multi-Agent Sandbox — box backgrounds
-  svgContent = svgContent.replace(/fill="#3d3520"/g, 'class="excali-ma-card-amber" fill="#3d3520"');
-  svgContent = svgContent.replace(/fill="#1e3d2e"/g, 'class="excali-ma-card-green" fill="#1e3d2e"');
-  svgContent = svgContent.replace(/fill="#3d1f1f"/g, 'class="excali-ma-card-red" fill="#3d1f1f"');
-  svgContent = svgContent.replace(/fill="#2d1e5e"/g, 'class="excali-ma-card-purple" fill="#2d1e5e"');
-
-  // Multi-Agent Sandbox — accent strokes and fills
-  svgContent = svgContent.replace(/stroke="#ffd43b"/g, 'class="excali-ma-yellow-stroke" stroke="#ffd43b"');
-  svgContent = svgContent.replace(/fill="#ffd43b"/g, 'class="excali-ma-yellow-fill" fill="#ffd43b"');
-  svgContent = svgContent.replace(/stroke="#69db7c"/g, 'class="excali-ma-green-stroke" stroke="#69db7c"');
-  svgContent = svgContent.replace(/fill="#69db7c"/g, 'class="excali-ma-green-fill" fill="#69db7c"');
-  svgContent = svgContent.replace(/stroke="#ff6b6b"/g, 'class="excali-ma-red-stroke" stroke="#ff6b6b"');
-  svgContent = svgContent.replace(/fill="#ff6b6b"/g, 'class="excali-ma-red-fill" fill="#ff6b6b"');
-  svgContent = svgContent.replace(/stroke="#7950f2"/g, 'class="excali-ma-purple-stroke" stroke="#7950f2"');
-  svgContent = svgContent.replace(/fill="#7950f2"/g, 'class="excali-ma-purple-fill" fill="#7950f2"');
-  svgContent = svgContent.replace(/stroke="#74c0fc"/g, 'class="excali-ma-blue-stroke" stroke="#74c0fc"');
-  svgContent = svgContent.replace(/fill="#74c0fc"/g, 'class="excali-ma-blue-fill" fill="#74c0fc"');
-
-  // Multi-Agent Sandbox — misc fills (gray, tailscale light blue)
-  svgContent = svgContent.replace(/fill="#868e96"/g, 'class="excali-ma-gray-fill" fill="#868e96"');
-  svgContent = svgContent.replace(/stroke="#868e96"/g, 'class="excali-ma-gray-stroke" stroke="#868e96"');
-  svgContent = svgContent.replace(/fill="#a5d8ff"/g, 'class="excali-ma-lightblue-fill" fill="#a5d8ff"');
-  svgContent = svgContent.replace(/fill="#495057"/g, 'class="excali-ma-darkgray-fill" fill="#495057"');
-  svgContent = svgContent.replace(/stroke="#495057"/g, 'class="excali-ma-darkgray-stroke" stroke="#495057"');
-
-  // Multi-Agent Sandbox Architecture — card backgrounds
-  svgContent = svgContent.replace(/fill="#14352a"/g, 'class="excali-arch-card-green" fill="#14352a"');
-  svgContent = svgContent.replace(/fill="#332a14"/g, 'class="excali-arch-card-amber" fill="#332a14"');
-  svgContent = svgContent.replace(/fill="#1f1a3d"/g, 'class="excali-arch-card-purple" fill="#1f1a3d"');
-  svgContent = svgContent.replace(/fill="#2a1f44"/g, 'class="excali-arch-card-purple-inner" fill="#2a1f44"');
-  svgContent = svgContent.replace(/fill="#1e1b4b"/g, 'class="excali-arch-card-indigo" fill="#1e1b4b"');
-  svgContent = svgContent.replace(/fill="#2a1a0a"/g, 'class="excali-arch-card-brown" fill="#2a1a0a"');
-
-  // Multi-Agent Sandbox Architecture — accent strokes and fills
-  svgContent = svgContent.replace(/stroke="#818cf8"/g, 'class="excali-arch-indigo-stroke" stroke="#818cf8"');
-  svgContent = svgContent.replace(/fill="#818cf8"/g, 'class="excali-arch-indigo-fill" fill="#818cf8"');
-  svgContent = svgContent.replace(/stroke="#f97316"/g, 'class="excali-arch-orange-stroke" stroke="#f97316"');
-  svgContent = svgContent.replace(/fill="#f97316"/g, 'class="excali-arch-orange-fill" fill="#f97316"');
-  svgContent = svgContent.replace(/stroke="#34d399"/g, 'class="excali-arch-emerald-stroke" stroke="#34d399"');
-  svgContent = svgContent.replace(/fill="#34d399"/g, 'class="excali-arch-emerald-fill" fill="#34d399"');
-
-  // Multi-Agent Sandbox Architecture — gray text and borders
-  svgContent = svgContent.replace(/fill="#94a3b8"/g, 'class="excali-arch-slate-fill" fill="#94a3b8"');
-  svgContent = svgContent.replace(/stroke="#475569"/g, 'class="excali-arch-slate-stroke" stroke="#475569"');
-  svgContent = svgContent.replace(/fill="rgba\(30,41,59,0\.8\)"/g, 'class="excali-arch-footer-bg" fill="rgba(30,41,59,0.8)"');
-  svgContent = svgContent.replace(/fill="rgba\(20,20,23,0\.8\)"/g, 'class="excali-ma-footer-bg" fill="rgba(20,20,23,0.8)"');
+  svgContent = transformExcalidrawSvg(svgContent);
 }
 ---
 
@@ -269,6 +108,26 @@ if (svgContent) {
   .excalidraw-wrapper .excali-gray-fill { fill: #4b5563 !important; }
   .excalidraw-wrapper .excali-gray-stroke { stroke: #9ca3af !important; }
   .excalidraw-wrapper .excali-gray-light-fill { fill: #6b7280 !important; }
+  .excalidraw-wrapper .excali-mid-gray-fill { fill: #4b5563 !important; }
+  .excalidraw-wrapper .excali-mid-gray-stroke { stroke: #6b7280 !important; }
+  .excalidraw-wrapper .excali-slate-fill { fill: #475569 !important; }
+  .excalidraw-wrapper .excali-slate-stroke { stroke: #64748b !important; }
+  .excalidraw-wrapper .excali-slate-light-fill { fill: #475569 !important; }
+  .excalidraw-wrapper .excali-slate-light-stroke { stroke: #64748b !important; }
+  .excalidraw-wrapper .excali-slate-dark-fill { fill: #334155 !important; }
+  .excalidraw-wrapper .excali-light-slate-fill { fill: #334155 !important; }
+  .excalidraw-wrapper .excali-divider-stroke { stroke: #94a3b8 !important; }
+  .excalidraw-wrapper .excali-slate-divider-stroke { stroke: #94a3b8 !important; }
+
+  /* MCP ecosystem palette used in traffic-bearing diagrams */
+  .excalidraw-wrapper .excali-indigo-card { fill: #e0e7ff !important; }
+  .excalidraw-wrapper .excali-indigo-accent-stroke { stroke: #4338ca !important; }
+  .excalidraw-wrapper .excali-indigo-accent-fill { fill: #4338ca !important; }
+  .excalidraw-wrapper .excali-deep-navy-card { fill: #eef2ff !important; }
+  .excalidraw-wrapper .excali-deep-amber-card { fill: #fef3c7 !important; }
+  .excalidraw-wrapper .excali-deep-purple-card { fill: #ede9fe !important; }
+  .excalidraw-wrapper .excali-deep-green-card { fill: #dcfce7 !important; }
+  .excalidraw-wrapper .excali-deep-slate-card { fill: #e2e8f0 !important; }
 
   /* Accent colors - Casys brand palette (dark variants for light mode) */
   .excalidraw-wrapper .excali-accent-red-stroke { stroke: #A04A35 !important; }
@@ -405,6 +264,26 @@ if (svgContent) {
   html[data-theme="dark"] .excalidraw-wrapper .excali-gray-fill { fill: #6b7280 !important; }
   html[data-theme="dark"] .excalidraw-wrapper .excali-gray-stroke { stroke: #6b7280 !important; }
   html[data-theme="dark"] .excalidraw-wrapper .excali-gray-light-fill { fill: #9ca3af !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-mid-gray-fill { fill: #888888 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-mid-gray-stroke { stroke: #888888 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-slate-fill { fill: #64748b !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-slate-stroke { stroke: #64748b !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-slate-light-fill { fill: #94a3b8 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-slate-light-stroke { stroke: #94a3b8 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-slate-dark-fill { fill: #475569 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-light-slate-fill { fill: #e2e8f0 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-divider-stroke { stroke: #333 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-slate-divider-stroke { stroke: #334155 !important; }
+
+  /* MCP ecosystem palette used in traffic-bearing diagrams */
+  html[data-theme="dark"] .excalidraw-wrapper .excali-indigo-card { fill: #1e1b4b !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-indigo-accent-stroke { stroke: #6366f1 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-indigo-accent-fill { fill: #a5b4fc !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-deep-navy-card { fill: #1a1a2e !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-deep-amber-card { fill: #1a1a0a !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-deep-purple-card { fill: #1a0a2e !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-deep-green-card { fill: #0f2a1a !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-deep-slate-card { fill: #1e293b !important; }
 
   /* Accent colors - Casys brand palette (bright variants for dark mode) */
   html[data-theme="dark"] .excalidraw-wrapper .excali-accent-red-stroke { stroke: #FF9B7A !important; }

@@ -393,8 +393,14 @@ And it is, fundamentally, a software engineering problem. Not data science. Not 
 
 The tools exist. [MCP](https://modelcontextprotocol.io) standardizes tool access. GraphRAG structures relational knowledge. Lightweight sequence models predict what comes next. The missing piece is the discipline to assemble them into a coherent pipeline and measure the results.
 
+The practical rollout path is straightforward:
+
+- 3 systems: wrap them with MCP so access is standardized.
+- 10+ systems or 50+ tools: add a gateway so context stays selective.
+- Wrong tool choices even after that: fix routing before you touch the model.
+
 That's exactly what we're building at [Casys](https://casys.ai) -- an MCP gateway that makes context management its core job. Discovery, routing, GraphRAG, sequential prediction, all open source.
 
 ![casys.ai — production MCP servers and context engineering tools](/images/screenshots/casys-ai-homepage.png)
 
-If this resonates, join the conversation on [Discord](https://discord.gg/casys). We talk context engineering, MCP, industrial agents -- without pretense.
+If you are actively designing this stack, the next practical reads are [MCP Server in Production](/blog/mcp-server-guide) and [MCP Gateway: Why Your AI Agents Need One](/blog/mcp-gateway-guide). If you want to compare notes, join us on [Discord](https://discord.gg/casys).

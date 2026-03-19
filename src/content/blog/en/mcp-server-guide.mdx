@@ -27,6 +27,8 @@ This guide is what I wish I had when we deployed our first MCP servers at casys.
 
 If you are not yet familiar with MCP, start with [MCP: The USB-C of AI Tools](/blog/why-mcp-protocol) for context. If you already know why MCP matters and want to build, stay here.
 
+Use the official SDK if your server is local, single-user, and `stdio`-only. Use a framework when the job becomes operational — HTTP transport, auth, quotas, metrics, graceful shutdown. This guide is about making that call early, then building the version you can actually run.
+
 ---
 
 ## What a Production MCP Server Must Handle
@@ -90,7 +92,7 @@ But the moment you need HTTP transport, authentication, rate limiting, or observ
 
 ## Option 2: The @casys/mcp-server Framework
 
-This is the problem we solved with [`@casys/mcp-server`](https://jsr.io/@casys/mcp-server). The pitch is simple: **the Hono for MCP**. Minimal, fast, production-ready.
+We built [`@casys/mcp-server`](https://jsr.io/@casys/mcp-server) for the second case: TypeScript teams that want the official protocol surface plus the production layer around it. The shorthand is simple: **the Hono for MCP**.
 
 Built with Deno, compatible with Node.js. Published on [JSR](https://jsr.io/@casys/mcp-server) and [npm](https://www.npmjs.com/package/@casys/mcp-server). Same MCP server, both runtimes.
 
@@ -437,6 +439,12 @@ The framework logs in JSON format by default when running in HTTP mode. Every lo
 
 Before choosing, here is an honest comparison. The official SDK is the protocol reference. `@casys/mcp-server` is built *on top of* that SDK -- it is not a fork, it is a production layer.
 
+If you need the short version before the table:
+
+- Local `stdio` tool for one user: start with the official SDK.
+- Authenticated or multi-user HTTP server: use a framework that already handles auth, quotas, and observability.
+- Large tool surface across several servers: keep that as a gateway problem, not a single-server problem.
+
 | Feature | Official SDK | @casys/mcp-server | From scratch |
 |---|---|---|---|
 | MCP protocol compliance | Full | Full (built on SDK) | Must implement |
@@ -466,15 +474,15 @@ The choice depends on your context:
 
 ## Connecting Your MCP Server to the Ecosystem
 
-An MCP server does not exist in isolation. Once you have tools running, you often need to connect them to platforms beyond Claude Desktop or Cursor.
+Once the core server is stable, the next question is usually where that server needs to show up. These are two concrete examples of adjacent patterns.
 
-### @casys/mcp-bridge -- Cross-Platform Messaging
+### Messaging Surface: @casys/mcp-bridge
 
 [`@casys/mcp-bridge`](https://www.npmjs.com/package/@casys/mcp-bridge) bridges MCP servers to messaging platforms. It lets you expose your MCP tools as a Telegram bot, a LINE chatbot, or any messaging interface. The bridge handles the message parsing, session management, and response formatting. Your MCP server stays unchanged.
 
 This matters because most end users are not developers sitting in an IDE. They are on Telegram, LINE, or a custom chat UI. The bridge lets you reuse the same MCP server for both developer tools and end-user interfaces.
 
-### @casys/mcp-erpnext -- A Real-World Domain-Specific MCP Server
+### Domain Example: @casys/mcp-erpnext
 
 [`@casys/mcp-erpnext`](https://www.npmjs.com/package/@casys/mcp-erpnext) is a standalone MCP server that connects AI agents to [ERPNext](https://erpnext.com), the open-source ERP system. It exposes invoices, purchase orders, stock levels, and accounting data as MCP tools.
 

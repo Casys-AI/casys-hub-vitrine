@@ -4,12 +4,13 @@ description: Composable onion-model middleware for MCP tool calls.
 ---
 
 import { Aside, Steps } from '@astrojs/starlight/components';
+import ExcalidrawDiagram from '../../../../components/ExcalidrawDiagram.astro';
 
 Every tool call in `@casys/mcp-server` flows through a composable middleware chain — the same onion model you know from Hono, Koa, or Express. This is how auth, rate limiting, validation, and your custom logic all compose together without tangling.
 
 ## How it works
 
-<img src="/diagrams/mcp-server/mcp-middleware-pipeline.svg" alt="Middleware Pipeline" style="width: 100%; max-width: 600px; margin: 24px auto; display: block;" />
+<ExcalidrawDiagram src="mcp-server/mcp-middleware-pipeline" alt="Middleware Pipeline" />
 
 ```
 Request → Rate Limit → Auth → Custom Middlewares → Scope Check → Validation → Backpressure → Handler

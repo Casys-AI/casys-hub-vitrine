@@ -4,12 +4,13 @@ description: 面向 MCP 工具调用的可组合洋葱模型中间件。
 ---
 
 import { Aside, Steps } from '@astrojs/starlight/components';
+import ExcalidrawDiagram from '../../../../../components/ExcalidrawDiagram.astro';
 
 `@casys/mcp-server` 中的每个工具调用都会经过一条可组合的中间件链 — 与你在 Hono、Koa 或 Express 中熟悉的洋葱模型相同。认证、速率限制、验证和你的自定义逻辑就是这样组合在一起而不会纠缠的。
 
 ## 工作原理
 
-<img src="/diagrams/mcp-server/mcp-middleware-pipeline.svg" alt="MCP 中间件管道" style="width: 100%; max-width: 600px; margin: 24px auto; display: block;" />
+<ExcalidrawDiagram src="mcp-server/mcp-middleware-pipeline" alt="MCP 中间件管道" />
 
 ```
 Request → Rate Limit → Auth → Custom Middlewares → Scope Check → Validation → Backpressure → Handler

@@ -18,11 +18,11 @@ draft: false
 
 ## The Problem Nobody Planned For
 
-There are over 17,000 MCP tools on [Smithery](https://smithery.ai) right now. That number was 4,000 six months ago. It will be 50,000 by the end of the year.
+There are over 17,000 MCP tools on [Smithery](https://smithery.ai) right now. That matters for one practical reason: once a client sees too many tool schemas at once, tool selection gets worse long before the context window is technically full.
 
-No context window can hold them all. Not Claude's million tokens. Not GPT's 128K. Not Gemini's 2M — because even if you could fit the schemas, performance degrades long before you hit the limit. An MCP gateway is the layer that solves this. And if you're building anything serious with MCP, you need one.
+An MCP gateway is the control layer that decides which 5-10 tools the model should see for this task. Without it, the model sees everything. With it, it sees the shortlist that matches the job.
 
-Let me explain why, how we built ours, and what your options are.
+This article explains when that threshold shows up, what a gateway actually does, and how to build or buy one without adding architecture for architecture's sake.
 
 ---
 
@@ -98,6 +98,14 @@ Claude Opus 4.6 has a ~200K effective context window. 10% is 20K tokens. At ~300
 65 tools sounds like a lot. It's not. The GitHub server alone has 91. Add a database server (15-20 tools), a filesystem server (10-15 tools), and a Slack server (20+ tools) — you're at 150+ tools from four servers. Well past the threshold.
 
 The alternative: a gateway that exposes only the 5-10 tools relevant to the current task. That's 1,500-3,000 tokens. Under 2% of context. The model gets clear signals, the user gets the full context window, and accuracy goes up.
+
+Take a concrete request: *"Why did line 3 slow down this morning?"* Without a gateway, the model may see GitHub tools, filesystem tools, Slack tools, database tools, and every industrial tool you connected — useful and irrelevant mixed together. With a gateway, it sees the seven things that matter: line status, active order, alarms, maintenance events, quality deviations, and the workflow capability that joins them. Same model. Smaller search space. Better answer.
+
+A practical decision rule:
+
+- Skip the gateway when one client talks to one server or a few dozen tools.
+- Start evaluating it when multiple servers expose overlapping tools or one session regularly shows more than ~50-70 tools.
+- Make it mandatory when tool schemas are consuming noticeable context before the user request is even processed.
 
 ---
 
@@ -244,9 +252,9 @@ const result = await client.callTool("postgres__psql_query", {
 
 ---
 
-## What We Built: PML as an MCP Gateway
+## One Implementation: PML as an MCP Gateway
 
-At [CasYs](/), we've been building PML (Procedural Memory Layer) — an MCP gateway that goes beyond aggregation and embedding search.
+PML (Procedural Memory Layer) is our implementation of that pattern: an MCP gateway that goes beyond aggregation and embedding search.
 
 The core insight: tool routing isn't a language problem. It's a **graph problem** (which tools are related?) and a **sequence problem** (in what order?). We wrote about this extensively in ["$20,000 to Route 16 AI Agents"](/blog/routing-agents-without-new-protocol).
 
@@ -469,7 +477,7 @@ The new hard part is scale. 17,000 tools. Context windows that can't hold them. 
 
 The gateway is that routing layer. At minimum, it aggregates multiple MCP servers behind a single endpoint. At best, it intelligently selects which tools the LLM should see, based on the task, the context, and the history of what's worked before.
 
-You can build a basic one in a weekend. You can build a good one in a month. Or you can use one that's been trained on thousands of real workflows and routes in under 10 milliseconds on CPU.
+If your agent knows 20 tools, skip it. If it sees 200, the gateway stops being an optimization and becomes control-plane infrastructure.
 
 The infrastructure with the least friction wins. For MCP, that infrastructure is the gateway.
 

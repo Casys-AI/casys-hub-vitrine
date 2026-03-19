@@ -90,6 +90,8 @@ Google created [A2A](https://google.github.io/A2A/) so agents could talk to each
 
 Eight protocols in under a year. Three just for UI. Subhadip Mitra [calls it](https://subhadipmitra.com/blog/2026/agent-protocol-stack/) "the formation of a genuine protocol stack."
 
+ACP matters if you need enterprise agent sessions, governance boundaries, and formal agent-to-agent contracts. It does **not** solve the problem this article is about: deciding which tools or agents to expose *before* the LLM starts reasoning. That is why `sampling/createMessage` is more relevant here than adding one more handshake.
+
 But there's a primitive in the [MCP spec](https://modelcontextprotocol.io) that almost nobody is using yet: `sampling/createMessage`.
 
 A child MCP server sends a request to the gateway. The gateway relays to the host LLM — Claude, ChatGPT, or any client. The LLM reasons. The child server continues with the result. One JSON-RPC call, a 5-minute timeout. No handshake, no Agent Card.

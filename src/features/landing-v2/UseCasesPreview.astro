@@ -28,6 +28,7 @@ const allCasesLabel =
 
 <section id="use-cases-preview">
   <div class="container">
+    <div id="projects" class="legacy-anchor" aria-hidden="true"></div>
     <div class="section-header">
       <h2>{t.heroTitle}</h2>
       <p class="section-subtitle">{t.heroSubtitle}</p>
@@ -111,6 +112,14 @@ const allCasesLabel =
     max-width: 1200px;
     margin: 0 auto;
     padding: 0 24px;
+  }
+
+  .legacy-anchor {
+    display: block;
+    position: relative;
+    top: -96px;
+    height: 0;
+    visibility: hidden;
   }
 
   .section-header {

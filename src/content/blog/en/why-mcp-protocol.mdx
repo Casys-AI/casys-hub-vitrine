@@ -19,7 +19,9 @@ import ExcalidrawDiagram from '../../../components/ExcalidrawDiagram.astro';
 
 ## What Is the Model Context Protocol?
 
-The **Model Context Protocol (MCP)** is an open standard that defines how AI models connect to external tools, data sources, and services. Anthropic published the initial specification in November 2024. In December 2025, they donated MCP to the newly formed Agentic AI Foundation (AAIF) under the Linux Foundation — making it a vendor-neutral, community-owned standard.
+The moment most teams hit the MCP problem is not philosophical. They wire GitHub into one AI client, the integration works, and then someone asks for the same tool in ChatGPT, Cursor, Claude Code, and an internal agent. Suddenly the same capability exists in four incompatible formats.
+
+The **Model Context Protocol (MCP)** is the open standard that stops that rebuild loop. It defines how AI models connect to external tools, data sources, and services. Anthropic published the initial specification in November 2024. In December 2025, they donated MCP to the newly formed Agentic AI Foundation (AAIF) under the Linux Foundation — making it a vendor-neutral, community-owned standard.
 
 The short version: MCP is a universal adapter between AI models and the rest of your software stack.
 
@@ -239,7 +241,9 @@ A non-exhaustive sample of MCP server categories available today:
 
 ---
 
-## Building MCP Servers in TypeScript
+## If You're Implementing MCP in TypeScript
+
+If you are here to understand the protocol, you can skip this section. If you are deciding how to build with MCP in TypeScript, the split is simple: use the official SDK for local or prototype servers; add a framework when the job includes auth, quotas, metrics, and HTTP transport.
 
 ### The Official SDK
 
@@ -271,7 +275,7 @@ await server.connect(transport);
 
 This works. For a local tool or a prototype, it's enough. For production — authentication, rate limiting, input validation beyond schema, observability, graceful shutdown — you're writing it yourself.
 
-### The @casys/mcp-server Framework
+### A Production Framework Option: @casys/mcp-server
 
 [`@casys/mcp-server`](https://jsr.io/@casys/mcp-server) is a production framework for MCP servers. The premise: every MCP server needs the same production concerns. Build them once, not per-server.
 
@@ -306,7 +310,7 @@ Out of the box: JWT/OAuth2 auth, per-tool RBAC scopes, rate limiting, input vali
 
 The full production guide is in [MCP Server in Production: The Complete TypeScript Guide](/blog/mcp-server-guide).
 
-### @casys/mcp-bridge and @casys/mcp-erpnext
+### Two Concrete Ecosystem Examples
 
 For teams building bridges between MCP and other ecosystems, [`@casys/mcp-bridge`](https://www.npmjs.com/package/@casys/mcp-bridge) connects MCP tool calls to Telegram Mini Apps and LINE LIFF — useful when you want AI-powered workflows accessible from mobile messaging interfaces.
 
@@ -407,7 +411,7 @@ Start with the example above, register one tool, and connect it to Claude Deskto
 
 ### Deploy a Gateway
 
-When you have more than 5-6 servers, look at PML. Self-hosted, open source, Deno-based. Connects via `.pml.json` config at the root of your project. Provides a single MCP endpoint your agents connect to instead of managing individual server connections.
+When direct connections stop fitting comfortably in context, a gateway is the next step. PML is our implementation of that pattern: self-hosted, open source, and configured through `.pml.json` to expose one MCP endpoint instead of many separate server connections.
 
 ---
 
@@ -419,7 +423,11 @@ Anthropic could have kept MCP proprietary. A proprietary tool protocol would hav
 
 The USB-C analogy holds. USB-C succeeded not because it was the best possible connector specification, but because enough of the industry agreed on it at the same time. MCP has that coordination. Every major AI IDE, every major LLM provider, and a growing catalog of server implementations are converging on the same protocol.
 
-For developers building AI-powered applications, the practical implication is clear: invest in MCP. The tools you build today will work with the models available next year. The integration work you do once won't need to be redone when you change providers. The ecosystem you plug into will keep growing.
+For developers building AI-powered applications, the practical implication is concrete:
+
+- If you are evaluating MCP, start by connecting one existing server in a real client.
+- If you need one narrow integration, build one MCP server and keep the scope tight.
+- If you already have too many tools to fit comfortably in context, skip ahead to the gateway pattern.
 
 Build the server once. Connect everywhere.
 

@@ -4,10 +4,11 @@ description: Secure your MCP server with JWT/Bearer authentication and OIDC pres
 ---
 
 import { Tabs, TabItem, Aside, Steps } from '@astrojs/starlight/components';
+import ExcalidrawDiagram from '../../../../components/ExcalidrawDiagram.astro';
 
 Adding auth to an MCP server usually means wiring up JWKS fetching, token validation, key rotation, scope checking, and metadata endpoints yourself. With `@casys/mcp-server`, it's a one-liner.
 
-<img src="/diagrams/mcp-server/mcp-auth-flow.svg" alt="OAuth2 Authentication Flow" style="width: 100%; max-width: 600px; margin: 24px auto; display: block;" />
+<ExcalidrawDiagram src="mcp-server/mcp-auth-flow" alt="OAuth2 Authentication Flow" />
 
 ## Auth presets
 

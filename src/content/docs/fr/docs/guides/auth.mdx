@@ -4,10 +4,11 @@ description: Securisez votre serveur MCP avec l'authentification JWT/Bearer et l
 ---
 
 import { Tabs, TabItem, Aside, Steps } from '@astrojs/starlight/components';
+import ExcalidrawDiagram from '../../../../../components/ExcalidrawDiagram.astro';
 
 Ajouter l'auth a un serveur MCP signifie generalement brancher la recuperation JWKS, la validation de tokens, la rotation de cles, la verification des scopes, et les endpoints de metadonnees soi-meme. Avec `@casys/mcp-server`, c'est une seule ligne.
 
-<img src="/diagrams/mcp-server/mcp-auth-flow.svg" alt="Flux d'authentification MCP" style="width: 100%; max-width: 600px; margin: 24px auto; display: block;" />
+<ExcalidrawDiagram src="mcp-server/mcp-auth-flow" alt="Flux d'authentification MCP" />
 
 ## Presets d'auth
 
