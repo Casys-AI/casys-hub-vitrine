@@ -30,7 +30,13 @@ const calHref = getCasysCalHref(locale);
         <p>{t.bookingSubtitle}</p>
       </div>
 
-      <div class="booking-embed-wrap">
+      <button type="button" class="booking-toggle" id="booking-toggle-btn">
+        <span class="material-symbols-rounded" aria-hidden="true">calendar_month</span>
+        <span>{t.bookingTitle}</span>
+        <span class="material-symbols-rounded toggle-chevron" aria-hidden="true">expand_more</span>
+      </button>
+
+      <div class="booking-embed-wrap" id="booking-drilldown" hidden>
         <div id="casys-cal-inline" class="cal-inline-embed"></div>
         <p class="booking-fallback-link">
           <a href={calHref} target="_blank" rel="noopener noreferrer">{t.bookingOpenNewTab}</a>
@@ -208,16 +214,55 @@ const calHref = getCasysCalHref(locale);
     line-height: 1.6;
   }
 
+  .booking-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 24px;
+    border-radius: 14px;
+    border: 1px solid var(--md-sys-color-outline-variant);
+    background: var(--md-sys-color-surface-container-lowest);
+    color: var(--md-sys-color-on-surface);
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 200ms ease, background 200ms ease;
+  }
+
+  .booking-toggle:hover {
+    border-color: var(--md-sys-color-primary);
+    background: var(--md-sys-color-surface-container-low);
+  }
+
+  .booking-toggle .material-symbols-rounded {
+    font-size: 20px;
+    color: var(--md-sys-color-primary);
+  }
+
+  .toggle-chevron {
+    transition: transform 300ms ease;
+  }
+
+  .booking-toggle[aria-expanded="true"] .toggle-chevron {
+    transform: rotate(180deg);
+  }
+
   .booking-embed-wrap {
     border: 1px solid var(--md-sys-color-outline-variant);
     border-radius: 20px;
     overflow: hidden;
     background: var(--md-sys-color-surface-container-lowest);
+    margin-top: 16px;
+  }
+
+  .booking-embed-wrap[hidden] {
+    display: none;
   }
 
   .cal-inline-embed {
     width: 100%;
-    min-height: 760px;
+    min-height: 660px;
     background: var(--md-sys-color-surface-container-lowest);
   }
 
@@ -465,6 +510,21 @@ const calHref = getCasysCalHref(locale);
     color: var(--casys-warm-text-secondary);
   }
 
+  html[data-theme="dark"] #contact .booking-toggle {
+    background: #100f0d;
+    border-color: rgba(255, 184, 111, 0.16);
+    color: var(--casys-warm-text-primary);
+  }
+
+  html[data-theme="dark"] #contact .booking-toggle:hover {
+    border-color: var(--casys-warm-accent);
+    background: rgba(255, 184, 111, 0.06);
+  }
+
+  html[data-theme="dark"] #contact .booking-toggle .material-symbols-rounded {
+    color: var(--casys-warm-accent);
+  }
+
   html[data-theme="dark"] #contact .section-divider::before,
   html[data-theme="dark"] #contact .booking-embed-wrap {
     border-color: rgba(255, 184, 111, 0.12);
@@ -571,7 +631,29 @@ const calHref = getCasysCalHref(locale);
   const getTheme = () => document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
   const getTimezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-  const initCalEmbeds = () => {
+  let inlineMounted = false;
+
+  const mountInlineCalendar = () => {
+    if (inlineMounted) return;
+    const Cal = ensureCal();
+    Cal('init', 'inline', { origin: 'https://cal.com' });
+    const inlineEl = document.getElementById('casys-cal-inline');
+    if (inlineEl) {
+      inlineMounted = true;
+      Cal.ns.inline('inline', {
+        elementOrSelector: inlineEl,
+        calLink,
+        config: {
+          layout: 'month_view',
+          theme: getTheme(),
+          timezone: getTimezone(),
+        },
+      });
+      Cal.ns.inline('ui', { theme: getTheme() });
+    }
+  };
+
+  const initCalPopup = () => {
     const Cal = ensureCal();
     const config = {
       layout: 'month_view',
@@ -580,7 +662,6 @@ const calHref = getCasysCalHref(locale);
     };
 
     Cal('init', 'popup', { origin: 'https://cal.com' });
-    Cal('init', 'inline', { origin: 'https://cal.com' });
 
     document.querySelectorAll('[data-cal-popup="casys"]').forEach((el) => {
       if (!(el instanceof HTMLElement)) return;
@@ -589,31 +670,37 @@ const calHref = getCasysCalHref(locale);
       el.dataset.calConfig = JSON.stringify(config);
     });
 
-    const inlineEl = document.getElementById('casys-cal-inline');
-    if (inlineEl && !inlineEl.dataset.calMounted) {
-      inlineEl.dataset.calMounted = 'true';
-      Cal.ns.inline('inline', {
-        elementOrSelector: inlineEl,
-        calLink,
-        config,
-      });
-    }
-
     if (Cal.ns?.popup) Cal.ns.popup('ui', { theme: getTheme() });
-    if (Cal.ns?.inline) Cal.ns.inline('ui', { theme: getTheme() });
+  };
+
+  const initDrilldown = () => {
+    const toggleBtn = document.getElementById('booking-toggle-btn');
+    const drilldown = document.getElementById('booking-drilldown');
+    if (!toggleBtn || !drilldown) return;
+
+    toggleBtn.addEventListener('click', () => {
+      const isOpen = !drilldown.hidden;
+      drilldown.hidden = isOpen;
+      toggleBtn.setAttribute('aria-expanded', String(!isOpen));
+      if (!isOpen) {
+        mountInlineCalendar();
+        drilldown.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    });
   };
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initCalEmbeds, { once: true });
+    document.addEventListener('DOMContentLoaded', () => { initCalPopup(); initDrilldown(); }, { once: true });
   } else {
-    initCalEmbeds();
+    initCalPopup();
+    initDrilldown();
   }
 
   new MutationObserver(() => {
     const Cal = window.Cal;
     if (!Cal?.ns) return;
     if (Cal.ns.popup) Cal.ns.popup('ui', { theme: getTheme() });
-    if (Cal.ns.inline) Cal.ns.inline('ui', { theme: getTheme() });
+    if (Cal.ns.inline && inlineMounted) Cal.ns.inline('ui', { theme: getTheme() });
   }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
 </script>
 
