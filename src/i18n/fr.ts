@@ -416,6 +416,11 @@ export const fr: Translations = {
         ],
       },
     ],
+    contactCta: {
+      text: "Nous contacter",
+      url: "#contact",
+      icon: "mail",
+    },
     bottomLine: {
       text:
         "Un petit cabinet avec une expertise profonde en gestion de contexte et systèmes agentiques. On construit des outils, on partage ce qu'on apprend, on accompagne les équipes quand c'est utile.",

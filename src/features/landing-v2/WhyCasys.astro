@@ -11,6 +11,7 @@ const sideCard = content.differentiation[1];
 const lowerCards = content.differentiation.slice(2);
 const primaryCta = content.bottomLine?.cta?.primary;
 const secondaryCta = content.bottomLine?.cta?.secondary;
+const contactCta = content.contactCta;
 ---
 
 <section id="why-casys">
@@ -81,17 +82,11 @@ const secondaryCta = content.bottomLine?.cta?.secondary;
                 <span class="tag-chip">{highlight}</span>
               ))}
             </div>
-          ) : item.id === 'accessible' && primaryCta ? (
-            <button
-              type="button"
-              class="card-action card-action-primary"
-              data-cal-namespace="popup"
-              data-cal-link={calLink}
-              data-cal-popup="casys"
-            >
-              <span>{primaryCta.text}</span>
-              <span class="material-symbols-rounded" aria-hidden="true">{primaryCta.icon}</span>
-            </button>
+          ) : item.id === 'accessible' && contactCta ? (
+            <a href={contactCta.url} class="card-action card-action-primary">
+              <span>{contactCta.text}</span>
+              <span class="material-symbols-rounded" aria-hidden="true">{contactCta.icon}</span>
+            </a>
           ) : item.id === 'opensource' && secondaryCta ? (
             <a
               href={secondaryCta.url}

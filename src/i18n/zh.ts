@@ -364,6 +364,11 @@ export const zh: Translations = {
         ],
       },
     ],
+    contactCta: {
+      text: "联系我们",
+      url: "#contact",
+      icon: "mail",
+    },
     bottomLine: {
       text:
         "一个在上下文管理和智能体系统方面拥有深度专长的小型事务所。我们构建实用工具，分享所学，在需要时帮助团队。",

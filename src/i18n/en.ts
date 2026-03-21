@@ -413,6 +413,11 @@ export const en = {
         ],
       },
     ],
+    contactCta: {
+      text: "Contact us",
+      url: "#contact",
+      icon: "mail",
+    },
     bottomLine: {
       text:
         "A small firm with deep expertise across context management and agentic systems. We build tools, share what we learn, and help teams when needed.",
