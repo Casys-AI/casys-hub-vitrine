@@ -1,8 +1,10 @@
 ---
 import { useTranslations } from '../../i18n';
+import { getCasysCalLink } from '../../lib/cal';
 import { isExternalUrl } from '../../lib/url-utils';
 const locale = (Astro as any).currentLocale ?? 'en';
 const t = useTranslations(locale).hero;
+const calLink = getCasysCalLink(locale);
 
 ---
 
@@ -25,15 +27,16 @@ const t = useTranslations(locale).hero;
         <span class="material-symbols-rounded" aria-hidden="true">{t.cta.primary.icon}</span>
         {t.cta.primary.text}
       </a>
-      <a
-        href={t.cta.secondary.url}
+      <button
+        type="button"
         class="cta-secondary"
-        target={isExternalUrl(t.cta.secondary.url) ? '_blank' : undefined}
-        rel={isExternalUrl(t.cta.secondary.url) ? 'noopener noreferrer' : undefined}
+        data-cal-namespace="popup"
+        data-cal-link={calLink}
+        data-cal-popup="casys"
       >
         <span class="material-symbols-rounded" aria-hidden="true">{t.cta.secondary.icon}</span>
         {t.cta.secondary.text}
-      </a>
+      </button>
     </div>
 
     <div class="proof-pills">
@@ -149,6 +152,9 @@ const t = useTranslations(locale).hero;
     letter-spacing: 0.02em;
     text-decoration: none;
     border-radius: 6px;
+    border: none;
+    font-family: inherit;
+    cursor: pointer;
     transition: all 200ms ease-out;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   }
@@ -176,6 +182,8 @@ const t = useTranslations(locale).hero;
     text-decoration: none;
     border-radius: 6px;
     border: 1px solid var(--md-sys-color-outline-variant);
+    font-family: inherit;
+    cursor: pointer;
     transition: all 300ms ease-out;
   }
 

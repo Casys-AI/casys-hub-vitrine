@@ -1,9 +1,11 @@
 ---
 import { useTranslations } from '../../i18n';
+import { getCasysCalLink } from '../../lib/cal';
 import { isExternalUrl } from '../../lib/url-utils';
 
 const locale = (Astro as any).currentLocale ?? 'en';
 const content = useTranslations(locale).whyCasys;
+const calLink = getCasysCalLink(locale);
 const leadCard = content.differentiation[0];
 const sideCard = content.differentiation[1];
 const lowerCards = content.differentiation.slice(2);
@@ -80,10 +82,16 @@ const secondaryCta = content.bottomLine?.cta?.secondary;
               ))}
             </div>
           ) : item.id === 'accessible' && primaryCta ? (
-            <a href={primaryCta.url} class="card-action card-action-primary">
+            <button
+              type="button"
+              class="card-action card-action-primary"
+              data-cal-namespace="popup"
+              data-cal-link={calLink}
+              data-cal-popup="casys"
+            >
               <span>{primaryCta.text}</span>
               <span class="material-symbols-rounded" aria-hidden="true">{primaryCta.icon}</span>
-            </a>
+            </button>
           ) : item.id === 'opensource' && secondaryCta ? (
             <a
               href={secondaryCta.url}
@@ -116,15 +124,16 @@ const secondaryCta = content.bottomLine?.cta?.secondary;
 
         <div class="signature-actions">
           {primaryCta && (
-            <a
-              href={primaryCta.url}
+            <button
+              type="button"
               class="cta-primary"
-              target={isExternalUrl(primaryCta.url) ? '_blank' : undefined}
-              rel={isExternalUrl(primaryCta.url) ? 'noopener noreferrer' : undefined}
+              data-cal-namespace="popup"
+              data-cal-link={calLink}
+              data-cal-popup="casys"
             >
               <span class="material-symbols-rounded" aria-hidden="true">{primaryCta.icon}</span>
               <span>{primaryCta.text}</span>
-            </a>
+            </button>
           )}
           {secondaryCta && (
             <a
@@ -553,6 +562,7 @@ const secondaryCta = content.bottomLine?.cta?.secondary;
     font-size: 0.95rem;
     font-weight: 600;
     text-decoration: none;
+    cursor: pointer;
     transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
   }
 
@@ -720,5 +730,8 @@ const secondaryCta = content.bottomLine?.cta?.secondary;
   html[data-theme='dark'] #why-casys .card-action-secondary:hover {
     border-color: var(--casys-warm-accent);
     background: rgba(255, 184, 111, 0.04);
+  }
+</style>
+rgba(255, 184, 111, 0.04);
   }
 </style>

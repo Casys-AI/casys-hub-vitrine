@@ -1,7 +1,10 @@
 ---
 import { useTranslations } from '../../i18n';
+import { getCasysCalHref, getCasysCalLink } from '../../lib/cal';
 const locale = (Astro as any).currentLocale ?? 'en';
 const t = useTranslations(locale).contact;
+const calLink = getCasysCalLink(locale);
+const calHref = getCasysCalHref(locale);
 ---
 
 <section id="contact">
@@ -19,6 +22,29 @@ const t = useTranslations(locale).contact;
           ))}
         </div>
       )}
+    </div>
+
+    <div class="booking-shell">
+      <div class="booking-intro">
+        <h3>{t.bookingTitle}</h3>
+        <p>{t.bookingSubtitle}</p>
+      </div>
+
+      <div class="booking-embed-wrap">
+        <div id="casys-cal-inline" class="cal-inline-embed"></div>
+        <p class="booking-fallback-link">
+          <a href={calHref} target="_blank" rel="noopener noreferrer">{t.bookingOpenNewTab}</a>
+        </p>
+      </div>
+    </div>
+
+    <div class="section-divider" aria-hidden="true">
+      <span>{t.formFallback}</span>
+    </div>
+
+    <div class="form-intro">
+      <h3>{t.formFallback}</h3>
+      <p>{t.formFallbackSubtitle}</p>
     </div>
 
     <form
@@ -155,6 +181,88 @@ const t = useTranslations(locale).contact;
   .trust-badge .material-symbols-rounded {
     font-size: 20px;
     color: var(--md-sys-color-primary);
+  }
+
+  .booking-shell {
+    margin-bottom: 36px;
+  }
+
+  .booking-intro {
+    margin-bottom: 18px;
+    max-width: 620px;
+  }
+
+  .booking-intro h3,
+  .form-intro h3 {
+    margin: 0 0 8px;
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .booking-intro p,
+  .form-intro p {
+    margin: 0;
+    color: var(--md-sys-color-on-surface-variant);
+    line-height: 1.6;
+  }
+
+  .booking-embed-wrap {
+    border: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: 20px;
+    overflow: hidden;
+    background: var(--md-sys-color-surface-container-lowest);
+  }
+
+  .cal-inline-embed {
+    width: 100%;
+    min-height: 760px;
+    background: var(--md-sys-color-surface-container-lowest);
+  }
+
+  .booking-fallback-link {
+    margin: 0;
+    padding: 12px 16px 16px;
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .booking-fallback-link a {
+    color: inherit;
+    text-underline-offset: 3px;
+  }
+
+  .section-divider {
+    position: relative;
+    margin: 0 0 28px;
+    text-align: center;
+  }
+
+  .section-divider::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--md-sys-color-outline-variant);
+  }
+
+  .section-divider span {
+    position: relative;
+    display: inline-block;
+    padding: 0 14px;
+    background: var(--md-sys-color-surface);
+    font-size: 0.8rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .form-intro {
+    margin-bottom: 20px;
   }
 
   /* Form */
@@ -344,7 +452,30 @@ const t = useTranslations(locale).contact;
     color: var(--casys-warm-accent);
   }
 
-  /* Form */
+  html[data-theme="dark"] #contact .booking-intro h3,
+  html[data-theme="dark"] #contact .form-intro h3 {
+    color: var(--casys-warm-text-primary);
+  }
+
+  html[data-theme="dark"] #contact .booking-intro p,
+  html[data-theme="dark"] #contact .form-intro p,
+  html[data-theme="dark"] #contact .booking-fallback-link,
+  html[data-theme="dark"] #contact .booking-fallback-link a,
+  html[data-theme="dark"] #contact .section-divider span {
+    color: var(--casys-warm-text-secondary);
+  }
+
+  html[data-theme="dark"] #contact .section-divider::before,
+  html[data-theme="dark"] #contact .booking-embed-wrap {
+    border-color: rgba(255, 184, 111, 0.12);
+  }
+
+  html[data-theme="dark"] #contact .section-divider span,
+  html[data-theme="dark"] #contact .cal-inline-embed,
+  html[data-theme="dark"] #contact .booking-embed-wrap {
+    background: #100f0d;
+  }
+
   html[data-theme="dark"] #contact .contact-form {
     background: var(--casys-warm-surface);
     border-color: rgba(255, 184, 111, 0.1);
@@ -400,6 +531,91 @@ const t = useTranslations(locale).contact;
     border: 1px solid rgba(255, 100, 100, 0.2);
   }
 </style>
+
+<script define:vars={{ calLink }}>
+  const ensureCal = () => {
+    if (window.Cal) return window.Cal;
+
+    (function (C, A, L) {
+      const p = function (a, ar) { a.q.push(ar); };
+      const d = C.document;
+      C.Cal = C.Cal || function () {
+        const cal = C.Cal;
+        const ar = arguments;
+        if (!cal.loaded) {
+          cal.ns = {};
+          cal.q = cal.q || [];
+          d.head.appendChild(d.createElement('script')).src = A;
+          cal.loaded = true;
+        }
+        if (ar[0] === L) {
+          const api = function () { p(api, arguments); };
+          const namespace = ar[1];
+          api.q = api.q || [];
+          if (typeof namespace === 'string') {
+            cal.ns[namespace] = cal.ns[namespace] || api;
+            p(cal.ns[namespace], ar);
+            p(cal, ['initNamespace', namespace]);
+          } else {
+            p(cal, ar);
+          }
+          return;
+        }
+        p(cal, ar);
+      };
+    })(window, 'https://app.cal.com/embed/embed.js', 'init');
+
+    return window.Cal;
+  };
+
+  const getTheme = () => document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+  const getTimezone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  const initCalEmbeds = () => {
+    const Cal = ensureCal();
+    const config = {
+      layout: 'month_view',
+      theme: getTheme(),
+      timezone: getTimezone(),
+    };
+
+    Cal('init', 'popup', { origin: 'https://cal.com' });
+    Cal('init', 'inline', { origin: 'https://cal.com' });
+
+    document.querySelectorAll('[data-cal-popup="casys"]').forEach((el) => {
+      if (!(el instanceof HTMLElement)) return;
+      el.dataset.calNamespace = 'popup';
+      el.dataset.calLink = calLink;
+      el.dataset.calConfig = JSON.stringify(config);
+    });
+
+    const inlineEl = document.getElementById('casys-cal-inline');
+    if (inlineEl && !inlineEl.dataset.calMounted) {
+      inlineEl.dataset.calMounted = 'true';
+      Cal.ns.inline('inline', {
+        elementOrSelector: inlineEl,
+        calLink,
+        config,
+      });
+    }
+
+    if (Cal.ns?.popup) Cal.ns.popup('ui', { theme: getTheme() });
+    if (Cal.ns?.inline) Cal.ns.inline('ui', { theme: getTheme() });
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCalEmbeds, { once: true });
+  } else {
+    initCalEmbeds();
+  }
+
+  new MutationObserver(() => {
+    const Cal = window.Cal;
+    if (!Cal?.ns) return;
+    if (Cal.ns.popup) Cal.ns.popup('ui', { theme: getTheme() });
+    if (Cal.ns.inline) Cal.ns.inline('ui', { theme: getTheme() });
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
+</script>
 
 <script>
   const contactForm = document.getElementById('contact-form') as HTMLFormElement | null;
