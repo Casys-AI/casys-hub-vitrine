@@ -25,7 +25,12 @@ const t = useTranslations(locale).hero;
         <span class="material-symbols-rounded" aria-hidden="true">{t.cta.primary.icon}</span>
         {t.cta.primary.text}
       </a>
-      <a href={t.cta.secondary.url} class="cta-secondary">
+      <a
+        href={t.cta.secondary.url}
+        class="cta-secondary"
+        target={isExternalUrl(t.cta.secondary.url) ? '_blank' : undefined}
+        rel={isExternalUrl(t.cta.secondary.url) ? 'noopener noreferrer' : undefined}
+      >
         <span class="material-symbols-rounded" aria-hidden="true">{t.cta.secondary.icon}</span>
         {t.cta.secondary.text}
       </a>

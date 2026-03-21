@@ -53,7 +53,7 @@ export const fr: Translations = {
       "Des agents IA branchés sur vos ERP, CRM et outils internes. Stack observable et open source.",
     cta: {
       primary: { text: "Voir nos réalisations", icon: "arrow_forward", url: "#use-cases-preview" },
-      secondary: { text: "Nous contacter", icon: "mail", url: "#contact" },
+      secondary: { text: "Réserver un créneau", icon: "calendar_month", url: "https://cal.com/casys.ai" },
     },
     proofs: [
       { name: "MCP ERPNext", stat: "97 outils", url: "/fr/use-cases/mcp-erpnext", icon: "database" },
@@ -421,9 +421,9 @@ export const fr: Translations = {
         "Un petit cabinet avec une expertise profonde en gestion de contexte et systèmes agentiques. On construit des outils, on partage ce qu'on apprend, on accompagne les équipes quand c'est utile.",
       cta: {
         primary: {
-          text: "Nous Contacter",
-          url: "#contact",
-          icon: "mail",
+          text: "Réserver un créneau",
+          url: "https://cal.com/casys.ai",
+          icon: "calendar_month",
         },
         secondary: {
           text: "GitHub",

@@ -116,7 +116,12 @@ const secondaryCta = content.bottomLine?.cta?.secondary;
 
         <div class="signature-actions">
           {primaryCta && (
-            <a href={primaryCta.url} class="cta-primary">
+            <a
+              href={primaryCta.url}
+              class="cta-primary"
+              target={isExternalUrl(primaryCta.url) ? '_blank' : undefined}
+              rel={isExternalUrl(primaryCta.url) ? 'noopener noreferrer' : undefined}
+            >
               <span class="material-symbols-rounded" aria-hidden="true">{primaryCta.icon}</span>
               <span>{primaryCta.text}</span>
             </a>

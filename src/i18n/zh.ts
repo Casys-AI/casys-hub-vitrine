@@ -52,7 +52,7 @@ export const zh: Translations = {
     subtitle: "AI 智能体接入您的 ERP、CRM 和内部工具。可观测的开源技术栈。",
     cta: {
       primary: { text: "查看我们的工作", icon: "arrow_forward", url: "#use-cases-preview" },
-      secondary: { text: "联系我们", icon: "mail", url: "#contact" },
+      secondary: { text: "预约咨询", icon: "calendar_month", url: "https://cal.com/casys.ai" },
     },
     proofs: [
       { name: "MCP ERPNext", stat: "97 工具", url: "/zh/use-cases/mcp-erpnext", icon: "database" },

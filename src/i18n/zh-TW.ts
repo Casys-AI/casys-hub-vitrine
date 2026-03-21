@@ -52,7 +52,7 @@ export const zh_TW: Translations = {
     subtitle: "AI 智慧體接入您的 ERP、CRM 和內部工具。可觀測的開源技術棧。",
     cta: {
       primary: { text: "查看我們的工作", icon: "arrow_forward", url: "#use-cases-preview" },
-      secondary: { text: "聯繫我們", icon: "mail", url: "#contact" },
+      secondary: { text: "預約諮詢", icon: "calendar_month", url: "https://cal.com/casys.ai" },
     },
     proofs: [
       { name: "MCP ERPNext", stat: "97 工具", url: "/zh-TW/use-cases/mcp-erpnext", icon: "database" },
@@ -369,9 +369,9 @@ export const zh_TW: Translations = {
         "一個在上下文管理和智慧體系統方面擁有深度專長的小型事務所。我們建構實用工具，分享所學，在需要時協助團隊。",
       cta: {
         primary: {
-          text: "聯繫我們",
-          url: "#contact",
-          icon: "mail",
+          text: "預約諮詢",
+          url: "https://cal.com/casys.ai",
+          icon: "calendar_month",
         },
         secondary: {
           text: "GitHub",

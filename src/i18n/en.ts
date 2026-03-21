@@ -418,9 +418,9 @@ export const en = {
         "A small firm with deep expertise across context management and agentic systems. We build tools, share what we learn, and help teams when needed.",
       cta: {
         primary: {
-          text: "Get in Touch",
-          url: "#contact",
-          icon: "mail",
+          text: "Book a call",
+          url: "https://cal.com/casys.ai",
+          icon: "calendar_month",
         },
         secondary: {
           text: "GitHub",
@@ -1413,3 +1413,4 @@ const html = renderComposite(descriptor);`,
     ctaSecondary: { text: "View Projects", url: "/use-cases", icon: "folder_open" },
   },
 } as const;
+;
