@@ -1,12 +1,12 @@
 ---
 import { useTranslations } from '../../i18n';
 import { useCases } from '../../content/use-cases';
+import { isExternalUrl } from '../../lib/url-utils';
 
 const locale = (Astro as any).currentLocale ?? 'en';
 const t = useTranslations(locale).useCases;
 const featuredDemo = useTranslations(locale).featuredDemo;
 const localePath = locale === 'en' ? '' : `/${locale}`;
-const ogSuffix = locale === 'en' ? '' : `-${locale}`;
 
 const readCaseLabel =
   locale === 'fr'
@@ -25,136 +25,270 @@ const allCasesLabel =
       : locale === 'zh-TW'
         ? '所有案例'
         : 'All case studies';
+
+const featuredStats = featuredDemo.stats ?? [];
+const secondaryUseCases = useCases.filter((uc) => uc.id !== 'mcp-erpnext');
+const upperRailCases = secondaryUseCases.slice(0, 2);
+const lowerGridCases = secondaryUseCases.slice(2);
 ---
 
 <section id="use-cases-preview">
   <div class="container">
-    <div class="section-header">
+    <header class="section-header">
+      <span class="section-kicker">{t.pageTitle}</span>
       <h2>{t.heroTitle}</h2>
       <p class="section-subtitle">{t.heroSubtitle}</p>
+    </header>
+
+    <div class="editorial-grid">
+      <article id="featured-demo" class="featured-case">
+        <div class="featured-media-shell">
+          <div class="featured-status-pill">
+            <span class="material-symbols-rounded" aria-hidden="true">verified</span>
+            <span>{featuredDemo.eyebrow}</span>
+          </div>
+
+          <div class="featured-media-frame">
+            <video controls playsinline preload="metadata">
+              <source src={featuredDemo.video.src} type="video/mp4" />
+            </video>
+          </div>
+
+          <p class="video-caption">{featuredDemo.video.caption}</p>
+        </div>
+
+        <div class="featured-copy">
+          <div class="featured-head">
+            <span class="eyebrow">{featuredDemo.title}</span>
+            <h3 class="featured-title">{featuredDemo.name}</h3>
+            <p class="featured-tagline">{featuredDemo.tagline}</p>
+            <p class="featured-description">{featuredDemo.description}</p>
+          </div>
+
+          {featuredStats.length > 0 && (
+            <div class="featured-stats">
+              {featuredStats.map((stat) => (
+                <div class="stat-card">
+                  <span class="stat-value">{stat.value}</span>
+                  <span class="stat-label">{stat.label}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <ul class="featured-bullets">
+            {featuredDemo.bullets.map((bullet) => (
+              <li class="bullet-item">
+                <span class="material-symbols-rounded" aria-hidden="true">check_circle</span>
+                <span>{bullet}</span>
+              </li>
+            ))}
+          </ul>
+
+          <p class="featured-note">{featuredDemo.note}</p>
+
+          <div class="featured-actions">
+            <a
+              href={featuredDemo.cta.primary.url}
+              class="cta-primary"
+              target={isExternalUrl(featuredDemo.cta.primary.url) ? '_blank' : undefined}
+              rel={isExternalUrl(featuredDemo.cta.primary.url) ? 'noopener noreferrer' : undefined}
+            >
+              <span class="material-symbols-rounded" aria-hidden="true">{featuredDemo.cta.primary.icon}</span>
+              <span>{featuredDemo.cta.primary.text}</span>
+            </a>
+
+            <a
+              href={featuredDemo.cta.secondary.url}
+              class="cta-secondary"
+              target={isExternalUrl(featuredDemo.cta.secondary.url) ? '_blank' : undefined}
+              rel={isExternalUrl(featuredDemo.cta.secondary.url) ? 'noopener noreferrer' : undefined}
+            >
+              <span class="material-symbols-rounded" aria-hidden="true">{featuredDemo.cta.secondary.icon}</span>
+              <span>{featuredDemo.cta.secondary.text}</span>
+            </a>
+          </div>
+        </div>
+      </article>
+
+      <aside class="rail-cases" aria-label={t.pageTitle}>
+        {upperRailCases.map((uc, index) => (
+          <article class={`rail-card rail-card-${index + 1}`}>
+            <a href={`${localePath}/use-cases/${uc.id}`} class="rail-card-link">
+              <div class="rail-art" aria-hidden="true">
+                <span class="material-symbols-rounded rail-icon">{uc.icon}</span>
+                <span class="rail-noise"></span>
+              </div>
+
+              <div class="rail-copy">
+                <div class="rail-meta">
+                  <span class="rail-tag">{uc.tag}</span>
+                  <span class="rail-link-mark">{readCaseLabel}</span>
+                </div>
+                <h3 class="rail-title">{uc.title[locale] || uc.title.en}</h3>
+                <p class="rail-summary">{uc.punchline[locale] || uc.punchline.en}</p>
+              </div>
+            </a>
+          </article>
+        ))}
+      </aside>
     </div>
 
-    <div id="featured-demo" class="featured-case">
-      <div class="featured-video-card">
-        <video controls playsinline preload="metadata"><source src={featuredDemo.video.src} type="video/mp4" /></video>
-        <p class="video-caption">{featuredDemo.video.caption}</p>
+    {lowerGridCases.length > 0 && (
+      <div class="lower-cases-grid">
+        {lowerGridCases.map((uc, index) => (
+          <article class={`case-card case-card-${index + 1}`}>
+            <a href={`${localePath}/use-cases/${uc.id}`} class="case-card-link">
+              <div class="case-card-topline">
+                <span class="case-card-tag">{uc.tag}</span>
+                <span class="case-card-arrow" aria-hidden="true">↗</span>
+              </div>
+              <h3 class="case-title">{uc.title[locale] || uc.title.en}</h3>
+              <p class="case-excerpt">{uc.punchline[locale] || uc.punchline.en}</p>
+              <div class="case-stack">
+                {uc.stack.slice(0, 2).map((item) => (
+                  <span class="stack-chip">{item}</span>
+                ))}
+              </div>
+            </a>
+          </article>
+        ))}
       </div>
-
-      <div class="featured-copy">
-        <span class="eyebrow">{featuredDemo.eyebrow}</span>
-        <h3 class="featured-title">{featuredDemo.name}</h3>
-        <p class="featured-tagline">{featuredDemo.tagline}</p>
-        <p class="featured-description">{featuredDemo.description}</p>
-
-        <ul class="featured-bullets">
-          {featuredDemo.bullets.map((bullet) => (
-            <li class="bullet-item">
-              <span class="material-symbols-rounded">check_circle</span>
-              <span>{bullet}</span>
-            </li>
-          ))}
-        </ul>
-
-        <p class="featured-note">{featuredDemo.note}</p>
-      </div>
-    </div>
-
-    <div class="cases-grid">
-      {useCases.map((uc) => (
-        <article class="case-card">
-          <a href={`${localePath}/use-cases/${uc.id}`} class="case-card-link">
-            <img
-              src={`/og/use-case/${uc.id}${ogSuffix}.png`}
-              alt={uc.title[locale] || uc.title.en}
-              loading="lazy"
-              class="case-image og-thumbnail"
-            />
-            <h3 class="sr-only">{uc.title[locale] || uc.title.en}</h3>
-            <span class="case-overlay">
-              <span class="read-link">
-                {readCaseLabel}
-                <span aria-hidden="true">&rarr;</span>
-              </span>
-            </span>
-          </a>
-        </article>
-      ))}
-    </div>
+    )}
 
     <div class="view-all-wrapper">
       <a href={`${localePath}/use-cases`} class="view-all-link">
-        {allCasesLabel}
-        <span aria-hidden="true">&rarr;</span>
+        <span>{allCasesLabel}</span>
+        <span aria-hidden="true">→</span>
       </a>
     </div>
   </div>
 </section>
 
 <style>
-  section {
-    padding: 56px 0;
-    background: var(--md-sys-color-surface-container);
+  #use-cases-preview {
+    position: relative;
+    padding: 88px 0 96px;
+    background:
+      radial-gradient(circle at 14% 12%, rgba(255, 184, 111, 0.1), transparent 28%),
+      radial-gradient(circle at 84% 18%, rgba(213, 195, 181, 0.08), transparent 24%),
+      var(--md-sys-color-surface-container);
+    overflow: hidden;
   }
 
   .container {
-    max-width: 1200px;
+    position: relative;
+    max-width: 1240px;
     margin: 0 auto;
     padding: 0 24px;
   }
 
   .section-header {
-    text-align: left;
-    margin-bottom: 40px;
-    max-width: 620px;
+    max-width: 720px;
+    margin-bottom: 42px;
+  }
+
+  .section-kicker {
+    display: inline-block;
+    margin-bottom: 12px;
+    font-family: 'Manrope', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--md-sys-color-primary);
   }
 
   h2 {
+    margin: 0 0 14px;
     font-family: 'Fraunces', Georgia, serif;
-    font-size: 2.5rem;
-    font-weight: 600;
+    font-size: clamp(2.4rem, 5vw, 4.1rem);
+    font-weight: 500;
+    line-height: 1.02;
+    letter-spacing: -0.03em;
     color: var(--md-sys-color-on-surface);
-    margin: 0 0 12px;
-    letter-spacing: -0.02em;
   }
 
   .section-subtitle {
-    font-size: 1.1rem;
-    color: var(--md-sys-color-on-surface-variant);
     margin: 0;
-    line-height: 1.6;
+    max-width: 62ch;
+    font-size: 1.06rem;
+    line-height: 1.7;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .editorial-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.8fr);
+    gap: 28px;
+    align-items: start;
   }
 
   .featured-case {
-    display: grid;
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-    gap: 32px;
-    margin-bottom: 40px;
-    padding: 18px;
-    background: var(--md-sys-color-surface);
-    border: 1px solid var(--md-sys-color-outline-variant);
-    border-radius: 24px;
-    transition: box-shadow 300ms ease-out, border-color 300ms ease-out;
-  }
-
-  .featured-case:hover {
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
-    border-color: var(--md-sys-color-primary);
-  }
-
-  .featured-video-card {
+    position: relative;
     overflow: hidden;
+    border-radius: 28px;
+    background:
+      linear-gradient(180deg, rgba(255, 184, 111, 0.04), transparent 26%),
+      var(--md-sys-color-surface);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    padding: 20px;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.08);
+  }
+
+  .featured-case::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at 18% 16%, rgba(255, 184, 111, 0.14), transparent 28%),
+      linear-gradient(135deg, transparent 0%, rgba(213, 195, 181, 0.04) 100%);
+    pointer-events: none;
+  }
+
+  .featured-media-shell,
+  .featured-copy {
+    position: relative;
+    z-index: 1;
+  }
+
+  .featured-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 0 14px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(255, 184, 111, 0.08);
+    border: 1px solid rgba(255, 184, 111, 0.12);
+    color: var(--md-sys-color-primary);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .featured-status-pill .material-symbols-rounded {
+    font-size: 16px;
+  }
+
+  .featured-media-frame {
+    overflow: hidden;
+    border-radius: 18px;
+    background: #000;
+    border: 1px solid rgba(255, 255, 255, 0.04);
   }
 
   video {
-    width: 100%;
     display: block;
-    border-radius: 14px;
-    background: #000;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
   }
 
   .video-caption {
-    margin: 14px 4px 0;
-    font-size: 0.85rem;
+    margin: 12px 4px 0;
+    font-size: 0.84rem;
     line-height: 1.5;
     color: var(--md-sys-color-on-surface-variant);
   }
@@ -162,40 +296,36 @@ const allCasesLabel =
   .featured-copy {
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    padding: 12px;
-    border-left: 4px solid var(--md-sys-color-primary);
+    gap: 22px;
+    padding: 24px 10px 10px;
+  }
+
+  .featured-head {
+    max-width: 62ch;
   }
 
   .eyebrow {
-    font-size: 0.75rem;
+    display: inline-block;
+    margin-bottom: 10px;
+    font-size: 0.73rem;
     font-weight: 700;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
-    letter-spacing: 0.12em;
     color: var(--md-sys-color-primary);
   }
 
-  .featured-title,
-  .case-title {
-    font-family: 'Fraunces', Georgia, serif;
-    font-weight: 600;
-    color: var(--md-sys-color-on-surface);
-    margin: 0;
-    letter-spacing: -0.02em;
-  }
-
   .featured-title {
-    font-size: 1.8rem;
-    line-height: 1.2;
-  }
-
-  .case-title {
-    font-size: 1.45rem;
-    line-height: 1.3;
+    margin: 0 0 8px;
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: clamp(2rem, 3.2vw, 3rem);
+    font-weight: 500;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    color: var(--md-sys-color-on-surface);
   }
 
   .featured-tagline {
-    margin: -6px 0 0;
+    margin: 0 0 12px;
     font-family: 'Fraunces', Georgia, serif;
     font-size: 1.08rem;
     font-style: italic;
@@ -204,267 +334,441 @@ const allCasesLabel =
 
   .featured-description,
   .featured-note,
+  .rail-summary,
   .case-excerpt {
     margin: 0;
     font-size: 1rem;
-    line-height: 1.65;
+    line-height: 1.68;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .featured-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .stat-card {
+    min-height: 112px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 16px;
+    border-radius: 18px;
+    background: var(--md-sys-color-surface-container-low);
+    border: 1px solid rgba(81, 68, 57, 0.24);
+  }
+
+  .stat-value {
+    display: block;
+    margin-bottom: 6px;
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.65rem;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .stat-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1.45;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
     color: var(--md-sys-color-on-surface-variant);
   }
 
   .featured-bullets {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 18px;
     padding: 0;
+    margin: 0;
+    list-style: none;
   }
 
   .bullet-item {
     display: flex;
     gap: 10px;
     align-items: flex-start;
-    color: var(--md-sys-color-on-surface);
+    min-width: 0;
     font-size: 0.95rem;
     line-height: 1.6;
+    color: var(--md-sys-color-on-surface);
   }
 
   .bullet-item .material-symbols-rounded {
+    margin-top: 2px;
     font-size: 18px;
     color: var(--md-sys-color-primary);
-    margin-top: 2px;
   }
 
-  .cases-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 24px;
+  .featured-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
   }
 
+  .cta-primary,
+  .cta-secondary {
+    min-height: 48px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 18px;
+    border-radius: 999px;
+    text-decoration: none;
+    font-family: 'Manrope', sans-serif;
+    font-size: 0.93rem;
+    font-weight: 600;
+    transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+  }
+
+  .cta-primary {
+    background: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+  }
+
+  .cta-secondary {
+    background: transparent;
+    color: var(--md-sys-color-on-surface);
+    border: 1px solid var(--md-sys-color-outline-variant);
+  }
+
+  .cta-primary:hover,
+  .cta-secondary:hover {
+    transform: translateY(-1px);
+  }
+
+  .rail-cases {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .rail-card,
   .case-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 22px;
     background: var(--md-sys-color-surface);
     border: 1px solid var(--md-sys-color-outline-variant);
-    border-radius: 20px;
-    overflow: hidden;
-    transition: transform 240ms ease-out, box-shadow 240ms ease-out, border-color 240ms ease-out;
+    transition: transform 220ms ease, border-color 220ms ease, background 220ms ease, box-shadow 220ms ease;
   }
 
+  .rail-card:hover,
+  .case-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--md-sys-color-primary);
+    box-shadow: 0 20px 42px rgba(0, 0, 0, 0.08);
+  }
+
+  .rail-card-link,
   .case-card-link {
     display: block;
-    position: relative;
     color: inherit;
     text-decoration: none;
   }
 
-  .case-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.08);
-    border-color: var(--md-sys-color-primary);
+  .rail-card-link {
+    padding: 18px;
   }
 
-  .case-card-link:focus-visible {
-    outline: 3px solid var(--md-sys-color-primary);
-    outline-offset: 4px;
-    border-radius: 16px;
-  }
-
-  .case-image {
-    width: 100%;
-    display: block;
-    aspect-ratio: 1200 / 630;
-    object-fit: cover;
-  }
-
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
+  .rail-art {
+    position: relative;
+    height: 132px;
+    margin-bottom: 16px;
+    border-radius: 18px;
     overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
+    background:
+      radial-gradient(circle at 20% 28%, rgba(255, 184, 111, 0.22), transparent 22%),
+      linear-gradient(135deg, rgba(213, 195, 181, 0.12), transparent 48%),
+      linear-gradient(180deg, rgba(20, 19, 18, 0.4), rgba(20, 19, 18, 0.96));
+    border: 1px solid rgba(81, 68, 57, 0.18);
   }
 
-  .case-overlay {
+  .rail-art::after {
+    content: '';
     position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 16px 22px;
-    background: linear-gradient(to top, rgba(250, 249, 246, 0.95) 0%, transparent 100%);
-    display: flex;
-    justify-content: flex-end;
+    inset: 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 184, 111, 0.12);
+    opacity: 0.7;
   }
 
-  .read-link {
-    min-height: 44px;
+  .rail-icon {
+    position: absolute;
+    left: 16px;
+    bottom: 16px;
+    font-size: 28px;
+    color: var(--md-sys-color-primary);
+    z-index: 1;
+  }
+
+  .rail-noise {
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.08) 0.7px, transparent 0.7px);
+    background-size: 14px 14px;
+    mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.8) 30%, rgba(0, 0, 0, 1) 100%);
+    opacity: 0.18;
+  }
+
+  .rail-meta,
+  .case-card-topline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .rail-tag,
+  .case-card-tag,
+  .rail-link-mark {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .rail-tag,
+  .case-card-tag {
+    color: var(--md-sys-color-primary);
+  }
+
+  .rail-link-mark {
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .rail-title,
+  .case-title {
+    margin: 0 0 10px;
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 500;
+    line-height: 1.12;
+    letter-spacing: -0.02em;
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .rail-title {
+    font-size: 1.62rem;
+  }
+
+  .case-title {
+    font-size: 1.52rem;
+  }
+
+  .lower-cases-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    margin-top: 18px;
+  }
+
+  .case-card-link {
+    padding: 22px;
+  }
+
+  .case-card-arrow {
+    color: var(--md-sys-color-primary);
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .case-stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  .stack-chip {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    color: var(--md-sys-color-primary);
-    font-size: 0.9rem;
-    font-weight: 600;
-    transition: gap 200ms ease-out;
-  }
-
-  .case-card:hover .read-link {
-    gap: 10px;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: var(--md-sys-color-surface-container-low);
+    color: var(--md-sys-color-on-surface-variant);
+    font-size: 0.75rem;
+    line-height: 1;
+    border: 1px solid rgba(81, 68, 57, 0.2);
   }
 
   .view-all-wrapper {
-    margin-top: 40px;
-    text-align: center;
+    display: flex;
+    justify-content: center;
+    margin-top: 36px;
   }
 
   .view-all-link {
-    min-height: 44px;
+    min-height: 50px;
     display: inline-flex;
     align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 14px 28px;
+    gap: 10px;
+    padding: 0 22px;
+    border-radius: 999px;
     text-decoration: none;
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 600;
     color: var(--md-sys-color-on-primary);
-    background: var(--md-sys-color-primary);
-    border: none;
-    border-radius: 12px;
-    transition: background 200ms ease-out, transform 200ms ease-out, box-shadow 200ms ease-out;
+    background: linear-gradient(135deg, var(--md-sys-color-primary) 0%, #ffdcbe 100%);
+    transition: transform 180ms ease, box-shadow 180ms ease;
   }
 
   .view-all-link:hover {
-    background: var(--md-sys-color-primary);
     transform: translateY(-1px);
-    box-shadow: 0 4px 16px rgba(128, 0, 128, 0.2);
+    box-shadow: 0 10px 28px rgba(128, 0, 128, 0.18);
   }
 
-  .view-all-link:focus-visible {
+  .rail-card-link:focus-visible,
+  .case-card-link:focus-visible,
+  .view-all-link:focus-visible,
+  .cta-primary:focus-visible,
+  .cta-secondary:focus-visible {
     outline: 3px solid var(--md-sys-color-primary);
     outline-offset: 4px;
   }
 
-  @media (max-width: 900px) {
-    .featured-case,
-    .cases-grid {
+  @media (max-width: 1120px) {
+    .editorial-grid {
       grid-template-columns: 1fr;
+    }
+
+    .rail-cases,
+    .lower-cases-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .rail-cases {
+      display: grid;
     }
   }
 
-  @media (max-width: 768px) {
-    section {
-      padding: 32px 0;
+  @media (max-width: 840px) {
+    #use-cases-preview {
+      padding: 68px 0 76px;
     }
 
     .container {
-      padding: 0 16px;
+      padding: 0 18px;
     }
 
-    h2 {
-      font-size: 2rem;
+    .featured-stats,
+    .featured-bullets,
+    .rail-cases,
+    .lower-cases-grid {
+      grid-template-columns: 1fr;
     }
 
     .featured-case {
-      gap: 24px;
       padding: 16px;
     }
 
     .featured-copy {
-      padding: 4px 0 0;
-      border-left: 0;
-      border-top: 4px solid var(--md-sys-color-primary);
-      padding-top: 16px;
+      padding: 20px 4px 6px;
     }
 
     .featured-title {
-      font-size: 1.5rem;
+      font-size: 2rem;
     }
 
+    .rail-title,
     .case-title {
-      font-size: 1.25rem;
+      font-size: 1.34rem;
     }
 
-    .case-copy {
-      padding: 18px;
+    .featured-actions {
+      flex-direction: column;
     }
 
-    .view-all-wrapper {
-      margin-top: 32px;
-    }
-
+    .cta-primary,
+    .cta-secondary,
     .view-all-link {
       width: 100%;
+      justify-content: center;
     }
   }
 </style>
 
 <style is:global>
-  html[data-theme="dark"] #use-cases-preview {
-    background: var(--casys-warm-background);
+  html[data-theme='dark'] #use-cases-preview {
+    background:
+      radial-gradient(circle at 14% 12%, rgba(255, 184, 111, 0.1), transparent 28%),
+      radial-gradient(circle at 84% 18%, rgba(213, 195, 181, 0.08), transparent 24%),
+      var(--casys-warm-background);
   }
 
-  html[data-theme="dark"] #use-cases-preview h2,
-  html[data-theme="dark"] #use-cases-preview .featured-title,
-  html[data-theme="dark"] #use-cases-preview .case-title {
+  html[data-theme='dark'] #use-cases-preview h2,
+  html[data-theme='dark'] #use-cases-preview .featured-title,
+  html[data-theme='dark'] #use-cases-preview .rail-title,
+  html[data-theme='dark'] #use-cases-preview .case-title,
+  html[data-theme='dark'] #use-cases-preview .stat-value {
     color: var(--casys-warm-text-primary);
   }
 
-  html[data-theme="dark"] #use-cases-preview .section-subtitle,
-  html[data-theme="dark"] #use-cases-preview .video-caption,
-  html[data-theme="dark"] #use-cases-preview .featured-description,
-  html[data-theme="dark"] #use-cases-preview .featured-note,
-  html[data-theme="dark"] #use-cases-preview .case-excerpt {
+  html[data-theme='dark'] #use-cases-preview .section-subtitle,
+  html[data-theme='dark'] #use-cases-preview .video-caption,
+  html[data-theme='dark'] #use-cases-preview .featured-description,
+  html[data-theme='dark'] #use-cases-preview .featured-note,
+  html[data-theme='dark'] #use-cases-preview .rail-summary,
+  html[data-theme='dark'] #use-cases-preview .case-excerpt,
+  html[data-theme='dark'] #use-cases-preview .rail-link-mark,
+  html[data-theme='dark'] #use-cases-preview .stat-label,
+  html[data-theme='dark'] #use-cases-preview .stack-chip {
     color: var(--casys-warm-text-secondary);
   }
 
-  html[data-theme="dark"] #use-cases-preview .featured-case,
-  html[data-theme="dark"] #use-cases-preview .case-card {
+  html[data-theme='dark'] #use-cases-preview .featured-case,
+  html[data-theme='dark'] #use-cases-preview .rail-card,
+  html[data-theme='dark'] #use-cases-preview .case-card,
+  html[data-theme='dark'] #use-cases-preview .stat-card,
+  html[data-theme='dark'] #use-cases-preview .stack-chip {
     background: var(--casys-warm-surface);
-    border-color: var(--casys-warm-border-accent);
+    border-color: rgba(255, 184, 111, 0.12);
   }
 
-  html[data-theme="dark"] #use-cases-preview .featured-copy {
-    border-left-color: var(--casys-warm-accent);
+  html[data-theme='dark'] #use-cases-preview .featured-media-frame {
+    border-color: rgba(255, 184, 111, 0.12);
   }
 
-  @media (max-width: 768px) {
-    html[data-theme="dark"] #use-cases-preview .featured-copy {
-      border-top-color: var(--casys-warm-accent);
-    }
+  html[data-theme='dark'] #use-cases-preview .cta-secondary {
+    color: var(--casys-warm-text-primary);
+    border-color: rgba(255, 184, 111, 0.16);
   }
 
-  html[data-theme="dark"] #use-cases-preview .eyebrow,
-  html[data-theme="dark"] #use-cases-preview .featured-tagline,
-  html[data-theme="dark"] #use-cases-preview .read-link {
+  html[data-theme='dark'] #use-cases-preview .cta-primary,
+  html[data-theme='dark'] #use-cases-preview .view-all-link,
+  html[data-theme='dark'] #use-cases-preview .section-kicker,
+  html[data-theme='dark'] #use-cases-preview .eyebrow,
+  html[data-theme='dark'] #use-cases-preview .rail-tag,
+  html[data-theme='dark'] #use-cases-preview .case-card-tag,
+  html[data-theme='dark'] #use-cases-preview .featured-status-pill,
+  html[data-theme='dark'] #use-cases-preview .rail-icon,
+  html[data-theme='dark'] #use-cases-preview .case-card-arrow,
+  html[data-theme='dark'] #use-cases-preview .bullet-item .material-symbols-rounded {
     color: var(--casys-warm-accent);
   }
 
-  html[data-theme="dark"] #use-cases-preview .bullet-item {
-    color: var(--casys-warm-text-secondary);
+  html[data-theme='dark'] #use-cases-preview .featured-tagline {
+    color: #f6cfab;
   }
 
-  html[data-theme="dark"] #use-cases-preview .bullet-item .material-symbols-rounded {
-    color: var(--casys-warm-accent);
+  html[data-theme='dark'] #use-cases-preview .rail-art {
+    background:
+      radial-gradient(circle at 20% 28%, rgba(255, 184, 111, 0.22), transparent 22%),
+      linear-gradient(135deg, rgba(213, 195, 181, 0.08), transparent 48%),
+      linear-gradient(180deg, rgba(16, 15, 13, 0.5), rgba(16, 15, 13, 0.98));
+    border-color: rgba(255, 184, 111, 0.1);
   }
 
-  html[data-theme="dark"] #use-cases-preview .og-thumbnail {
-    filter: invert(1) hue-rotate(180deg);
-    opacity: 0.9;
+  html[data-theme='dark'] #use-cases-preview .featured-case:hover,
+  html[data-theme='dark'] #use-cases-preview .rail-card:hover,
+  html[data-theme='dark'] #use-cases-preview .case-card:hover,
+  html[data-theme='dark'] #use-cases-preview .cta-secondary:hover {
+    border-color: var(--casys-warm-accent);
+    background: rgba(255, 184, 111, 0.04);
   }
-
-  html[data-theme="dark"] #use-cases-preview .case-overlay {
-    background: linear-gradient(to top, rgba(10, 9, 8, 0.95) 0%, transparent 100%);
-  }
-
-  html[data-theme="dark"] #use-cases-preview .view-all-link {
-    background: var(--casys-warm-accent);
-    color: var(--casys-warm-background);
-  }
-
-  html[data-theme="dark"] #use-cases-preview .view-all-link:hover {
-    background: var(--casys-warm-accent-hover);
-    box-shadow: 0 4px 16px rgba(255, 184, 111, 0.25);
-  }
- </style>
+</style>
