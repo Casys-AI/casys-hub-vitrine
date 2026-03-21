@@ -9,6 +9,7 @@ const t = useTranslations(locale).hero;
 <section id="hero">
   <div class="hero-container">
     <div class="gradient-orb" aria-hidden="true"></div>
+    <div class="gradient-blob" aria-hidden="true"></div>
 
     <div class="hero-statement">
       <p class="hero-kicker">{t.kicker}</p>
@@ -243,15 +244,29 @@ const t = useTranslations(locale).hero;
   /* ===== GRADIENT ORB — asymmetric warm glow ===== */
   .gradient-orb {
     position: absolute;
-    top: 30%;
-    right: -15%;
-    width: min(900px, 60vw);
-    height: min(900px, 60vh);
+    top: 26%;
+    right: -12%;
+    width: min(900px, 58vw);
+    height: min(900px, 58vh);
     background:
-      radial-gradient(circle at 50% 50%, rgba(245, 158, 11, 0.12) 0%, transparent 50%),
-      radial-gradient(circle at 30% 70%, rgba(128, 0, 128, 0.06) 0%, transparent 45%);
-    filter: blur(100px);
-    opacity: 0.5;
+      radial-gradient(circle at 50% 50%, rgba(245, 158, 11, 0.1) 0%, transparent 52%),
+      radial-gradient(circle at 30% 70%, rgba(128, 0, 128, 0.05) 0%, transparent 45%);
+    filter: blur(110px);
+    opacity: 0.42;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .gradient-blob {
+    position: absolute;
+    top: 18%;
+    left: 34%;
+    width: min(420px, 34vw);
+    height: min(260px, 22vh);
+    background:
+      radial-gradient(circle at 50% 50%, rgba(255, 184, 111, 0.2) 0%, rgba(255, 184, 111, 0.1) 28%, rgba(255, 184, 111, 0.03) 48%, transparent 72%);
+    filter: blur(70px);
+    opacity: 0.55;
     z-index: 0;
     pointer-events: none;
   }
@@ -297,6 +312,15 @@ const t = useTranslations(locale).hero;
       width: min(400px, 80vw);
       height: min(400px, 80vh);
       filter: blur(60px);
+    }
+
+    .gradient-blob {
+      top: 24%;
+      left: 10%;
+      width: 78vw;
+      height: 18vh;
+      filter: blur(52px);
+      opacity: 0.38;
     }
   }
 
@@ -368,6 +392,12 @@ const t = useTranslations(locale).hero;
       radial-gradient(circle at 50% 50%, rgba(255, 184, 111, 0.1) 0%, transparent 55%),
       radial-gradient(circle at 20% 80%, rgba(157, 132, 183, 0.06) 0%, transparent 40%);
     filter: blur(100px);
+    opacity: 0.5;
+  }
+
+  html[data-theme="dark"] #hero .gradient-blob {
+    background:
+      radial-gradient(circle at 50% 50%, rgba(255, 184, 111, 0.22) 0%, rgba(255, 184, 111, 0.11) 28%, rgba(255, 184, 111, 0.03) 48%, transparent 72%);
     opacity: 0.5;
   }
 
