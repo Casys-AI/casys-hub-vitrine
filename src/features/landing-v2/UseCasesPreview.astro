@@ -739,8 +739,27 @@ const lowerGridCases = secondaryUseCases.slice(2);
     border-color: rgba(255, 184, 111, 0.16);
   }
 
-  html[data-theme='dark'] #use-cases-preview .cta-primary,
-  html[data-theme='dark'] #use-cases-preview .view-all-link,
+  html[data-theme='dark'] #use-cases-preview .cta-primary {
+    background: var(--casys-warm-accent);
+    color: var(--casys-warm-background);
+    border-color: var(--casys-warm-accent);
+  }
+
+  html[data-theme='dark'] #use-cases-preview .cta-primary:hover {
+    background: var(--casys-warm-accent-hover, #ffc88a);
+    box-shadow: 0 4px 20px rgba(255, 184, 111, 0.25);
+  }
+
+  html[data-theme='dark'] #use-cases-preview .view-all-link {
+    background: var(--casys-warm-accent);
+    color: var(--casys-warm-background);
+  }
+
+  html[data-theme='dark'] #use-cases-preview .view-all-link:hover {
+    background: var(--casys-warm-accent-hover, #ffc88a);
+    box-shadow: 0 8px 24px rgba(255, 184, 111, 0.22);
+  }
+
   html[data-theme='dark'] #use-cases-preview .section-kicker,
   html[data-theme='dark'] #use-cases-preview .eyebrow,
   html[data-theme='dark'] #use-cases-preview .rail-tag,
