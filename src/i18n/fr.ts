@@ -58,7 +58,6 @@ export const fr: Translations = {
     proofs: [
       { name: "MCP ERPNext", stat: "97 outils", url: "/fr/use-cases/mcp-erpnext", icon: "database" },
       { name: "MCP eInvoice", stat: "36 outils", url: "/fr/use-cases/mcp-einvoice", icon: "receipt_long" },
-      { name: "MCP Compose", stat: "Constructeur de dashboards", url: "https://github.com/Casys-AI/mcp-compose", icon: "dashboard" },
     ],
     authority: [
       { label: "15+ ans", detail: "KM → Graphes → Agents IA" },

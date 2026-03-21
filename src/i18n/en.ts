@@ -56,7 +56,6 @@ export const en = {
     proofs: [
       { name: "MCP ERPNext", stat: "97 tools", url: "/use-cases/mcp-erpnext", icon: "database" },
       { name: "MCP eInvoice", stat: "36 tools", url: "/use-cases/mcp-einvoice", icon: "receipt_long" },
-      { name: "MCP Compose", stat: "Dashboard builder", url: "https://github.com/Casys-AI/mcp-compose", icon: "dashboard" },
     ],
     authority: [
       { label: "15+ years", detail: "KM → Graphs → AI Agents" },

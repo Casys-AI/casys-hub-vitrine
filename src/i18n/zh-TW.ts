@@ -57,7 +57,6 @@ export const zh_TW: Translations = {
     proofs: [
       { name: "MCP ERPNext", stat: "97 工具", url: "/zh-TW/use-cases/mcp-erpnext", icon: "database" },
       { name: "MCP eInvoice", stat: "36 工具", url: "/zh-TW/use-cases/mcp-einvoice", icon: "receipt_long" },
-      { name: "MCP Compose", stat: "儀表板建構器", url: "https://github.com/Casys-AI/mcp-compose", icon: "dashboard" },
     ],
     authority: [
       { label: "15+ 年", detail: "知識管理 → 圖資料庫 → AI 代理" },
