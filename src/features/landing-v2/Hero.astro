@@ -49,20 +49,6 @@ const t = useTranslations(locale).hero;
   </div>
 </section>
 
-<section id="authority-bar">
-  <div class="authority-container">
-    {t.authority.map((item, i) => (
-      <Fragment>
-        {i > 0 ? <span class="authority-sep" aria-hidden="true"></span> : null}
-        <div class="authority-item">
-          <span class="authority-label">{item.label}</span>
-          <span class="authority-detail">{item.detail}</span>
-        </div>
-      </Fragment>
-    ))}
-  </div>
-</section>
-
 <style>
   /* ===== EDITORIAL AUTHORITY HERO — Stitch-inspired redesign ===== */
   section {
@@ -254,67 +240,6 @@ const t = useTranslations(locale).hero;
     color: var(--md-sys-color-on-surface-variant);
   }
 
-  /* ===== AUTHORITY BAR ===== */
-  #authority-bar {
-    background: var(--md-sys-color-surface-container-low);
-    border-top: 1px solid var(--md-sys-color-outline-variant);
-    border-bottom: 1px solid var(--md-sys-color-outline-variant);
-  }
-
-  .authority-container {
-    max-width: 1280px;
-    margin: 0 auto;
-    padding: 20px 48px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 0;
-  }
-
-  .authority-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 3px;
-    padding: 0 32px;
-  }
-
-  .authority-label {
-    font-family: 'Fraunces', Georgia, serif;
-    font-size: 0.9375rem;
-    font-weight: 600;
-    color: var(--md-sys-color-primary);
-    white-space: nowrap;
-  }
-
-  .authority-detail {
-    font-size: 0.6875rem;
-    color: var(--md-sys-color-on-surface-variant);
-    opacity: 0.7;
-    white-space: nowrap;
-  }
-
-  .authority-sep {
-    width: 1px;
-    height: 28px;
-    background: var(--md-sys-color-outline-variant);
-    flex-shrink: 0;
-  }
-
-  @media (max-width: 768px) {
-    .authority-container {
-      padding: 16px 20px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-    }
-    .authority-item { padding: 0; }
-    .authority-sep { display: none; }
-    .authority-label { font-size: 0.875rem; }
-    .authority-detail { white-space: normal; }
-  }
-
   /* ===== GRADIENT ORB — asymmetric warm glow ===== */
   .gradient-orb {
     position: absolute;
@@ -446,14 +371,4 @@ const t = useTranslations(locale).hero;
     opacity: 0.5;
   }
 
-  /* Authority Bar — dark mode */
-  html[data-theme="dark"] #authority-bar {
-    background: var(--casys-warm-surface);
-    border-top-color: rgba(255, 184, 111, 0.08);
-    border-bottom-color: rgba(255, 184, 111, 0.08);
-  }
-
-  html[data-theme="dark"] #authority-bar .authority-label { color: var(--casys-warm-accent); }
-  html[data-theme="dark"] #authority-bar .authority-detail { color: var(--casys-warm-text-muted); }
-  html[data-theme="dark"] #authority-bar .authority-sep { background: rgba(255, 184, 111, 0.1); }
 </style>
