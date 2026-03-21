@@ -93,6 +93,7 @@ const lowerGridCases = secondaryUseCases.slice(2);
               class="cta-primary"
               target={isExternalUrl(featuredDemo.cta.primary.url) ? '_blank' : undefined}
               rel={isExternalUrl(featuredDemo.cta.primary.url) ? 'noopener noreferrer' : undefined}
+              data-umami-event="usecases-featured-cta-primary"
             >
               <span class="material-symbols-rounded" aria-hidden="true">{featuredDemo.cta.primary.icon}</span>
               <span>{featuredDemo.cta.primary.text}</span>
@@ -103,6 +104,7 @@ const lowerGridCases = secondaryUseCases.slice(2);
               class="cta-secondary"
               target={isExternalUrl(featuredDemo.cta.secondary.url) ? '_blank' : undefined}
               rel={isExternalUrl(featuredDemo.cta.secondary.url) ? 'noopener noreferrer' : undefined}
+              data-umami-event="usecases-featured-cta-secondary"
             >
               <span class="material-symbols-rounded" aria-hidden="true">{featuredDemo.cta.secondary.icon}</span>
               <span>{featuredDemo.cta.secondary.text}</span>
@@ -157,7 +159,7 @@ const lowerGridCases = secondaryUseCases.slice(2);
     )}
 
     <div class="view-all-wrapper">
-      <a href={`${localePath}/use-cases`} class="view-all-link">
+      <a href={`${localePath}/use-cases`} class="view-all-link" data-umami-event="usecases-view-all">
         <span>{allCasesLabel}</span>
         <span aria-hidden="true">→</span>
       </a>

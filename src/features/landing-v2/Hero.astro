@@ -23,7 +23,7 @@ const calLink = getCasysCalLink(locale);
     </div>
 
     <div class="hero-actions">
-      <a href={t.cta.primary.url} class="cta-primary">
+      <a href={t.cta.primary.url} class="cta-primary" data-umami-event="hero-cta-primary">
         <span class="material-symbols-rounded" aria-hidden="true">{t.cta.primary.icon}</span>
         {t.cta.primary.text}
       </a>
@@ -33,6 +33,7 @@ const calLink = getCasysCalLink(locale);
         data-cal-namespace="popup"
         data-cal-link={calLink}
         data-cal-popup="casys"
+        data-umami-event="hero-cta-booking"
       >
         <span class="material-symbols-rounded" aria-hidden="true">{t.cta.secondary.icon}</span>
         {t.cta.secondary.text}

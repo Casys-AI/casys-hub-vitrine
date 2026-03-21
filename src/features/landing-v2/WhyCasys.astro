@@ -83,7 +83,7 @@ const contactCta = content.contactCta;
               ))}
             </div>
           ) : item.id === 'accessible' && contactCta ? (
-            <a href={contactCta.url} class="card-action card-action-primary">
+            <a href={contactCta.url} class="card-action card-action-primary" data-umami-event="whycasys-cta-contact">
               <span>{contactCta.text}</span>
               <span class="material-symbols-rounded" aria-hidden="true">{contactCta.icon}</span>
             </a>
@@ -125,6 +125,7 @@ const contactCta = content.contactCta;
               data-cal-namespace="popup"
               data-cal-link={calLink}
               data-cal-popup="casys"
+              data-umami-event="whycasys-cta-booking"
             >
               <span class="material-symbols-rounded" aria-hidden="true">{primaryCta.icon}</span>
               <span>{primaryCta.text}</span>

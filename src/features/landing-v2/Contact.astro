@@ -685,6 +685,7 @@ const calHref = getCasysCalHref(locale);
       if (!isOpen) {
         mountInlineCalendar();
         drilldown.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        if (window.umami) window.umami.track('booking-drilldown-open');
       }
     });
   };
@@ -747,6 +748,7 @@ const calHref = getCasysCalHref(locale);
       // Success
       contactFeedback.textContent = contactForm.dataset.msgSuccess || 'Message sent!';
       contactFeedback.classList.add('visible', 'success');
+      if (window.umami) window.umami.track('contact-form-submit');
 
       // Reset form
       contactForm.reset();
