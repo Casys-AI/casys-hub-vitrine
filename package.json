@@ -26,6 +26,7 @@
     "@astrojs/starlight": "^0.37.6",
     "@astrojs/vercel": "*",
     "@casys/design-system": "workspace:*",
+    "@google/stitch-sdk": "^0.0.3",
     "@material/web": "^2.4.0",
     "@modelcontextprotocol/ext-apps": "^1.0.1",
     "@resvg/resvg-wasm": "2.6.2",

@@ -55,10 +55,15 @@ export const zh_TW: Translations = {
       secondary: { text: "聯繫我們", icon: "mail", url: "#contact" },
     },
     proofs: [
-      { name: "5 個案例", stat: "真實示範，真實工作流", url: "#use-cases-preview", icon: "web_asset" },
-      { name: "開源", stat: "程式碼、議題、路線圖公開", url: "https://github.com/Casys-AI", icon: "code" },
-      { name: "15+ 年", stat: "KM → 圖資料庫 → AI 智慧體", url: "#why-casys", icon: "timeline" },
-      { name: "已發佈套件", stat: "npm + JSR，版本化", url: "https://jsr.io/@casys", icon: "package_2" },
+      { name: "MCP ERPNext", stat: "97 工具", url: "/zh-TW/use-cases/mcp-erpnext", icon: "database" },
+      { name: "MCP eInvoice", stat: "36 工具", url: "/zh-TW/use-cases/mcp-einvoice", icon: "receipt_long" },
+      { name: "MCP Compose", stat: "儀表板建構器", url: "https://github.com/Casys-AI/mcp-compose", icon: "dashboard" },
+    ],
+    authority: [
+      { label: "15+ 年", detail: "知識管理 → 圖資料庫 → AI 代理" },
+      { label: "開源", detail: "程式碼、議題、路線圖公開" },
+      { label: "已發布", detail: "npm + JSR" },
+      { label: "生產驗證", detail: "真實業務流程" },
     ],
   },
   featuredDemo: {

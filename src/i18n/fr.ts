@@ -56,10 +56,15 @@ export const fr: Translations = {
       secondary: { text: "Nous contacter", icon: "mail", url: "#contact" },
     },
     proofs: [
-      { name: "5 cas concrets", stat: "Démos live, vrais workflows", url: "#use-cases-preview", icon: "web_asset" },
-      { name: "Open source", stat: "Code, issues, roadmap publics", url: "https://github.com/Casys-AI", icon: "code" },
-      { name: "15+ ans", stat: "KM → Graphes → Agents IA", url: "#why-casys", icon: "timeline" },
-      { name: "Packages publiés", stat: "npm + JSR, versionnés", url: "https://jsr.io/@casys", icon: "package_2" },
+      { name: "MCP ERPNext", stat: "97 outils", url: "/fr/use-cases/mcp-erpnext", icon: "database" },
+      { name: "MCP eInvoice", stat: "36 outils", url: "/fr/use-cases/mcp-einvoice", icon: "receipt_long" },
+      { name: "MCP Compose", stat: "Constructeur de dashboards", url: "https://github.com/Casys-AI/mcp-compose", icon: "dashboard" },
+    ],
+    authority: [
+      { label: "15+ ans", detail: "KM → Graphes → Agents IA" },
+      { label: "Open source", detail: "Code, issues, roadmap publics" },
+      { label: "Publié", detail: "npm + JSR, versionné" },
+      { label: "En production", detail: "Vrais workflows métier" },
     ],
   },
   featuredDemo: {

@@ -54,10 +54,15 @@ export const en = {
       secondary: { text: "Talk to us", icon: "mail", url: "#contact" },
     },
     proofs: [
-      { name: "5 use cases", stat: "Live demos, production workflows", url: "#use-cases-preview", icon: "web_asset" },
-      { name: "Open source", stat: "Code, issues, roadmap public", url: "https://github.com/Casys-AI", icon: "code" },
-      { name: "15+ years", stat: "KM → Graphs → AI Agents", url: "#why-casys", icon: "timeline" },
-      { name: "Published packages", stat: "npm + JSR, versioned", url: "https://jsr.io/@casys", icon: "package_2" },
+      { name: "MCP ERPNext", stat: "97 tools", url: "/use-cases/mcp-erpnext", icon: "database" },
+      { name: "MCP eInvoice", stat: "36 tools", url: "/use-cases/mcp-einvoice", icon: "receipt_long" },
+      { name: "MCP Compose", stat: "Dashboard builder", url: "https://github.com/Casys-AI/mcp-compose", icon: "dashboard" },
+    ],
+    authority: [
+      { label: "15+ years", detail: "KM → Graphs → AI Agents" },
+      { label: "Open source", detail: "Code, issues, roadmap public" },
+      { label: "Published", detail: "npm + JSR, versioned" },
+      { label: "Production-tested", detail: "Real business workflows" },
     ],
   },
   featuredDemo: {
