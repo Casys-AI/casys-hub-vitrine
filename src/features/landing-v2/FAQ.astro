@@ -21,13 +21,13 @@ const faqJsonLd = {
 
 <section id="faq">
   <div class="container">
-    <!-- Section Header -->
+    <!-- Editorial Header — left-aligned, asymmetric -->
     <div class="section-header">
       <h2>{content.title}</h2>
       <p class="section-subtitle">{content.subtitle}</p>
     </div>
 
-    <!-- Category Filter -->
+    <!-- Category Filter Pills -->
     <div class="category-filter">
       <button class="category-btn active" data-category="all">
         <span>{content.allLabel}</span>
@@ -39,7 +39,7 @@ const faqJsonLd = {
       ))}
     </div>
 
-    <!-- FAQ List -->
+    <!-- FAQ Accordion List -->
     <div class="faq-list">
       {content.faqs.map((faq) => (
         <details class="faq-item" data-category={faq.category}>
@@ -50,7 +50,9 @@ const faqJsonLd = {
             </div>
             <span class="material-symbols-rounded expand-icon">expand_more</span>
           </summary>
-          <p class="faq-answer">{faq.a}</p>
+          <div class="faq-answer-wrap">
+            <p class="faq-answer">{faq.a}</p>
+          </div>
         </details>
       ))}
     </div>
@@ -59,14 +61,15 @@ const faqJsonLd = {
 
 <style>
   /* ========================================
-     FAQ - Editorial/Refined Aesthetic
-     Font: Fraunces for headlines
-     Palette: Warm orange for dark mode
+     FAQ — Premium Editorial Redesign
+     Inspired by Stitch "Obsidian Archivist"
+     Light: MD3 tokens
+     Dark: --casys-warm-* tokens (global styles)
      ======================================== */
 
   section {
-    padding: 56px 0;
-    background: var(--md-sys-color-surface-container-low);
+    padding: 72px 0;
+    background: var(--md-sys-color-surface);
   }
 
   .container {
@@ -75,62 +78,67 @@ const faqJsonLd = {
     padding: 0 24px;
   }
 
-  /* Left-aligned header - editorial style */
+  /* Left-aligned editorial header */
   .section-header {
     text-align: left;
-    margin-bottom: 48px;
+    margin-bottom: 56px;
     max-width: 600px;
   }
 
   h2 {
     font-family: 'Fraunces', Georgia, serif;
-    font-size: 2.5rem;
+    font-size: 2.75rem;
     font-weight: 600;
+    font-style: italic;
     font-optical-sizing: auto;
     color: var(--md-sys-color-on-surface);
     margin: 0 0 12px;
     letter-spacing: -0.02em;
+    line-height: 1.15;
   }
 
   .section-subtitle {
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     color: var(--md-sys-color-on-surface-variant);
     margin: 0;
-    line-height: 1.6;
+    line-height: 1.7;
+    max-width: 520px;
   }
 
-  /* Category Filter - Clean style */
+  /* Category Filter — rounded pills */
   .category-filter {
     display: flex;
-    gap: 8px;
+    gap: 10px;
     flex-wrap: wrap;
-    margin-bottom: 32px;
+    margin-bottom: 40px;
   }
 
   .category-btn {
-    padding: 8px 16px;
-    background: var(--md-sys-color-surface-container-lowest);
+    padding: 8px 20px;
+    background: var(--md-sys-color-surface-container);
     color: var(--md-sys-color-on-surface-variant);
-    border: 1px solid var(--md-sys-color-outline-variant);
-    border-radius: 6px;
-    font-size: 0.85rem;
+    border: none;
+    border-radius: 999px;
+    font-size: 0.75rem;
     font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
     cursor: pointer;
-    transition: border-color 200ms ease-out, background 200ms ease-out;
+    transition: background 250ms ease, color 250ms ease;
     font-family: inherit;
   }
 
   .category-btn:hover {
-    border-color: var(--md-sys-color-primary);
+    background: var(--md-sys-color-surface-container-high);
+    color: var(--md-sys-color-primary);
   }
 
   .category-btn.active {
     background: var(--md-sys-color-primary);
     color: var(--md-sys-color-on-primary);
-    border-color: var(--md-sys-color-primary);
   }
 
-  /* FAQ List - Clean style */
+  /* FAQ List — tonal depth, no borders */
   .faq-list {
     display: flex;
     flex-direction: column;
@@ -138,16 +146,17 @@ const faqJsonLd = {
   }
 
   .faq-item {
-    background: var(--md-sys-color-surface-container-lowest);
-    border: 1px solid var(--md-sys-color-outline-variant);
-    border-radius: 12px;
-    padding: 20px 24px;
+    background: var(--md-sys-color-surface-container-low);
+    border: none;
+    border-radius: 16px;
+    padding: 24px 28px;
     cursor: pointer;
-    transition: border-color 200ms ease-out;
+    transition: background 300ms ease, box-shadow 300ms ease;
   }
 
   .faq-item:hover {
-    border-color: var(--md-sys-color-primary);
+    background: var(--md-sys-color-surface-container);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
   }
 
   .faq-item.hidden {
@@ -169,62 +178,87 @@ const faqJsonLd = {
   .question-content {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
     flex: 1;
   }
 
   .category-tag {
     display: inline-block;
-    padding: 3px 8px;
-    background: var(--md-sys-color-surface-container-high);
-    color: var(--md-sys-color-primary);
-    border-radius: 4px;
-    font-size: 0.7rem;
+    padding: 3px 10px;
+    background: var(--md-sys-color-secondary-container);
+    color: var(--md-sys-color-on-secondary-container);
+    border-radius: 999px;
+    font-size: 0.65rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.1em;
     width: fit-content;
   }
 
   .question-text {
     font-family: 'Fraunces', Georgia, serif;
-    font-size: 1.1rem;
+    font-size: 1.15rem;
     font-weight: 600;
     color: var(--md-sys-color-on-surface);
+    transition: color 250ms ease;
+  }
+
+  .faq-item:hover .question-text {
+    color: var(--md-sys-color-primary);
   }
 
   .expand-icon {
-    transition: transform 200ms ease-out;
+    transition: transform 300ms ease;
     font-size: 24px;
     color: var(--md-sys-color-primary);
     flex-shrink: 0;
+    margin-top: 4px;
   }
 
   .faq-item[open] .expand-icon {
     transform: rotate(180deg);
   }
 
+  .faq-answer-wrap {
+    padding-top: 16px;
+    margin-top: 4px;
+  }
+
   .faq-answer {
     font-size: 0.95rem;
     color: var(--md-sys-color-on-surface-variant);
-    line-height: 1.7;
-    margin: 16px 0 0 0;
-    padding-top: 16px;
-    border-top: 1px solid var(--md-sys-color-outline-variant);
+    line-height: 1.8;
+    margin: 0;
+    max-width: 680px;
   }
 
-  /* Mobile Responsiveness */
+  /* Mobile */
   @media (max-width: 768px) {
     section {
-      padding: 32px 0;
+      padding: 40px 0;
+    }
+
+    h2 {
+      font-size: 2rem;
+    }
+
+    .section-header {
+      margin-bottom: 36px;
     }
 
     .category-filter {
-      margin-bottom: 24px;
+      margin-bottom: 28px;
+      gap: 8px;
+    }
+
+    .category-btn {
+      padding: 6px 14px;
+      font-size: 0.7rem;
     }
 
     .faq-item {
-      padding: 16px 20px;
+      padding: 18px 20px;
+      border-radius: 12px;
     }
 
     .question-text {
@@ -239,8 +273,9 @@ const faqJsonLd = {
 
 <style is:global>
   /* ========================================
-     FAQ - DARK MODE
-     Warm orange palette (#FFB86F, #D4A574)
+     FAQ — DARK MODE
+     Warm orange palette via --casys-warm-*
+     Tonal depth: no borders, background shifts
      ======================================== */
 
   html[data-theme="dark"] #faq {
@@ -252,43 +287,50 @@ const faqJsonLd = {
   }
 
   html[data-theme="dark"] #faq .section-subtitle {
-    color: var(--casys-warm-text-secondary);
+    color: var(--casys-warm-text-muted);
   }
 
-  /* Category Buttons */
+  /* Category Buttons — borderless, tonal */
   html[data-theme="dark"] #faq .category-btn {
     background: var(--casys-warm-surface);
-    border-color: rgba(255, 184, 111, 0.1);
-    color: var(--casys-warm-text-secondary);
+    color: var(--casys-warm-text-muted);
+    border: none;
   }
 
   html[data-theme="dark"] #faq .category-btn:hover {
-    border-color: var(--casys-warm-border-accent-hover);
+    background: rgba(255, 184, 111, 0.08);
+    color: var(--casys-warm-accent);
   }
 
   html[data-theme="dark"] #faq .category-btn.active {
     background: var(--casys-warm-accent);
-    color: var(--casys-warm-surface);
-    border-color: var(--casys-warm-accent);
+    color: #1a1815;
   }
 
-  /* FAQ Items */
+  /* FAQ Items — glassmorphic hover */
   html[data-theme="dark"] #faq .faq-item {
     background: var(--casys-warm-surface);
-    border-color: rgba(255, 184, 111, 0.1);
+    border: none;
   }
 
   html[data-theme="dark"] #faq .faq-item:hover {
-    border-color: var(--casys-warm-border-accent-hover);
+    background: rgba(33, 31, 30, 0.6);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 8px 32px rgba(255, 184, 111, 0.03);
   }
 
   html[data-theme="dark"] #faq .question-text {
     color: var(--casys-warm-text-primary);
   }
 
-  html[data-theme="dark"] #faq .category-tag {
-    background: rgba(255, 184, 111, 0.1);
+  html[data-theme="dark"] #faq .faq-item:hover .question-text {
     color: var(--casys-warm-accent);
+  }
+
+  /* Category tags — mauve accent */
+  html[data-theme="dark"] #faq .category-tag {
+    background: rgba(157, 132, 183, 0.15);
+    color: #d7bcf2;
   }
 
   html[data-theme="dark"] #faq .expand-icon {
@@ -297,24 +339,20 @@ const faqJsonLd = {
 
   html[data-theme="dark"] #faq .faq-answer {
     color: var(--casys-warm-text-secondary);
-    border-top-color: rgba(255, 184, 111, 0.1);
   }
 </style>
 
 <script>
-  // Category filter functionality
-  const categoryButtons = document.querySelectorAll('.category-btn');
-  const faqItems = document.querySelectorAll('.faq-item');
+  const categoryButtons = document.querySelectorAll('#faq .category-btn');
+  const faqItems = document.querySelectorAll('#faq .faq-item');
 
   categoryButtons.forEach((button) => {
     button.addEventListener('click', () => {
       const selectedCategory = button.getAttribute('data-category');
 
-      // Update active button
       categoryButtons.forEach((btn) => btn.classList.remove('active'));
       button.classList.add('active');
 
-      // Filter FAQ items
       faqItems.forEach((item) => {
         const itemCategory = item.getAttribute('data-category');
 
