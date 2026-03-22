@@ -465,6 +465,20 @@ export const zh_TW: Translations = {
     subtitle: "這是一個清楚示例，展示 Casys 技術棧如何驅動互動式業務工作流。",
     intro:
       "MCP ERPNext 把業務系統變成可檢查的 MCP App 介面——可以展示，技術上也有意義。",
+    stats: [
+      { value: "97", label: "MCP 工具" },
+      { value: "Live", label: "生產介面" },
+      { value: "Open Source", label: "GitHub 公開" },
+    ],
+    quickLinks: [
+      { icon: "terminal", title: "GitHub 儲存庫", description: "原始碼、issues 和路線圖。", url: "https://github.com/Casys-AI/mcp-erpnext" },
+      { icon: "package_2", title: "JSR 套件", description: "使用 deno add 或 npx 安裝。", url: "https://jsr.io/@casys/mcp-erpnext" },
+      { icon: "menu_book", title: "文件", description: "設定說明和工具參考。", url: "https://github.com/Casys-AI/mcp-erpnext#readme" },
+    ],
+    quote: {
+      text: "企業軟體的未來不在於新儀表板，而在於將現有智慧無縫接入既有的記錄系統。",
+      attribution: "— Casys Engineering",
+    },
     video: {
       src: "/videos/mcp-erpnext-demo.mp4",
       caption: "MCP ERPNext 的短影片示範。",
@@ -504,7 +518,25 @@ export const zh_TW: Translations = {
     title: "French e-invoicing, wired into your agent stack",
     subtitle: "27 MCP tools for invoice lifecycle, directory lookup, status tracking, and DGFiP reporting.",
     intro: "MCP E-Invoice connects your AI agents to the French e-invoicing ecosystem through a PA-agnostic adapter pattern. Currently integrated with Iopole, extensible to any certified platform.",
-    video: { src: "/videos/mcp-einvoice-demo.mp4", caption: "MCP E-Invoice workflow demo." },
+    stats: [
+      { value: "27", label: "MCP 工具" },
+      { value: "3", label: "發票格式" },
+      { value: "PA-agnostic", label: "適配器模式" },
+    ],
+    quickLinks: [
+      { icon: "terminal", title: "GitHub 儲存庫", description: "原始碼、issues 和貢獻。", url: "https://github.com/Casys-AI/mcp-einvoice" },
+      { icon: "package_2", title: "JSR 套件", description: "使用 deno add 或 npx 安裝。", url: "https://jsr.io/@casys/mcp-einvoice" },
+      { icon: "menu_book", title: "文件", description: "設定指南、工具參考和認證流程。", url: "https://github.com/Casys-AI/mcp-einvoice#readme" },
+    ],
+    media: {
+      srcLight: "/images/use-cases/mcp-einvoice-demo-light.png",
+      srcDark: "/images/use-cases/mcp-einvoice-demo-dark.png",
+      caption: "MCP E-Invoice 在 Claude 中運行 — 帶狀態過濾器的發票列表。",
+    },
+    quote: {
+      text: "電子發票不應該是獨立系統，而應該是您的智能體已具備的隱形能力。",
+      attribution: "— Casys Engineering",
+    },
     proofs: [
       { title: "Full invoice lifecycle", description: "Emit, search, download, track status, and manage attachments — all through MCP tools." },
       { title: "PA-agnostic architecture", description: "Switch between certified platforms (Iopole, etc.) without changing your agent code." },

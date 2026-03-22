@@ -1,8 +1,13 @@
 ---
 import LandingLayout from '../../../layouts/LandingLayout.astro';
-import McpErpnextPage from '../../../features/landing-v2/McpErpnextPage.astro';
+import McpProductPage from '../../../features/landing-v2/McpProductPage.astro';
+import { useTranslations } from '../../../i18n';
+
+const locale = (Astro as any).currentLocale ?? 'zh';
+const content = useTranslations(locale).mcpErpnextPage;
+const localePrefix = locale === 'en' ? '' : `/${locale}`;
 ---
 
 <LandingLayout title="MCP ERPNext | Casys AI" description="基于 ERPNext 的具体 MCP 工作流。查看演示，了解工作流，追踪背后的技术栈。">
-  <McpErpnextPage />
+  <McpProductPage content={content} githubUrl="https://github.com/Casys-AI/mcp-erpnext" localePrefix={localePrefix} />
 </LandingLayout>

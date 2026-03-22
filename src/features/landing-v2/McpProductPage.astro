@@ -1,0 +1,693 @@
+---
+interface Props {
+  content: any;
+  githubUrl: string;
+  localePrefix: string;
+}
+
+const { content, githubUrl, localePrefix } = Astro.props;
+---
+
+<section id="mcp-product-page">
+  <!-- 1. Hero -->
+  <div class="hero">
+    <div class="hero-inner">
+      <span class="eyebrow">{content.eyebrow}</span>
+      <h1>{content.title}</h1>
+      <p class="subtitle">{content.subtitle}</p>
+      <p class="intro">{content.intro}</p>
+      <div class="cta-group">
+        <a href={githubUrl} target="_blank" rel="noopener" class="cta-primary">
+          <span class="material-symbols-rounded">open_in_new</span>
+          <span>{content.ctaPrimary.text}</span>
+        </a>
+        <a href={`${localePrefix}/#contact`} class="cta-secondary">
+          <span class="material-symbols-rounded">mail</span>
+          <span>{content.ctaSecondary.text}</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Product Media -->
+  {(content.media || content.video) && (
+    <div class="media-section">
+      <div class="container">
+        <div class="media-card">
+          {content.media && (
+            <>
+              <img
+                src={content.media.srcLight}
+                alt={content.media.caption}
+                class="media-img media-light"
+                loading="lazy"
+              />
+              <img
+                src={content.media.srcDark}
+                alt={content.media.caption}
+                class="media-img media-dark"
+                loading="lazy"
+              />
+              <p class="media-caption">{content.media.caption}</p>
+            </>
+          )}
+          {content.video && !content.media && (
+            <>
+              <video controls playsinline preload="metadata">
+                <source src={content.video.src} type="video/mp4" />
+              </video>
+              <p class="media-caption">{content.video.caption}</p>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )}
+
+  <!-- 3. Stats Bar -->
+  {content.stats && (
+    <div class="stats-section">
+      <div class="container">
+        <div class="stats-bar">
+          {content.stats.map((stat: any, i: number) => (
+            <>
+              <div class="stat-item">
+                <span class="stat-value">{stat.value}</span>
+                <span class="stat-label">{stat.label}</span>
+              </div>
+              {i < content.stats.length - 1 && <div class="stat-divider" aria-hidden="true" />}
+            </>
+          ))}
+        </div>
+      </div>
+    </div>
+  )}
+
+  <!-- 4. Quick Links -->
+  {content.quickLinks && (
+    <div class="quicklinks-section">
+      <div class="container">
+        <div class="quicklinks-grid">
+          {content.quickLinks.map((link: any) => (
+            <a href={link.url} target="_blank" rel="noopener" class="quicklink-card">
+              <div class="quicklink-top">
+                <span class="material-symbols-rounded quicklink-icon">{link.icon}</span>
+                <h3>{link.title}</h3>
+              </div>
+              <p>{link.description}</p>
+              <span class="material-symbols-rounded quicklink-arrow">arrow_outward</span>
+            </a>
+          ))}
+        </div>
+      </div>
+    </div>
+  )}
+
+  <!-- 5. Feature Grid -->
+  <div class="proof-section">
+    <div class="container">
+      <div class="proof-grid">
+        {content.proofs.map((proof: any) => (
+          <div class="proof-item">
+            <h2>{proof.title}</h2>
+            <p>{proof.description}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. Stack Section -->
+  <div class="stack-section">
+    <div class="container">
+      <div class="stack-box">
+        <div class="stack-col stack-col-left">
+          <h2>{content.whatItShowsTitle}</h2>
+          <div class="stack-list">
+            {content.whatItShows.map((item: any) => (
+              <div class="stack-item">
+                <span class="material-symbols-rounded">check_circle</span>
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div class="stack-col stack-col-right">
+          <h2>{content.stackTitle}</h2>
+          <div class="stack-list">
+            {content.stackItems.map((item: any) => (
+              <div class="stack-item">
+                <span class="material-symbols-rounded">layers</span>
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. Quote -->
+  {content.quote && (
+    <div class="quote-section">
+      <div class="container">
+        <div class="quote-inner">
+          <div class="quote-line" aria-hidden="true" />
+          <blockquote>{content.quote.text}</blockquote>
+          <p class="quote-attribution">{content.quote.attribution}</p>
+        </div>
+      </div>
+    </div>
+  )}
+</section>
+
+<style>
+  section {
+    background: var(--md-sys-color-surface);
+  }
+
+  .container,
+  .hero-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* === Hero === */
+  .hero {
+    padding: 56px 0 40px;
+    background: var(--md-sys-color-surface);
+  }
+
+  .hero-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    max-width: 860px;
+  }
+
+  .eyebrow {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--md-sys-color-primary);
+  }
+
+  h1 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: clamp(2.6rem, 6vw, 4.4rem);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    margin: 0;
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .subtitle {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.25rem;
+    font-style: italic;
+    color: var(--md-sys-color-primary);
+    margin: 0;
+  }
+
+  .intro {
+    font-size: 1.02rem;
+    line-height: 1.7;
+    color: var(--md-sys-color-on-surface-variant);
+    margin: 0;
+  }
+
+  .cta-group {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+
+  .cta-primary,
+  .cta-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: opacity 0.15s ease;
+  }
+
+  .cta-primary:hover {
+    opacity: 0.88;
+  }
+
+  .cta-primary {
+    background: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+  }
+
+  .cta-secondary {
+    border: 1px solid var(--md-sys-color-outline-variant);
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .cta-secondary:hover {
+    background: var(--md-sys-color-surface-container-low);
+  }
+
+  /* === Media === */
+  .media-section {
+    padding: 0 0 48px;
+  }
+
+  .media-card {
+    padding: 18px;
+    border-radius: 18px;
+    background: var(--md-sys-color-surface-container-low);
+  }
+
+  .media-img {
+    width: 100%;
+    display: block;
+    border-radius: 12px;
+  }
+
+  .media-dark {
+    display: none;
+  }
+
+  video {
+    width: 100%;
+    display: block;
+    border-radius: 12px;
+    background: #000;
+  }
+
+  .media-caption {
+    font-size: 0.85rem;
+    color: var(--md-sys-color-on-surface-variant);
+    margin: 14px 4px 0;
+  }
+
+  /* === Stats Bar === */
+  .stats-section {
+    padding: 0 0 48px;
+  }
+
+  .stats-bar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 32px 40px;
+    border-radius: 16px;
+    background: var(--md-sys-color-surface-container-low);
+  }
+
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    gap: 6px;
+  }
+
+  .stat-value {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: clamp(1.8rem, 4vw, 2.8rem);
+    font-style: italic;
+    font-weight: 700;
+    color: var(--md-sys-color-primary);
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .stat-divider {
+    width: 1px;
+    height: 48px;
+    background: var(--md-sys-color-outline-variant);
+    flex-shrink: 0;
+  }
+
+  /* === Quick Links === */
+  .quicklinks-section {
+    padding: 0 0 48px;
+  }
+
+  .quicklinks-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  .quicklink-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 24px;
+    border-radius: 16px;
+    background: var(--md-sys-color-surface-container-low);
+    text-decoration: none;
+    color: inherit;
+    position: relative;
+    transition: background 0.18s ease, transform 0.18s ease;
+  }
+
+  .quicklink-card:hover {
+    background: var(--md-sys-color-surface-container);
+    transform: translateY(-2px);
+  }
+
+  .quicklink-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .quicklink-icon {
+    font-size: 22px;
+    color: var(--md-sys-color-primary);
+    flex-shrink: 0;
+  }
+
+  .quicklink-card h3 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.1rem;
+    font-style: italic;
+    margin: 0;
+    color: var(--md-sys-color-on-surface);
+    letter-spacing: -0.01em;
+  }
+
+  .quicklink-card p {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--md-sys-color-on-surface-variant);
+    flex: 1;
+  }
+
+  .quicklink-arrow {
+    font-size: 18px;
+    color: var(--md-sys-color-primary);
+    align-self: flex-end;
+  }
+
+  /* === Feature Grid === */
+  .proof-section {
+    padding: 0 0 48px;
+  }
+
+  .proof-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 40px 48px;
+  }
+
+  .proof-item h2 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.2rem;
+    font-style: italic;
+    margin: 0 0 10px;
+    color: var(--md-sys-color-on-surface);
+    letter-spacing: -0.02em;
+  }
+
+  .proof-item p {
+    margin: 0;
+    line-height: 1.7;
+    font-size: 0.95rem;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  /* === Stack Section === */
+  .stack-section {
+    padding: 0 0 48px;
+  }
+
+  .stack-box {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    border-radius: 18px;
+    overflow: hidden;
+  }
+
+  .stack-col {
+    padding: 36px 40px;
+  }
+
+  .stack-col-left {
+    background: var(--md-sys-color-surface-container-low);
+  }
+
+  .stack-col-right {
+    background: var(--md-sys-color-surface-container);
+  }
+
+  .stack-col h2 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.1rem;
+    margin: 0 0 20px;
+    color: var(--md-sys-color-on-surface);
+    letter-spacing: -0.02em;
+  }
+
+  .stack-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .stack-item {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    line-height: 1.6;
+    font-size: 0.95rem;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .stack-item .material-symbols-rounded {
+    color: var(--md-sys-color-primary);
+    font-size: 18px;
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+
+  /* === Quote === */
+  .quote-section {
+    padding: 0 0 72px;
+  }
+
+  .quote-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 16px;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  .quote-line {
+    width: 40px;
+    height: 3px;
+    border-radius: 2px;
+    background: #FFB86F;
+  }
+
+  blockquote {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: clamp(1.2rem, 2.5vw, 1.6rem);
+    font-style: italic;
+    line-height: 1.5;
+    margin: 0;
+    color: var(--md-sys-color-on-surface);
+    letter-spacing: -0.01em;
+  }
+
+  .quote-attribution {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--md-sys-color-on-surface-variant);
+    margin: 0;
+  }
+
+  /* === Responsive === */
+  @media (max-width: 900px) {
+    .quicklinks-grid,
+    .proof-grid,
+    .stack-box {
+      grid-template-columns: 1fr;
+    }
+
+    .stats-bar {
+      flex-direction: column;
+      padding: 28px 24px;
+      gap: 24px;
+    }
+
+    .stat-divider {
+      width: 40px;
+      height: 1px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .hero {
+      padding: 40px 0 28px;
+    }
+
+    h1 {
+      font-size: 2.2rem;
+    }
+
+    .stack-col {
+      padding: 28px 24px;
+    }
+  }
+</style>
+
+<style is:global>
+  html[data-theme="dark"] #mcp-product-page {
+    background: var(--casys-warm-background);
+  }
+
+  html[data-theme="dark"] #mcp-product-page .hero {
+    background: var(--casys-warm-background);
+  }
+
+  html[data-theme="dark"] #mcp-product-page .eyebrow {
+    color: var(--casys-warm-accent);
+  }
+
+  html[data-theme="dark"] #mcp-product-page h1 {
+    color: var(--casys-warm-text-primary);
+  }
+
+  html[data-theme="dark"] #mcp-product-page .subtitle {
+    color: var(--casys-warm-accent);
+  }
+
+  html[data-theme="dark"] #mcp-product-page .intro {
+    color: var(--casys-warm-text-secondary);
+  }
+
+  html[data-theme="dark"] #mcp-product-page .cta-primary {
+    background: var(--casys-warm-accent);
+    color: #0a0908;
+  }
+
+  html[data-theme="dark"] #mcp-product-page .cta-secondary {
+    border-color: var(--casys-warm-border-accent);
+    color: var(--casys-warm-text-primary);
+  }
+
+  html[data-theme="dark"] #mcp-product-page .cta-secondary:hover {
+    border-color: var(--casys-warm-accent);
+    background: var(--casys-warm-border-accent);
+  }
+
+  /* Media */
+  html[data-theme="dark"] #mcp-product-page .media-card {
+    background: var(--casys-warm-surface);
+  }
+
+  html[data-theme="dark"] #mcp-product-page .media-light {
+    display: none;
+  }
+
+  html[data-theme="dark"] #mcp-product-page .media-dark {
+    display: block;
+  }
+
+  html[data-theme="dark"] #mcp-product-page .media-caption {
+    color: var(--casys-warm-text-muted);
+  }
+
+  /* Stats */
+  html[data-theme="dark"] #mcp-product-page .stats-bar {
+    background: var(--casys-warm-surface);
+  }
+
+  html[data-theme="dark"] #mcp-product-page .stat-value {
+    color: var(--casys-warm-accent);
+  }
+
+  html[data-theme="dark"] #mcp-product-page .stat-label {
+    color: var(--casys-warm-text-muted);
+  }
+
+  html[data-theme="dark"] #mcp-product-page .stat-divider {
+    background: var(--casys-warm-border-accent);
+  }
+
+  /* Quick Links */
+  html[data-theme="dark"] #mcp-product-page .quicklink-card {
+    background: var(--casys-warm-surface);
+  }
+
+  html[data-theme="dark"] #mcp-product-page .quicklink-card:hover {
+    background: rgba(255, 184, 111, 0.08);
+  }
+
+  html[data-theme="dark"] #mcp-product-page .quicklink-icon,
+  html[data-theme="dark"] #mcp-product-page .quicklink-arrow {
+    color: var(--casys-warm-accent);
+  }
+
+  html[data-theme="dark"] #mcp-product-page .quicklink-card h3 {
+    color: var(--casys-warm-text-primary);
+  }
+
+  html[data-theme="dark"] #mcp-product-page .quicklink-card p {
+    color: var(--casys-warm-text-secondary);
+  }
+
+  /* Feature Grid */
+  html[data-theme="dark"] #mcp-product-page .proof-item h2 {
+    color: var(--casys-warm-text-primary);
+  }
+
+  html[data-theme="dark"] #mcp-product-page .proof-item p {
+    color: var(--casys-warm-text-secondary);
+  }
+
+  /* Stack */
+  html[data-theme="dark"] #mcp-product-page .stack-col-left {
+    background: var(--casys-warm-surface);
+  }
+
+  html[data-theme="dark"] #mcp-product-page .stack-col-right {
+    background: rgba(255, 184, 111, 0.06);
+  }
+
+  html[data-theme="dark"] #mcp-product-page .stack-col h2 {
+    color: var(--casys-warm-text-primary);
+  }
+
+  html[data-theme="dark"] #mcp-product-page .stack-item {
+    color: var(--casys-warm-text-secondary);
+  }
+
+  html[data-theme="dark"] #mcp-product-page .stack-item .material-symbols-rounded {
+    color: var(--casys-warm-accent);
+  }
+
+  /* Quote */
+  html[data-theme="dark"] #mcp-product-page blockquote {
+    color: var(--casys-warm-text-primary);
+  }
+
+  html[data-theme="dark"] #mcp-product-page .quote-attribution {
+    color: var(--casys-warm-text-muted);
+  }
+</style>

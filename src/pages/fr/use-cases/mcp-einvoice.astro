@@ -1,8 +1,13 @@
 ---
 import LandingLayout from '../../../layouts/LandingLayout.astro';
-import McpEinvoicePage from '../../../features/landing-v2/McpEinvoicePage.astro';
+import McpProductPage from '../../../features/landing-v2/McpProductPage.astro';
+import { useTranslations } from '../../../i18n';
+
+const locale = (Astro as any).currentLocale ?? 'fr';
+const content = useTranslations(locale).mcpEinvoicePage;
+const localePrefix = locale === 'en' ? '' : `/${locale}`;
 ---
 
 <LandingLayout title="MCP E-Invoice | Casys AI" description="Serveur MCP facturation électronique française. 27 outils pour le cycle de vie facture, annuaire, suivi de statut et e-reporting DGFiP.">
-  <McpEinvoicePage />
+  <McpProductPage content={content} githubUrl="https://github.com/Casys-AI/mcp-einvoice" localePrefix={localePrefix} />
 </LandingLayout>

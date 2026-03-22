@@ -515,6 +515,20 @@ export const en = {
       "A clear example of how the Casys stack can drive an interactive business workflow.",
     intro:
       "MCP ERPNext turns a line-of-business system into an inspectable MCP app surface. Interactive enough to explore, technical enough to evaluate.",
+    stats: [
+      { value: "97", label: "MCP Tools" },
+      { value: "Live", label: "Production Surface" },
+      { value: "Open Source", label: "GitHub Public" },
+    ],
+    quickLinks: [
+      { icon: "terminal", title: "GitHub Repository", description: "Source code, issues, and roadmap.", url: "https://github.com/Casys-AI/mcp-erpnext" },
+      { icon: "package_2", title: "JSR Package", description: "Install with deno add or npx.", url: "https://jsr.io/@casys/mcp-erpnext" },
+      { icon: "menu_book", title: "Documentation", description: "Setup, configuration, tool reference.", url: "https://github.com/Casys-AI/mcp-erpnext#readme" },
+    ],
+    quote: {
+      text: "The future of enterprise software isn't in new dashboards, but in the seamless wiring of existing intelligence into established systems of record.",
+      attribution: "— Casys Engineering",
+    },
     video: {
       src: "/videos/mcp-erpnext-demo.mp4",
       caption: "Short demo video of MCP ERPNext.",
@@ -556,9 +570,24 @@ export const en = {
       "27 MCP tools for invoice lifecycle, directory lookup, status tracking, and DGFiP reporting.",
     intro:
       "MCP E-Invoice connects your AI agents to the French e-invoicing ecosystem through a PA-agnostic adapter pattern. Currently integrated with Iopole, extensible to any certified platform.",
-    video: {
-      src: "/videos/mcp-einvoice-demo.mp4",
-      caption: "MCP E-Invoice workflow demo.",
+    stats: [
+      { value: "27", label: "MCP Tools" },
+      { value: "3", label: "Invoice Formats" },
+      { value: "PA-agnostic", label: "Adapter Pattern" },
+    ],
+    quickLinks: [
+      { icon: "terminal", title: "GitHub Repository", description: "Source code, issues, and contributions.", url: "https://github.com/Casys-AI/mcp-einvoice" },
+      { icon: "package_2", title: "JSR Package", description: "Install with deno add or npx.", url: "https://jsr.io/@casys/mcp-einvoice" },
+      { icon: "menu_book", title: "Documentation", description: "Setup guides, tool reference, auth flows.", url: "https://github.com/Casys-AI/mcp-einvoice#readme" },
+    ],
+    media: {
+      srcLight: "/images/use-cases/mcp-einvoice-demo-light.png",
+      srcDark: "/images/use-cases/mcp-einvoice-demo-dark.png",
+      caption: "MCP E-Invoice running inside Claude — invoice list with status filters.",
+    },
+    quote: {
+      text: "E-invoicing shouldn't be a separate system. It should be an invisible capability your agents already have.",
+      attribution: "— Casys Engineering",
     },
     proofs: [
       {

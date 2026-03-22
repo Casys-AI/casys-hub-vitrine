@@ -1,8 +1,13 @@
 ---
 import LandingLayout from '../../../layouts/LandingLayout.astro';
-import McpEinvoicePage from '../../../features/landing-v2/McpEinvoicePage.astro';
+import McpProductPage from '../../../features/landing-v2/McpProductPage.astro';
+import { useTranslations } from '../../../i18n';
+
+const locale = (Astro as any).currentLocale ?? 'zh-TW';
+const content = useTranslations(locale).mcpEinvoicePage;
+const localePrefix = locale === 'en' ? '' : `/${locale}`;
 ---
 
 <LandingLayout title="MCP E-Invoice | Casys AI" description="法國電子發票 MCP 伺服器。27個工具涵蓋發票生命週期、目錄查詢、狀態追蹤和 DGFiP 電子申報。">
-  <McpEinvoicePage />
+  <McpProductPage content={content} githubUrl="https://github.com/Casys-AI/mcp-einvoice" localePrefix={localePrefix} />
 </LandingLayout>

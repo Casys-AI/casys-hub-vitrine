@@ -518,6 +518,20 @@ export const fr: Translations = {
       "Un exemple clair de la manière dont la stack Casys peut piloter un workflow métier interactif.",
     intro:
       "MCP ERPNext transforme un système ERPNext en surface MCP inspectable. Technique et démontrable.",
+    stats: [
+      { value: "97", label: "Outils MCP" },
+      { value: "Live", label: "Surface de production" },
+      { value: "Open Source", label: "GitHub public" },
+    ],
+    quickLinks: [
+      { icon: "terminal", title: "Dépôt GitHub", description: "Code source, issues et feuille de route.", url: "https://github.com/Casys-AI/mcp-erpnext" },
+      { icon: "package_2", title: "Package JSR", description: "Installer avec deno add ou npx.", url: "https://jsr.io/@casys/mcp-erpnext" },
+      { icon: "menu_book", title: "Documentation", description: "Configuration, référence des outils.", url: "https://github.com/Casys-AI/mcp-erpnext#readme" },
+    ],
+    quote: {
+      text: "L'avenir des logiciels d'entreprise n'est pas dans de nouveaux tableaux de bord, mais dans le câblage transparent de l'intelligence existante dans les systèmes d'enregistrement établis.",
+      attribution: "— Casys Engineering",
+    },
     video: {
       src: "/videos/mcp-erpnext-demo.mp4",
       caption: "Courte vidéo de démonstration de MCP ERPNext.",
@@ -559,9 +573,24 @@ export const fr: Translations = {
       "27 outils MCP pour le cycle de vie facture, l'annuaire, le suivi de statut et le e-reporting DGFiP.",
     intro:
       "MCP E-Invoice connecte vos agents IA a l'ecosysteme de facturation electronique francais via un pattern d'adaptateur agnostique PA. Actuellement integre avec Iopole, extensible a toute plateforme agreee.",
-    video: {
-      src: "/videos/mcp-einvoice-demo.mp4",
-      caption: "Demo du workflow MCP E-Invoice.",
+    stats: [
+      { value: "27", label: "Outils MCP" },
+      { value: "3", label: "Formats facture" },
+      { value: "PA-agnostique", label: "Adaptateur multi-plateforme" },
+    ],
+    quickLinks: [
+      { icon: "terminal", title: "Dépôt GitHub", description: "Code source, issues et contributions.", url: "https://github.com/Casys-AI/mcp-einvoice" },
+      { icon: "package_2", title: "Package JSR", description: "Installer avec deno add ou npx.", url: "https://jsr.io/@casys/mcp-einvoice" },
+      { icon: "menu_book", title: "Documentation", description: "Guides de configuration, référence des outils, flux d'authentification.", url: "https://github.com/Casys-AI/mcp-einvoice#readme" },
+    ],
+    media: {
+      srcLight: "/images/use-cases/mcp-einvoice-demo-light.png",
+      srcDark: "/images/use-cases/mcp-einvoice-demo-dark.png",
+      caption: "MCP E-Invoice dans Claude — liste de factures avec filtres de statut.",
+    },
+    quote: {
+      text: "La facturation electronique ne devrait pas etre un systeme separe. Ce devrait etre une capacite invisible que vos agents possedent deja.",
+      attribution: "— Casys Engineering",
     },
     proofs: [
       {
