@@ -37,7 +37,7 @@ const idPrefix = 'sh';
       </a>
     </div>
 
-    <nav class="sh-nav-desktop">
+    <nav class="sh-nav-desktop" aria-label="Main navigation">
       <div class="sh-nav-links">
         {navLinks.map((link) => (
           <a href={link.href} class={`sh-nav-link${link.icon ? ' sh-nav-icon-link' : ''}`}>
@@ -74,7 +74,7 @@ const idPrefix = 'sh';
 </header>
 
 <div id={`${idPrefix}-mobile-menu`} class="sh-mobile-menu" hidden aria-hidden="true" inert>
-  <nav class="sh-mobile-nav">
+  <nav class="sh-mobile-nav" aria-label="Mobile navigation">
     {navLinks.map((link) => (
       <a href={link.href} class="sh-nav-link">
         {link.icon && <span class="material-symbols-rounded" style="font-size:16px;vertical-align:-2px">{link.icon}</span>}

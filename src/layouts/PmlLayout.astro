@@ -149,7 +149,7 @@ const nav = navTranslations[locale as keyof typeof navTranslations] ?? navTransl
           <span class="pml-logo-text">{nav.brand}</span>
         </a>
 
-        <nav class="pml-nav-desktop">
+        <nav class="pml-nav-desktop" aria-label="Main navigation">
           <div class="pml-nav-links">
             <a href="#catalog" class="pml-nav-link">{nav.capabilities}</a>
             <a href={locale === 'en' ? '/pml/catalog' : `/${locale}/pml/catalog`} class="pml-nav-link">{nav.catalog}</a>
@@ -172,7 +172,7 @@ const nav = navTranslations[locale as keyof typeof navTranslations] ?? navTransl
 
     <!-- Mobile Menu -->
     <div id="pml-mobile-menu" class="pml-mobile-menu">
-      <nav class="pml-mobile-nav">
+      <nav class="pml-mobile-nav" aria-label="Mobile navigation">
         <a href="#catalog" class="pml-nav-link">{nav.capabilities}</a>
         <a href={locale === 'en' ? '/pml/catalog' : `/${locale}/pml/catalog`} class="pml-nav-link">{nav.catalog}</a>
         <a href="/docs" class="pml-nav-link">{nav.docs}</a>

@@ -18,7 +18,7 @@ const sections = locale === 'fr'
     ];
 ---
 
-<nav id="section-nav" class="section-nav">
+<nav id="section-nav" class="section-nav" aria-label="Section navigation">
   <div class="nav-container">
     {sections.map((section) => (
       <a href={`#${section.id}`} class="nav-item" data-section={section.id}>

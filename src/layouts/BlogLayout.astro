@@ -246,7 +246,7 @@ function getPostSlug(post: typeof sortedPosts[0]) {
 
   <body class="blog-body">
     <!-- Nav bar -->
-    <nav class="blog-topnav">
+    <nav class="blog-topnav" aria-label="Blog navigation">
       <div class="blog-topnav-inner">
         <!-- Mobile sidebar toggle -->
         <button class="blog-sidebar-toggle" aria-label="Toggle sidebar" id="sidebarToggle">
@@ -307,7 +307,7 @@ function getPostSlug(post: typeof sortedPosts[0]) {
           <p class="blog-sidebar-subtitle">{t.blogSubtitle}</p>
         </div>
 
-        <nav class="blog-sidebar-nav">
+        <nav class="blog-sidebar-nav" aria-label="Blog navigation">
           <!-- All articles link -->
           <div class="blog-nav-section">
             <a
@@ -419,7 +419,7 @@ function getPostSlug(post: typeof sortedPosts[0]) {
           <div class="blog-toc-header">
             <span class="blog-toc-label">{t.toc}</span>
           </div>
-          <nav class="blog-toc-nav" id="blogTocNav"></nav>
+          <nav class="blog-toc-nav" id="blogTocNav" aria-label="Article navigation"></nav>
         </div>
       </aside>
     </div>

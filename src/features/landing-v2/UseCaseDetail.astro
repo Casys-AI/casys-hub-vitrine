@@ -703,7 +703,7 @@ const paragraphs = (text: string) => text.split('\n\n').filter(Boolean);
     background: rgba(255, 184, 111, 0.1);
   }
 
-  :global(html[data-theme="dark"]) h1 {
+  :global(html[data-theme="dark"]) #use-case-detail h1 {
     color: var(--casys-warm-text-primary);
   }
 
@@ -955,14 +955,14 @@ const paragraphs = (text: string) => text.split('\n\n').filter(Boolean);
   html[data-theme="dark"] #use-case-detail .narrative-text a,
   html[data-theme="dark"] #use-case-detail .narrative-text a:link,
   html[data-theme="dark"] #use-case-detail .narrative-text a:visited {
-    color: #FFB86F !important;
+    color: #FFB86F;
     text-decoration: underline;
     text-decoration-color: rgba(255, 184, 111, 0.3);
     text-underline-offset: 3px;
   }
 
   html[data-theme="dark"] #use-case-detail .narrative-text a:hover {
-    color: #FFB86F !important;
+    color: #FFB86F;
     text-decoration-color: #FFB86F;
   }
 
