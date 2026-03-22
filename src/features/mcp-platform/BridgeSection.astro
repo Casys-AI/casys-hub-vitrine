@@ -15,6 +15,11 @@ const t = useTranslations(locale).mcpPlatform;
       <h2>{t.bridgeTitle}</h2>
       <p class="section-subtitle"><em>{t.bridgeSubtitle}</em></p>
       <p class="section-body">{t.bridgeBody}</p>
+      <a href="/docs/mcp-bridge/introduction" class="docs-link">
+        <span class="material-symbols-rounded">description</span>
+        <span>Read the docs</span>
+        <span class="material-symbols-rounded docs-arrow">arrow_forward</span>
+      </a>
     </div>
 
     <div class="arch-diagram">
@@ -125,6 +130,22 @@ const t = useTranslations(locale).mcpPlatform;
     color: var(--md-sys-color-on-surface-variant);
     margin: 0;
   }
+
+  .docs-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--md-sys-color-primary);
+    text-decoration: none;
+    transition: gap 0.2s ease;
+  }
+
+  .docs-link:hover { gap: 12px; }
+  .docs-link .material-symbols-rounded { font-size: 18px; }
+  .docs-arrow { font-size: 16px; opacity: 0.6; }
 
   .arch-diagram {
     display: flex;
@@ -261,6 +282,7 @@ const t = useTranslations(locale).mcpPlatform;
   html[data-theme="dark"] #bridge h2 { color: var(--casys-warm-text-primary); }
   html[data-theme="dark"] #bridge .section-subtitle { color: var(--casys-warm-accent); }
   html[data-theme="dark"] #bridge .section-body { color: var(--casys-warm-text-secondary); }
+  html[data-theme="dark"] #bridge .docs-link { color: var(--casys-warm-accent); }
 
   html[data-theme="dark"] #bridge .arch-diagram { background: var(--casys-warm-surface); }
   html[data-theme="dark"] #bridge .arch-node {
