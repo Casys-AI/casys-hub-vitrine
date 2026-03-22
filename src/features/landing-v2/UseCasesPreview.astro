@@ -28,8 +28,6 @@ const allCasesLabel =
 
 const featuredStats = featuredDemo.stats ?? [];
 const secondaryUseCases = useCases.filter((uc) => uc.id !== 'mcp-erpnext');
-const upperRailCases = secondaryUseCases.slice(0, 2);
-const lowerGridCases = secondaryUseCases.slice(2);
 ---
 
 <section id="use-cases-preview">
@@ -41,6 +39,7 @@ const lowerGridCases = secondaryUseCases.slice(2);
     </header>
 
     <div class="editorial-grid">
+      <!-- Featured Case — col-span-8 -->
       <article id="featured-demo" class="featured-case">
         <div class="featured-media-shell">
           <div class="featured-status-pill">
@@ -68,7 +67,7 @@ const lowerGridCases = secondaryUseCases.slice(2);
           {featuredStats.length > 0 && (
             <div class="featured-stats">
               {featuredStats.map((stat) => (
-                <div class="stat-card">
+                <div class="stat-item">
                   <span class="stat-value">{stat.value}</span>
                   <span class="stat-label">{stat.label}</span>
                 </div>
@@ -113,50 +112,23 @@ const lowerGridCases = secondaryUseCases.slice(2);
         </div>
       </article>
 
+      <!-- Rail — col-span-4, all secondary cards stacked -->
       <aside class="rail-cases" aria-label={t.pageTitle}>
-        {upperRailCases.map((uc, index) => (
-          <article class={`rail-card rail-card-${index + 1}`}>
+        {secondaryUseCases.map((uc) => (
+          <article class="rail-card">
             <a href={`${localePath}/use-cases/${uc.id}`} class="rail-card-link">
-              <div class="rail-art" aria-hidden="true">
-                <span class="material-symbols-rounded rail-icon">{uc.icon}</span>
-                <span class="rail-noise"></span>
-              </div>
-
-              <div class="rail-copy">
-                <div class="rail-meta">
-                  <span class="rail-tag">{uc.tag}</span>
-                  <span class="rail-link-mark">{readCaseLabel}</span>
-                </div>
-                <h3 class="rail-title">{uc.title[locale] || uc.title.en}</h3>
-                <p class="rail-summary">{uc.punchline[locale] || uc.punchline.en}</p>
+              <span class="rail-tag">{uc.tag}</span>
+              <h3 class="rail-title">{uc.title[locale] || uc.title.en}</h3>
+              <p class="rail-summary">{uc.punchline[locale] || uc.punchline.en}</p>
+              <div class="rail-footer">
+                <span class="rail-link-mark">{readCaseLabel}</span>
+                <span class="material-symbols-rounded rail-arrow" aria-hidden="true">north_east</span>
               </div>
             </a>
           </article>
         ))}
       </aside>
     </div>
-
-    {lowerGridCases.length > 0 && (
-      <div class="lower-cases-grid">
-        {lowerGridCases.map((uc, index) => (
-          <article class={`case-card case-card-${index + 1}`}>
-            <a href={`${localePath}/use-cases/${uc.id}`} class="case-card-link">
-              <div class="case-card-topline">
-                <span class="case-card-tag">{uc.tag}</span>
-                <span class="case-card-arrow" aria-hidden="true">↗</span>
-              </div>
-              <h3 class="case-title">{uc.title[locale] || uc.title.en}</h3>
-              <p class="case-excerpt">{uc.punchline[locale] || uc.punchline.en}</p>
-              <div class="case-stack">
-                {uc.stack.slice(0, 2).map((item) => (
-                  <span class="stack-chip">{item}</span>
-                ))}
-              </div>
-            </a>
-          </article>
-        ))}
-      </div>
-    )}
 
     <div class="view-all-wrapper">
       <a href={`${localePath}/use-cases`} class="view-all-link" data-umami-event="usecases-view-all">
@@ -219,20 +191,22 @@ const lowerGridCases = secondaryUseCases.slice(2);
     color: var(--md-sys-color-on-surface-variant);
   }
 
+  /* ========================================
+     Editorial Grid — 8/4 split like Stitch
+     ======================================== */
   .editorial-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1.55fr) minmax(320px, 0.8fr);
-    gap: 28px;
+    grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr);
+    gap: 24px;
     align-items: start;
   }
 
+  /* Featured Case */
   .featured-case {
     position: relative;
     overflow: hidden;
-    border-radius: 28px;
-    background:
-      linear-gradient(180deg, rgba(255, 184, 111, 0.04), transparent 26%),
-      var(--md-sys-color-surface);
+    border-radius: 24px;
+    background: var(--md-sys-color-surface);
     border: 1px solid var(--md-sys-color-outline-variant);
     padding: 20px;
     box-shadow: 0 30px 60px rgba(0, 0, 0, 0.08);
@@ -276,7 +250,7 @@ const lowerGridCases = secondaryUseCases.slice(2);
 
   .featured-media-frame {
     overflow: hidden;
-    border-radius: 18px;
+    border-radius: 16px;
     background: #000;
     border: 1px solid rgba(255, 255, 255, 0.04);
   }
@@ -336,46 +310,39 @@ const lowerGridCases = secondaryUseCases.slice(2);
 
   .featured-description,
   .featured-note,
-  .rail-summary,
-  .case-excerpt {
+  .rail-summary {
     margin: 0;
     font-size: 1rem;
     line-height: 1.68;
     color: var(--md-sys-color-on-surface-variant);
   }
 
+  /* Stats — inline with border-left (Stitch style) */
   .featured-stats {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 14px;
+    display: flex;
+    gap: 32px;
+    padding-left: 24px;
+    border-left: 2px solid var(--md-sys-color-outline-variant);
   }
 
-  .stat-card {
-    min-height: 112px;
+  .stat-item {
     display: flex;
     flex-direction: column;
-    justify-content: flex-end;
-    padding: 16px;
-    border-radius: 18px;
-    background: var(--md-sys-color-surface-container-low);
-    border: 1px solid rgba(81, 68, 57, 0.24);
+    gap: 4px;
   }
 
   .stat-value {
-    display: block;
-    margin-bottom: 6px;
     font-family: 'Fraunces', Georgia, serif;
-    font-size: 1.65rem;
+    font-size: 1.8rem;
     line-height: 1;
     letter-spacing: -0.03em;
-    color: var(--md-sys-color-on-surface);
+    color: var(--md-sys-color-primary);
+    font-weight: 600;
   }
 
   .stat-label {
-    display: block;
-    font-size: 0.75rem;
+    font-size: 0.68rem;
     font-weight: 700;
-    line-height: 1.45;
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--md-sys-color-on-surface-variant);
@@ -443,162 +410,84 @@ const lowerGridCases = secondaryUseCases.slice(2);
     transform: translateY(-1px);
   }
 
+  /* ========================================
+     Rail Cards — compact text-only (Stitch style)
+     ======================================== */
   .rail-cases {
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 16px;
   }
 
-  .rail-card,
-  .case-card {
-    position: relative;
-    overflow: hidden;
-    border-radius: 22px;
+  .rail-card {
+    border-radius: 16px;
     background: var(--md-sys-color-surface);
     border: 1px solid var(--md-sys-color-outline-variant);
-    transition: transform 220ms ease, border-color 220ms ease, background 220ms ease, box-shadow 220ms ease;
+    transition: background 300ms ease, border-color 300ms ease, transform 220ms ease;
   }
 
-  .rail-card:hover,
-  .case-card:hover {
+  .rail-card:hover {
     transform: translateY(-2px);
     border-color: var(--md-sys-color-primary);
-    box-shadow: 0 20px 42px rgba(0, 0, 0, 0.08);
+    background: var(--md-sys-color-surface-container-low);
   }
 
-  .rail-card-link,
-  .case-card-link {
-    display: block;
+  .rail-card-link {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 24px;
     color: inherit;
     text-decoration: none;
   }
 
-  .rail-card-link {
-    padding: 18px;
-  }
-
-  .rail-art {
-    position: relative;
-    height: 132px;
-    margin-bottom: 16px;
-    border-radius: 18px;
-    overflow: hidden;
-    background:
-      radial-gradient(circle at 20% 28%, rgba(255, 184, 111, 0.22), transparent 22%),
-      linear-gradient(135deg, rgba(213, 195, 181, 0.12), transparent 48%),
-      linear-gradient(180deg, rgba(20, 19, 18, 0.4), rgba(20, 19, 18, 0.96));
-    border: 1px solid rgba(81, 68, 57, 0.18);
-  }
-
-  .rail-art::after {
-    content: '';
-    position: absolute;
-    inset: 14px;
-    border-radius: 14px;
-    border: 1px solid rgba(255, 184, 111, 0.12);
-    opacity: 0.7;
-  }
-
-  .rail-icon {
-    position: absolute;
-    left: 16px;
-    bottom: 16px;
-    font-size: 28px;
-    color: var(--md-sys-color-primary);
-    z-index: 1;
-  }
-
-  .rail-noise {
-    position: absolute;
-    inset: 0;
-    background-image: radial-gradient(rgba(255, 255, 255, 0.08) 0.7px, transparent 0.7px);
-    background-size: 14px 14px;
-    mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.8) 30%, rgba(0, 0, 0, 1) 100%);
-    opacity: 0.18;
-  }
-
-  .rail-meta,
-  .case-card-topline {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 10px;
-  }
-
-  .rail-tag,
-  .case-card-tag,
-  .rail-link-mark {
-    font-size: 0.7rem;
+  .rail-tag {
+    font-size: 0.65rem;
     font-weight: 700;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
-  }
-
-  .rail-tag,
-  .case-card-tag {
     color: var(--md-sys-color-primary);
   }
 
-  .rail-link-mark {
-    color: var(--md-sys-color-on-surface-variant);
-  }
-
-  .rail-title,
-  .case-title {
-    margin: 0 0 10px;
+  .rail-title {
+    margin: 0;
     font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.4rem;
     font-weight: 500;
-    line-height: 1.12;
+    line-height: 1.15;
     letter-spacing: -0.02em;
     color: var(--md-sys-color-on-surface);
   }
 
-  .rail-title {
-    font-size: 1.62rem;
-  }
-
-  .case-title {
-    font-size: 1.52rem;
-  }
-
-  .lower-cases-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 18px;
-    margin-top: 18px;
-  }
-
-  .case-card-link {
-    padding: 22px;
-  }
-
-  .case-card-arrow {
-    color: var(--md-sys-color-primary);
-    font-size: 1rem;
-    font-weight: 700;
-  }
-
-  .case-stack {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 16px;
-  }
-
-  .stack-chip {
-    display: inline-flex;
-    align-items: center;
-    min-height: 28px;
-    padding: 0 10px;
-    border-radius: 999px;
-    background: var(--md-sys-color-surface-container-low);
+  .rail-summary {
+    font-size: 0.88rem;
+    line-height: 1.6;
     color: var(--md-sys-color-on-surface-variant);
-    font-size: 0.75rem;
-    line-height: 1;
-    border: 1px solid rgba(81, 68, 57, 0.2);
   }
 
+  .rail-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 8px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+  }
+
+  .rail-link-mark {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .rail-arrow {
+    font-size: 20px;
+    color: var(--md-sys-color-primary);
+  }
+
+  /* View All Button */
   .view-all-wrapper {
     display: flex;
     justify-content: center;
@@ -626,7 +515,6 @@ const lowerGridCases = secondaryUseCases.slice(2);
   }
 
   .rail-card-link:focus-visible,
-  .case-card-link:focus-visible,
   .view-all-link:focus-visible,
   .cta-primary:focus-visible,
   .cta-secondary:focus-visible {
@@ -634,18 +522,17 @@ const lowerGridCases = secondaryUseCases.slice(2);
     outline-offset: 4px;
   }
 
+  /* ========================================
+     Responsive
+     ======================================== */
   @media (max-width: 1120px) {
     .editorial-grid {
       grid-template-columns: 1fr;
     }
 
-    .rail-cases,
-    .lower-cases-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
     .rail-cases {
       display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
 
@@ -658,10 +545,16 @@ const lowerGridCases = secondaryUseCases.slice(2);
       padding: 0 18px;
     }
 
-    .featured-stats,
-    .featured-bullets,
-    .rail-cases,
-    .lower-cases-grid {
+    .featured-stats {
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .featured-bullets {
+      grid-template-columns: 1fr;
+    }
+
+    .rail-cases {
       grid-template-columns: 1fr;
     }
 
@@ -677,9 +570,8 @@ const lowerGridCases = secondaryUseCases.slice(2);
       font-size: 2rem;
     }
 
-    .rail-title,
-    .case-title {
-      font-size: 1.34rem;
+    .rail-title {
+      font-size: 1.25rem;
     }
 
     .featured-actions {
@@ -696,6 +588,9 @@ const lowerGridCases = secondaryUseCases.slice(2);
 </style>
 
 <style is:global>
+  /* ========================================
+     DARK MODE — warm orange palette
+     ======================================== */
   html[data-theme='dark'] #use-cases-preview {
     background:
       radial-gradient(circle at 14% 12%, rgba(255, 184, 111, 0.1), transparent 28%),
@@ -706,9 +601,12 @@ const lowerGridCases = secondaryUseCases.slice(2);
   html[data-theme='dark'] #use-cases-preview h2,
   html[data-theme='dark'] #use-cases-preview .featured-title,
   html[data-theme='dark'] #use-cases-preview .rail-title,
-  html[data-theme='dark'] #use-cases-preview .case-title,
   html[data-theme='dark'] #use-cases-preview .stat-value {
     color: var(--casys-warm-text-primary);
+  }
+
+  html[data-theme='dark'] #use-cases-preview .stat-value {
+    color: var(--casys-warm-accent);
   }
 
   html[data-theme='dark'] #use-cases-preview .section-subtitle,
@@ -716,24 +614,27 @@ const lowerGridCases = secondaryUseCases.slice(2);
   html[data-theme='dark'] #use-cases-preview .featured-description,
   html[data-theme='dark'] #use-cases-preview .featured-note,
   html[data-theme='dark'] #use-cases-preview .rail-summary,
-  html[data-theme='dark'] #use-cases-preview .case-excerpt,
   html[data-theme='dark'] #use-cases-preview .rail-link-mark,
-  html[data-theme='dark'] #use-cases-preview .stat-label,
-  html[data-theme='dark'] #use-cases-preview .stack-chip {
+  html[data-theme='dark'] #use-cases-preview .stat-label {
     color: var(--casys-warm-text-secondary);
   }
 
   html[data-theme='dark'] #use-cases-preview .featured-case,
-  html[data-theme='dark'] #use-cases-preview .rail-card,
-  html[data-theme='dark'] #use-cases-preview .case-card,
-  html[data-theme='dark'] #use-cases-preview .stat-card,
-  html[data-theme='dark'] #use-cases-preview .stack-chip {
+  html[data-theme='dark'] #use-cases-preview .rail-card {
     background: var(--casys-warm-surface);
     border-color: rgba(255, 184, 111, 0.12);
   }
 
   html[data-theme='dark'] #use-cases-preview .featured-media-frame {
     border-color: rgba(255, 184, 111, 0.12);
+  }
+
+  html[data-theme='dark'] #use-cases-preview .featured-stats {
+    border-left-color: rgba(255, 184, 111, 0.2);
+  }
+
+  html[data-theme='dark'] #use-cases-preview .rail-footer {
+    border-top-color: rgba(255, 184, 111, 0.08);
   }
 
   html[data-theme='dark'] #use-cases-preview .cta-secondary {
@@ -765,10 +666,8 @@ const lowerGridCases = secondaryUseCases.slice(2);
   html[data-theme='dark'] #use-cases-preview .section-kicker,
   html[data-theme='dark'] #use-cases-preview .eyebrow,
   html[data-theme='dark'] #use-cases-preview .rail-tag,
-  html[data-theme='dark'] #use-cases-preview .case-card-tag,
   html[data-theme='dark'] #use-cases-preview .featured-status-pill,
-  html[data-theme='dark'] #use-cases-preview .rail-icon,
-  html[data-theme='dark'] #use-cases-preview .case-card-arrow,
+  html[data-theme='dark'] #use-cases-preview .rail-arrow,
   html[data-theme='dark'] #use-cases-preview .bullet-item .material-symbols-rounded {
     color: var(--casys-warm-accent);
   }
@@ -781,18 +680,13 @@ const lowerGridCases = secondaryUseCases.slice(2);
     color: #f6cfab;
   }
 
-  html[data-theme='dark'] #use-cases-preview .rail-art {
-    background:
-      radial-gradient(circle at 20% 28%, rgba(255, 184, 111, 0.22), transparent 22%),
-      linear-gradient(135deg, rgba(213, 195, 181, 0.08), transparent 48%),
-      linear-gradient(180deg, rgba(16, 15, 13, 0.5), rgba(16, 15, 13, 0.98));
-    border-color: rgba(255, 184, 111, 0.1);
+  html[data-theme='dark'] #use-cases-preview .featured-case:hover,
+  html[data-theme='dark'] #use-cases-preview .cta-secondary:hover {
+    border-color: var(--casys-warm-accent);
+    background: rgba(255, 184, 111, 0.04);
   }
 
-  html[data-theme='dark'] #use-cases-preview .featured-case:hover,
-  html[data-theme='dark'] #use-cases-preview .rail-card:hover,
-  html[data-theme='dark'] #use-cases-preview .case-card:hover,
-  html[data-theme='dark'] #use-cases-preview .cta-secondary:hover {
+  html[data-theme='dark'] #use-cases-preview .rail-card:hover {
     border-color: var(--casys-warm-accent);
     background: rgba(255, 184, 111, 0.04);
   }
