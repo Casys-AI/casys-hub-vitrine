@@ -67,32 +67,36 @@ export const fr: Translations = {
     ],
   },
   featuredDemo: {
-    title: "En action",
-    subtitle: "Un workflow MCP sur un ERP, inspectable de bout en bout.",
-    eyebrow: "Démo live",
-    name: "MCP ERPNext",
-    tagline: "Une app MCP interactive branchée sur un workflow ERPNext.",
+    title: "En production",
+    subtitle: "La facturation électronique française comme capacité agent — en ligne.",
+    eyebrow: "Produit live",
+    name: "MCP E-Invoice",
+    tagline: "27 outils MCP pour la réforme de la facturation électronique.",
     description:
-      "Un workflow ERP connecté à un agent MCP avec une exécution observable. Le visiteur peut inspecter chaque étape.",
+      "Cycle de vie complet de la facture branché sur votre stack agent : émettre, rechercher, suivre les statuts et déclarer à la DGFiP. PA-agnostique — changez de plateforme certifiée sans toucher au code agent.",
     bullets: [
-      "Kanban interactif avec actions métier directes.",
-      "Open source sur GitHub — code, issues et roadmap sont publics.",
-      "L'approche Casys appliquée à un workflow métier.",
+      "27 outils : émettre, chercher, suivre, déclarer — cycle complet.",
+      "PA-agnostique : Iopole aujourd'hui, n'importe quelle plateforme demain.",
+      "4 viewers MCP Apps intégrés pour factures et statuts.",
+      "Open source sur GitHub — inspectez le code.",
     ],
     stats: [
-      { value: "UI interactive", label: "Surface workflow cliquable" },
-      { value: "Observable", label: "Visibilité sur l'exécution" },
-      { value: "Projet public", label: "Déjà suivi sur GitHub" },
+      { value: "27", label: "Outils MCP" },
+      { value: "3", label: "Formats (CII, UBL, Factur-X)" },
+      { value: "PA-agnostique", label: "Adaptateur multi-plateforme" },
     ],
     note:
-      "ERPNext n'est qu'un exemple. La même approche peut s'appliquer à d'autres workflows métier.",
+      "Conçu pour le mandat facturation électronique 2026. Le même pattern d'adaptateur s'étend à toute plateforme certifiée.",
     cta: {
-      primary: { text: "Ouvrir MCP ERPNext", icon: "open_in_new", url: "/fr/use-cases/mcp-erpnext" },
+      primary: { text: "Voir sur GitHub", icon: "open_in_new", url: "https://github.com/Casys-AI/mcp-einvoice" },
       secondary: { text: "Nous parler", icon: "mail", url: "#contact" },
     },
-    video: {
-      src: "/videos/mcp-erpnext-demo.mp4",
-      caption: "Courte vidéo du workflow MCP ERPNext.",
+    media: {
+      type: "image",
+      src: "/images/use-cases/mcp-einvoice-demo-light.png",
+      srcLight: "/images/use-cases/mcp-einvoice-demo-light.png",
+      srcDark: "/images/use-cases/mcp-einvoice-demo-dark.png",
+      caption: "MCP E-Invoice dans Claude — liste de factures avec filtres de statut.",
     },
   },
   socialProof: {

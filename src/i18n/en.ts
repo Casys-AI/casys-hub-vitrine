@@ -65,32 +65,36 @@ export const en = {
     ],
   },
   featuredDemo: {
-    title: "See It In Action",
-    subtitle: "One workflow is worth more than a platform claim.",
-    eyebrow: "Live demo",
-    name: "MCP ERPNext",
-    tagline: "An interactive MCP app on top of a business workflow.",
+    title: "In Production",
+    subtitle: "French e-invoicing as an agent capability — live now.",
+    eyebrow: "Live product",
+    name: "MCP E-Invoice",
+    tagline: "27 MCP tools for the French e-invoicing reform.",
     description:
-      "Instead of asking visitors to imagine the future, show a workflow they can inspect: an agent-connected ERP surface with observable execution behind it.",
+      "Full invoice lifecycle wired into your agent stack: emit, search, track status, and report to DGFiP. PA-agnostic — switch certified platforms without changing agent code.",
     bullets: [
-      "Interactive kanban with business actions.",
-      "Open source on GitHub — code, issues, and roadmap are public.",
-      "The Casys approach applied to a business workflow.",
+      "27 tools: emit, search, track, report — full lifecycle.",
+      "PA-agnostic: Iopole today, any platform tomorrow.",
+      "4 built-in MCP Apps viewers for invoices and status.",
+      "Open source on GitHub — inspect the code.",
     ],
     stats: [
-      { value: "Live UI", label: "Clickable workflow surface" },
-      { value: "Observable", label: "Execution visibility underneath" },
-      { value: "Built public", label: "Early GitHub traction" },
+      { value: "27", label: "MCP tools" },
+      { value: "3", label: "Invoice formats (CII, UBL, Factur-X)" },
+      { value: "PA-agnostic", label: "Platform adapter pattern" },
     ],
     note:
-      "ERPNext is one example. The same approach can be applied to other business workflows.",
+      "Built for the 2026 French e-invoicing mandate. The same adapter pattern extends to any certified platform.",
     cta: {
-      primary: { text: "Open MCP ERPNext", icon: "open_in_new", url: "/use-cases/mcp-erpnext" },
+      primary: { text: "View on GitHub", icon: "open_in_new", url: "https://github.com/Casys-AI/mcp-einvoice" },
       secondary: { text: "Talk to us", icon: "mail", url: "#contact" },
     },
-    video: {
-      src: "/videos/mcp-erpnext-demo.mp4",
-      caption: "Short demo video of the MCP ERPNext workflow.",
+    media: {
+      type: "image",
+      src: "/images/use-cases/mcp-einvoice-demo-light.png",
+      srcLight: "/images/use-cases/mcp-einvoice-demo-light.png",
+      srcDark: "/images/use-cases/mcp-einvoice-demo-dark.png",
+      caption: "MCP E-Invoice running inside Claude — invoice list with status filters.",
     },
   },
   socialProof: {

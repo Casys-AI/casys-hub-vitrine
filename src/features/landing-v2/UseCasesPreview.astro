@@ -27,7 +27,8 @@ const allCasesLabel =
         : 'All case studies';
 
 const featuredStats = featuredDemo.stats ?? [];
-const secondaryUseCases = useCases.filter((uc) => uc.id !== 'mcp-erpnext');
+const secondaryUseCases = useCases.filter((uc) => uc.id !== 'mcp-einvoice');
+const featuredMedia = (featuredDemo as any).media ?? (featuredDemo as any).video;
 ---
 
 <section id="use-cases-preview">
@@ -48,12 +49,19 @@ const secondaryUseCases = useCases.filter((uc) => uc.id !== 'mcp-erpnext');
           </div>
 
           <div class="featured-media-frame">
-            <video controls playsinline preload="metadata">
-              <source src={featuredDemo.video.src} type="video/mp4" />
-            </video>
+            {featuredMedia.type === 'image' ? (
+              <>
+                <img src={featuredMedia.srcLight ?? featuredMedia.src} alt={featuredMedia.caption} loading="lazy" class="media-light" />
+                <img src={featuredMedia.srcDark ?? featuredMedia.src} alt={featuredMedia.caption} loading="lazy" class="media-dark" />
+              </>
+            ) : (
+              <video controls playsinline preload="metadata">
+                <source src={featuredMedia.src} type="video/mp4" />
+              </video>
+            )}
           </div>
 
-          <p class="video-caption">{featuredDemo.video.caption}</p>
+          <p class="video-caption">{featuredMedia.caption}</p>
         </div>
 
         <div class="featured-copy">
@@ -255,11 +263,17 @@ const secondaryUseCases = useCases.filter((uc) => uc.id !== 'mcp-erpnext');
     border: 1px solid rgba(255, 255, 255, 0.04);
   }
 
-  video {
+  video,
+  .featured-media-frame img {
     display: block;
     width: 100%;
     aspect-ratio: 16 / 9;
     object-fit: cover;
+    object-position: top left;
+  }
+
+  .media-dark {
+    display: none;
   }
 
   .video-caption {
@@ -596,6 +610,14 @@ const secondaryUseCases = useCases.filter((uc) => uc.id !== 'mcp-erpnext');
       radial-gradient(circle at 14% 12%, rgba(255, 184, 111, 0.1), transparent 28%),
       radial-gradient(circle at 84% 18%, rgba(213, 195, 181, 0.08), transparent 24%),
       var(--casys-warm-background);
+  }
+
+  html[data-theme='dark'] #use-cases-preview .media-light {
+    display: none;
+  }
+
+  html[data-theme='dark'] #use-cases-preview .media-dark {
+    display: block;
   }
 
   html[data-theme='dark'] #use-cases-preview h2,
