@@ -4,12 +4,24 @@ description: Composable onion-model middleware for MCP tool calls.
 ---
 
 import { Aside, Steps } from '@astrojs/starlight/components';
+import Mermaid from '../../../../components/Mermaid.astro';
 
 Every tool call in `@casys/mcp-server` flows through a composable middleware chain — the same onion model you know from Hono, Koa, or Express. This is how auth, rate limiting, validation, and your custom logic all compose together without tangling.
 
 ## How it works
 
 <img src="/diagrams/mcp-server/mcp-middleware-pipeline.svg" alt="Middleware Pipeline" style="width: 100%; max-width: 600px; margin: 24px auto; display: block;" />
+
+<Mermaid chart={`graph LR
+  REQ[Request] --> AUTH[Auth]
+  AUTH --> RL[Rate Limit]
+  RL --> CUSTOM[Your Code]
+  CUSTOM --> VAL[Validation]
+  VAL --> BP[Backpressure]
+  BP --> HANDLER[Handler]
+  HANDLER --> RES[Response]
+  style CUSTOM fill:#FFB86F,color:#000,stroke:#e6a050
+  style HANDLER fill:#6750A4,color:#fff,stroke:#4a3880`} />
 
 ```
 Request → Rate Limit → Auth → [Custom] → Scope Check → Validation → Backpressure → Handler

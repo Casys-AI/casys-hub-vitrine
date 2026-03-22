@@ -1,120 +1,93 @@
 ---
-title: Security Model
-description: HMAC-SHA256 auth, CSP, path traversal protection, and session rate limits.
+title: Security
+description: The actual security model, defaults, and current limits in @casys/mcp-bridge.
 ---
 
 import { Aside } from '@astrojs/starlight/components';
 
-## Telegram authentication (HMAC-SHA256)
+## Sessions
 
-Every `POST /session` from a Telegram Mini App is validated before a session is created.
+Sessions are created in memory with 128 bits of randomness from `crypto.getRandomValues()`. A session exists before the WebSocket handshake:
 
-**Algorithm:**
+- when the server serves HTML from `/app/...`
+- when the server serves proxied HTML from `onHttpRequest()` or `/ui?uri=...`
+- when a client explicitly calls `POST /session`
 
-```
-1. Parse initData as URL query string -> key-value pairs
-2. Remove the "hash" field, keep the rest
-3. Sort remaining pairs alphabetically by key
-4. Build data_check_string = "key=value\nkey=value\n..." (sorted, newline-separated)
-5. secret_key = HMAC-SHA256("WebAppData", botToken)      // note: key is "WebAppData", not the token
-6. expected = HMAC-SHA256(data_check_string, secret_key)
-7. Compare expected to received hash with timing-safe byte comparison
-8. Check auth_date: reject if older than maxAgeSeconds (default 86400 = 24h)
-```
+The server stores:
 
-All crypto is via `crypto.subtle` (Web Crypto API). No third-party crypto library.
+- `id`
+- `platform`
+- timestamps
+- `authenticated`
+- optional `principalId`, `userId`, `username`, and `authContext`
+- optional buffered notifications
 
-```typescript
-import { validateTelegramInitData } from "@casys/mcp-bridge";
+The default session TTL is 30 minutes, and expired sessions are cleaned every 60 seconds.
 
-const result = await validateTelegramInitData(initDataString, botToken, {
-  maxAgeSeconds: 3600, // tighten to 1 hour if needed
-});
-```
-
-<Aside type="caution">
-  Never expose your Telegram bot token to client-side code. Validation runs exclusively on the Resource Server.
+<Aside type="note">
+  Session TTL is not configurable through `startResourceServer()` in the current source. The server always constructs `new SessionStore()` with the default max age.
 </Aside>
+
+## Auth flow
+
+Auth is optional and generic. If an auth handler is configured, the first WebSocket message must be an auth payload.
+
+For Telegram, `telegramBotToken` installs the built-in auth handler. An unauthenticated non-auth message causes:
+
+- an `auth_error` frame
+- WebSocket close code `4003`
+
+Failed auth closes the socket with `4001`. Expired sessions are closed with `4002`.
+
+## Telegram `initData` validation
+
+The built-in Telegram validator:
+
+- requires `hash`
+- requires `auth_date`
+- rejects invalid hex
+- verifies the HMAC-SHA256 signature with Web Crypto
+- rejects `auth_date` older than 24 hours
+- rejects `auth_date` more than 60 seconds in the future
+
+If the `user` field is present, the validator also extracts `userId`, `username`, `firstName`, and `lastName`.
 
 ## Content Security Policy
 
-`buildCspHeader()` generates a CSP header starting from `default-src 'none'`. Every source must be explicitly listed.
+HTML responses get a CSP built from `buildCspHeader()`. The default policy is:
 
-```typescript
-import { buildCspHeader } from "@casys/mcp-bridge";
-
-const header = buildCspHeader({
-  scriptSources: ["'self'"],
-  connectSources: ["wss://bridge.example.com"],
-  frameAncestors: ["https://web.telegram.org"],
-  allowInline: false,
-});
-// Content-Security-Policy: default-src 'none'; script-src 'self'; connect-src wss://bridge.example.com; frame-ancestors https://web.telegram.org
+```text
+default-src 'none';
+script-src 'self' 'unsafe-inline';
+style-src 'self' 'unsafe-inline';
+img-src 'self' data:;
+font-src 'self';
+connect-src 'self';
+frame-ancestors 'self';
+base-uri 'self'
 ```
 
-Configure in `startResourceServer`:
+Extra sources come from:
 
-```typescript
-startResourceServer({
-  csp: {
-    scriptSources: ["'self'"],
-    connectSources: ["wss://your-domain.com"],
-    frameAncestors: ["https://web.telegram.org"],
-    allowInline: false,
-  },
-});
-```
+- `config.csp` for all served HTML
+- `UiResourceResponse.csp` only for backend-proxied resources
 
-## Path traversal protection
+Local files under `/app/...` do not have per-resource metadata-driven CSP in the current implementation.
 
-Asset serving at `GET /app/<server>/<path>` applies lexical path normalization before resolving to the filesystem:
+## Filesystem protections
 
-1. `..` and `.` segments are resolved without any filesystem access
-2. The resulting path is checked to confirm it stays within `assetDirectories[server]`
-3. Requests that escape the asset directory receive HTTP 403
+Path traversal protection for `/app/...` is lexical:
 
-No symlink resolution is performed.
+- `.` and `..` are normalized in string space
+- the resolved path must still start with the configured base directory
 
-## Session rate limiting
+This protects against simple traversal attempts, but it does not resolve symlinks.
 
-`SessionStore` enforces a hard limit of **10,000 concurrent sessions**. Once reached, `POST /session` returns HTTP 429 until sessions expire or are cleaned up.
+## Current trust boundaries
 
-Sessions expire after **30 minutes of inactivity**. A cleanup task runs every **60 seconds**.
+The package has important security limits that the docs should not hide:
 
-```typescript
-// SessionStore is accessible on the returned server object
-const server = startResourceServer({ ... });
-const sessionCount = server.sessions.size;
-```
-
-## WebSocket authentication
-
-The session must exist (created via `POST /session`) before a WebSocket connection to `WS /bridge?session=<id>` is accepted. If the session does not exist, the WebSocket is rejected with close code 4401.
-
-When a platform auth handler is configured, the client must send auth as the **first WebSocket message** (before any JSON-RPC traffic). If the auth message is not received within the timeout, the connection is dropped.
-
-## Allowed origins
-
-Restrict which origins can connect to the WebSocket:
-
-```typescript
-startResourceServer({
-  options: {
-    allowedOrigins: ["https://your-domain.com"],
-  },
-});
-```
-
-Requests with an `Origin` header not in the allowlist are rejected with HTTP 403.
-
-## Summary
-
-| Threat | Mitigation |
-|--------|------------|
-| Forged Telegram initData | HMAC-SHA256 validation, timing-safe comparison, 24h max age |
-| XSS via served HTML | CSP `default-src 'none'`, explicit allowlists |
-| Path traversal on asset serving | Lexical normalization, boundary check |
-| Session flooding | Hard cap of 10,000 sessions, HTTP 429 |
-| Stale sessions | 30-minute TTL, 60-second cleanup interval |
-| Unauthorized WebSocket | Session required before WS connect; auth-on-connect if platform auth configured |
-| Cross-origin WebSocket | `allowedOrigins` checked on upgrade request |
+- `allowedOrigins` only affects HTTP CORS headers. The WebSocket endpoint does not perform explicit `Origin` validation.
+- The shared `BasePostMessageAdapter` constrains outbound `targetOrigin` from `resourceBaseUrl`, but it does not validate inbound `message` events by `event.origin`.
+- Session state is in-memory only. Restarting the server clears sessions and buffered notifications.
+- There is no built-in LINE token validation.

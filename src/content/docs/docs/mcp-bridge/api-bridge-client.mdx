@@ -1,145 +1,91 @@
 ---
 title: Bridge Client API
-description: API reference for BridgeClient, MessageRouter, WebSocketTransport, and BasePostMessageAdapter.
+description: The injected browser runtime and the exported BridgeClient class.
 ---
 
-import { Aside } from '@astrojs/starlight/components';
+## Two browser-side layers
 
-## Overview
+`@casys/mcp-bridge` exposes two related browser-side pieces:
 
-`bridge.js` is an IIFE automatically injected into HTML responses by the Resource Server. It self-initializes on page load — you do not call it directly.
+1. The injected `bridge.js` runtime that `startResourceServer()` serves at `/bridge.js`
+2. The exported `BridgeClient` class in `src/core/bridge-client.ts`
 
-These exports are useful if you are building a custom bridge client, writing tests, or integrating the transport layer without the full Resource Server.
+They solve the same problem, but they are not identical implementations.
 
-## `BridgeClient`
+## Injected `bridge.js`
 
-The main class orchestrating the client-side bridge. Used internally by `bridge.js`.
+The Resource Server injects a script URL shaped like:
 
-```typescript
-import { BridgeClient } from "@casys/mcp-bridge";
-
-const client = new BridgeClient({
-  wsUrl: "wss://bridge.example.com/bridge",
-  sessionId: "abc123",
-  platform: "telegram",
-  authData: { initData: window.Telegram.WebApp.initData },
-});
-
-await client.connect();
-client.send({ jsonrpc: "2.0", method: "tools/call", id: 1, params: { name: "my-tool", arguments: {} } });
-client.on("message", (msg) => console.log("received", msg));
+```text
+/bridge.js?platform=<platform>&session=<sessionId>[&auth=1][&debug=1]
 ```
 
-`BridgeClient` uses `MessageRouter` for request/response correlation and `WebSocketTransport` for the underlying connection.
+That runtime:
 
-## `MessageRouter`
+- reads its own query parameters from `document.currentScript`
+- patches `window.parent.postMessage` in iframe mode, or `window.postMessage` in standalone mode
+- handles `ui/initialize` locally
+- handles `ui/open-link` locally
+- forwards everything else over WebSocket
+- emits `mcp-bridge-ready`
+- emits `mcp-bridge-auth-error`
 
-Tracks pending JSON-RPC requests and correlates responses by `id`.
+### Runtime behavior
 
-```typescript
-import { MessageRouter } from "@casys/mcp-bridge";
+- `ui/initialize` returns protocol version `2025-11-25`
+- host info is `{ name: "@casys/mcp-bridge", version: "0.2.0" }`
+- pending request IDs time out after 30 seconds
+- early incoming notifications are buffered until `ui/initialize` completes
+- WebSocket reconnect is attempted up to 5 times with exponential backoff up to 10 seconds
+- outgoing messages are dropped if the socket is closed or auth has not completed yet
 
-const router = new MessageRouter();
+## Exported `BridgeClient`
 
-// Send a request and await its response
-const response = await router.send(transport, request);
+Use the exported class if you are composing your own platform runtime instead of relying on the injected script.
 
-// Route an incoming response to the waiting promise
-router.resolve(response.id, response);
-```
-
-Pending requests time out after **30 seconds**.
-
-## `WebSocketTransport`
-
-Wraps a `WebSocket` with auto-reconnect logic.
-
-```typescript
-import { WebSocketTransport } from "@casys/mcp-bridge";
-
-const transport = new WebSocketTransport("wss://bridge.example.com/bridge");
-await transport.connect();
-transport.send(JSON.stringify(message));
-transport.onMessage((raw) => { /* handle raw string */ });
-```
-
-**Reconnection behaviour:** exponential backoff, maximum **5 attempts**. After 5 consecutive failures the transport emits an `error` event and stops reconnecting.
-
-## `BasePostMessageAdapter`
-
-Base class for platform adapters. Extend it to implement a new platform.
-
-```typescript
-import { BasePostMessageAdapter } from "@casys/mcp-bridge";
-
-class MyPlatformAdapter extends BasePostMessageAdapter {
-  readonly name = "my-platform";
-
-  async initialize(): Promise<HostContext> {
-    // Read platform SDK, return theme/viewport/locale
-    return {
-      theme: "light",
-      backgroundColor: "#ffffff",
-      textColor: "#000000",
-      viewport: { width: 390, height: 844 },
-      safeArea: { top: 44, bottom: 34, left: 0, right: 0 },
-    };
-  }
-
-  getTheme(): "light" | "dark" { return "light"; }
-
-  getContainerDimensions() {
-    return { width: window.innerWidth, height: window.innerHeight };
-  }
-
-  onLifecycleEvent(handler) { /* register platform callbacks */ }
-
-  async openLink(url: string) {
-    window.open(url, "_blank");
-  }
-}
-```
-
-## What bridge.js does on load
-
-1. Reads session ID and WebSocket URL from injected configuration
-2. Monkey-patches `window.parent.postMessage` to intercept outgoing JSON-RPC messages
-3. Opens `WebSocketTransport` to `WS /bridge?session=<id>`
-4. Sends auth payload as the first WebSocket message (platform `initData` or token)
-5. Handles `ui/initialize` and `ui/open-link` locally — these are not forwarded to the server
-6. Forwards all other messages via `MessageRouter`
-7. Dispatches incoming responses as `MessageEvent` on `window` so the MCP App receives them
-
-<Aside type="note">
-  `ui/initialize` returns a `HostContext` built by the platform adapter immediately, without a server round-trip. `ui/open-link` calls `adapter.openLink()` directly. All other methods (`tools/call`, `resources/read`, custom notifications) go through the WebSocket.
-</Aside>
-
-## Protocol type guards
-
-```typescript
+```ts
 import {
-  isJsonRpcMessage,
-  isRequest,
-  isResponse,
+  BridgeClient,
+  TelegramPlatformAdapter,
+  WebSocketTransport,
 } from "@casys/mcp-bridge";
 
-isJsonRpcMessage(value); // value is { jsonrpc: "2.0", ... }
-isRequest(value);        // value is { jsonrpc: "2.0", method: string, ... }
-isResponse(value);       // value is { jsonrpc: "2.0", result | error, ... }
+const client = new BridgeClient({
+  serverUrl: "https://bridge.example.com",
+  sessionId: "session-id",
+  platform: new TelegramPlatformAdapter(),
+  transport: new WebSocketTransport(),
+});
+
+await client.start();
 ```
 
-These are plain type guard functions with no side effects, safe to use in any environment.
+## `BridgeClientOptions`
 
-## `parseResourceUri` / `resolveToHttp`
+| Field | Type | Notes |
+| --- | --- | --- |
+| `serverUrl` | `string` | Base server URL. `BridgeClient` appends `/bridge?session=<id>`. |
+| `platform` | `PlatformAdapter` | Required. Supplies host context, lifecycle events, and `openLink()`. |
+| `transport` | `BridgeTransport` | Required in code. The package exports `WebSocketTransport`. |
+| `sessionId` | `string` | Required. Passed to the WebSocket URL. |
+| `bridgeInfo` | `{ name: string; version: string }` | Optional override for reported host info. |
+| `requestTimeoutMs` | `number` | Optional. Defaults to `30000`. |
 
-```typescript
-import { parseResourceUri, resolveToHttp } from "@casys/mcp-bridge";
+## `BridgeClient` behavior
 
-const parsed = parseResourceUri("ui://my-app/dashboard/index.html");
-// { server: "my-app", path: "dashboard/index.html" }
+The class:
 
-const httpUrl = resolveToHttp(parsed, "https://bridge.example.com");
-// "https://bridge.example.com/app/my-app/dashboard/index.html"
-```
+- initializes the platform adapter
+- connects the transport
+- intercepts `window.parent.postMessage`
+- handles `ui/initialize` locally
+- handles `ui/open-link` locally
+- forwards the rest through the transport
+- translates `theme-changed` and `viewport-changed` lifecycle events into `ui/notifications/host-context-changed`
+- dispatches `ui/resource-teardown` on a `teardown` lifecycle event
 
-Used by bridge.js when handling `ui/open-link` to convert `ui://` URIs to HTTP before passing to `adapter.openLink()`.
+## Important differences from the injected runtime
+
+- The exported `BridgeClient` does not implement the injected runtime's reconnect loop.
+- The exported `BridgeClient` does not implement the injected runtime's auth message protocol.
+- Only `WebSocketTransport` is implemented in the package today.

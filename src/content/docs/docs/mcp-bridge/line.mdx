@@ -1,102 +1,68 @@
 ---
-title: LINE Adapter
-description: LINE LIFF integration via LineAdapter. Partial implementation — no built-in auth handler.
+title: LINE
+description: Current LINE support status in @casys/mcp-bridge.
 ---
 
 import { Aside } from '@astrojs/starlight/components';
 
 <Aside type="caution">
-  The LINE adapter is partial. `LineAdapter` and `createLineRuntime()` are available, but there is no built-in server-side auth handler. You must implement your own LINE token validation.
+  LINE support is partial in `@casys/mcp-bridge` 0.2.0. The package contains a low-level LINE adapter and a `platform=line` browser runtime branch, but it does not ship a LINE-specific `PlatformAdapter`, LIFF initialization flow, or built-in server-side token validation.
 </Aside>
 
-## What is implemented
+## What exists today
 
-- `LineAdapter` — extends `BasePostMessageAdapter`, wires up LIFF SDK for transport
-- `createLineRuntime()` — creates a runtime using `liff.getAccessToken()` for auth token retrieval
-- `LiffSdk` interface — type definition for the LIFF SDK object
+- `LineAdapter` extends the shared `BasePostMessageAdapter`.
+- The injected `bridge.js` runtime recognizes `platform=line`.
+- That runtime uses a generic mobile host context based on browser APIs.
+- If `window.liff.getAccessToken()` exists and returns a value, the runtime can send it as an auth payload over WebSocket.
 
-## What is not implemented
+## What does not exist yet
 
-- A `BridgeAuthHandler` for server-side LINE token verification
-- Built-in LINE OAuth token validation against LINE's API
-- Automatic session creation with LINE auth (unlike the Telegram flow, nothing happens automatically)
+- no exported `LinePlatformAdapter`
+- no built-in LIFF `init()` call
+- no LIFF-specific theming or lifecycle mapping
+- no built-in LINE access-token validation on the server
 
-## Setup
+## Low-level adapter example
 
-### Client-side
+```ts
+import { LineAdapter } from "@casys/mcp-bridge";
 
-`LineAdapter` expects a LIFF SDK instance conforming to the `LiffSdk` interface:
+const adapter = new LineAdapter();
 
-```typescript
-import { LineAdapter, createLineRuntime } from "@casys/mcp-bridge";
-
-// liff is the LINE LIFF SDK, loaded from https://static.line-scdn.net/liff/edge/2/sdk.js
-const adapter = new LineAdapter(liff);
-
-// Or use createLineRuntime for a higher-level wrapper
-const runtime = createLineRuntime(liff);
-```
-
-The `LiffSdk` interface:
-
-```typescript
-interface LiffSdk {
-  init(config: { liffId: string }): Promise<void>;
-  isLoggedIn(): boolean;
-  getAccessToken(): string | null;
-  sendMessages(messages: object[]): Promise<void>;
-  closeWindow(): void;
-}
-```
-
-`createLineRuntime()` calls `liff.getAccessToken()` and includes the token in the auth payload sent to the Resource Server on WebSocket connect.
-
-### Server-side auth (you must implement this)
-
-Since there is no built-in LINE auth handler, you need to provide one via the `auth` option:
-
-```typescript
-import { startResourceServer } from "@casys/mcp-bridge";
-
-startResourceServer({
-  assetDirectories: { "line-app": "./ui-dist" },
-  platform: "line",
-  auth: async (session, authPayload) => {
-    // authPayload.token is the LINE access token from liff.getAccessToken()
-    const response = await fetch("https://api.line.me/oauth2/v2.1/verify", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: `access_token=${authPayload.token}`,
-    });
-    if (!response.ok) throw new Error("Invalid LINE token");
-    const data = await response.json();
-    return { userId: data.sub };
-  },
-  options: { resourceServerPort: 4000 },
+await adapter.init({
+  resourceBaseUrl: "https://your-domain.com",
 });
 ```
 
-<Aside type="note">
-  The `auth` parameter accepts a `BridgeAuthHandler` function. It is called with the session object and the auth payload sent by the client as the first WebSocket message.
-</Aside>
+`LineAdapter` gives you the same low-level shape as the base adapter:
 
-## LIFF setup
+- `init(config)`
+- `sendToHost(message)`
+- `onMessageFromHost(handler)`
+- `destroy()`
 
-1. Register your app at the [LINE Developers Console](https://developers.line.biz/console/)
-2. Create a LIFF app with your Resource Server URL as the endpoint
-3. Set the LIFF ID in your client-side initialization:
+## Using the Resource Server with `platform: "line"`
 
-```javascript
-await liff.init({ liffId: "YOUR_LIFF_ID" });
+You can still serve HTML and run the browser bridge with:
+
+```ts
+import { startResourceServer } from "@casys/mcp-bridge";
+
+const server = startResourceServer({
+  assetDirectories: {
+    "my-app": "./ui-dist",
+  },
+  platform: "line",
+});
 ```
 
-## Exports
+If you require auth for LINE, you must supply your own `auth` handler on the server. The package does not provide a LINE validator.
 
-```typescript
-import {
-  LineAdapter,
-  // LiffSdk is a TypeScript interface, import as type
-} from "@casys/mcp-bridge";
+## Practical expectation
 
-import type { LiffSdk } from "@casys/mcp-bridge";
-```
+Treat the current LINE path as a transport scaffold:
+
+- good enough to experiment with generic webview behavior
+- not equivalent to the Telegram path
+- not a drop-in LIFF integration

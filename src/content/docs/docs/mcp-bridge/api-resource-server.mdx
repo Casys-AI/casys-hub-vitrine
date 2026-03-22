@@ -1,164 +1,106 @@
 ---
 title: Resource Server API
-description: API reference for startResourceServer, ResourceServerConfig, SessionStore, and related exports.
+description: Verified API surface for startResourceServer() and the built-in backend helpers.
 ---
 
 ## `startResourceServer(config)`
 
-Starts the HTTP + WebSocket Resource Server using `Deno.serve()`.
+`startResourceServer()` is synchronous and returns a running server object immediately.
 
-```typescript
-import { startResourceServer, JsonRpcMcpBackend } from "@casys/mcp-bridge";
-
-const backend = new JsonRpcMcpBackend({ /* MCP server config */ });
+```ts
+import { JsonRpcMcpBackend, startResourceServer } from "@casys/mcp-bridge";
 
 const server = startResourceServer({
-  assetDirectories: { "my-app": "./ui-dist" },
+  assetDirectories: {
+    "my-app": "./ui-dist",
+  },
   platform: "telegram",
   telegramBotToken: Deno.env.get("TELEGRAM_BOT_TOKEN")!,
-  backend,
-  onMessage: async (session, message) => {
-    return backend.handleMessage(message);
-  },
+  backend: new JsonRpcMcpBackend({
+    endpointUrl: "https://my-mcp.example.com/mcp",
+  }),
   options: {
     resourceServerPort: 4000,
-    allowedOrigins: ["https://your-domain.com"],
-    debug: false,
+    debug: true,
   },
   csp: {
-    scriptSources: ["'self'"],
-    connectSources: ["wss://your-domain.com"],
     frameAncestors: ["https://web.telegram.org"],
-    allowInline: false,
   },
 });
 
-console.log(`Listening at ${server.baseUrl}`);
+console.log(server.baseUrl);
 ```
 
-### `ResourceServerConfig`
+## `ResourceServerConfig`
 
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `assetDirectories` | `Record<string, string>` | Yes | Map of server name → local directory path. Server name must match the host in `ui://` URIs. |
-| `platform` | `"telegram" \| "line"` | Yes | Configures bridge.js platform mode and selects the default auth handler. |
-| `telegramBotToken` | `string` | When `platform: "telegram"` | Bot token for HMAC-SHA256 `initData` validation. Omitting when `platform` is `"telegram"` throws at startup. |
-| `backend` | `McpBackend` | No | MCP backend for forwarding tool calls. Use `JsonRpcMcpBackend`. |
-| `auth` | `BridgeAuthHandler` | No | Custom auth handler for WebSocket connect. Overrides the default platform handler. |
-| `onMessage` | `(session: BridgeSession, message: unknown) => Promise<unknown \| null>` | No | Called for every JSON-RPC message from a WebView. Return a response object or `null`. |
-| `onHttpRequest` | `(req: Request) => Promise<Response \| null>` | No | Intercept raw HTTP requests before routing. Return a `Response` to short-circuit. |
-| `options` | `BridgeOptions` | No | Server options (see below). |
-| `csp` | `CspConfig` | No | CSP directives applied to served HTML. See [Security](/docs/mcp-bridge/security/). |
+| Field | Type | Notes |
+| --- | --- | --- |
+| `assetDirectories` | `Record<string, string>` | Required. Maps the `ui://` server name to a local directory for `/app/<server>/...`. |
+| `platform` | `string` | Required. Used in injected `/bridge.js?...` query parameters. |
+| `options` | `BridgeOptions` | `resourceServerPort`, `allowedOrigins`, and `debug`. |
+| `csp` | `CspOptions` | Extra CSP sources and `allowInline` behavior. |
+| `auth` | `BridgeAuthHandler` | Optional generic auth hook for WebSocket auth-on-first-message. |
+| `telegramBotToken` | `string` | Convenience path for Telegram auth. Required for `platform: "telegram"` unless you pass `auth`. |
+| `backend` | `McpBackend` | Handles normal JSON-RPC and optional `readResource()` calls. |
+| `uiPath` | `string \| null` | Built-in backend UI route. Defaults to `"/ui"`. Set `null` to disable it. |
+| `onMessage` | `(session, message) => Promise<McpAppsMessage \| null>` | Runs before `backend.handleMessage()`. |
+| `onHttpRequest` | `(request) => Promise<Response \| { html: string; pendingNotifications?: PendingNotification[] } \| null>` | Custom HTTP hook for non-built-in routes. |
 
-### `BridgeOptions`
+## Built-in routes
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `resourceServerPort` | `number` | `4000` | Port to listen on. |
-| `allowedOrigins` | `string[]` | `[]` | Origins allowed to connect via WebSocket. Empty = no restriction. |
-| `debug` | `boolean` | `false` | Enable verbose request/message logging. |
+The server exposes:
 
-### Return value: `ResourceServer`
+- `GET /health`
+- `POST /session`
+- `GET /bridge.js`
+- `GET/WS /bridge?session=<id>`
+- `GET /app/<server>/<path>`
+- `GET /ui?uri=ui://...` when `uiPath` is enabled and the backend has `readResource()`
 
-```typescript
+## Return value
+
+```ts
 interface ResourceServer {
-  readonly baseUrl: string;         // e.g. "http://localhost:4000"
-  readonly sessions: SessionStore;  // session store (read-only inspection)
-  stop(): Promise<void>;            // graceful shutdown
+  readonly baseUrl: string;
+  readonly sessions: SessionStore;
+  storeToolResult(result: ToolResultData): string;
+  consumeToolResult(ref: string): ToolResultData | undefined;
+  stop(): Promise<void>;
 }
 ```
 
+## Tool-result handoff
+
+`storeToolResult()` lets you stage a `ui/notifications/tool-result` notification before the WebSocket is open.
+
+```ts
+const ref = server.storeToolResult({
+  content: [{ type: "text", text: "done" }],
+});
+
+const url = `https://your-domain.com/some-page?ref=${ref}`;
+```
+
+If that page is served through proxied HTML, the server consumes the stored result, buffers the notification on the session, and flushes it when the socket opens. Stored results are single-use and expire after 5 minutes.
+
 ## `JsonRpcMcpBackend`
 
-The built-in MCP client. Connects to your MCP Server and handles JSON-RPC forwarding.
+`JsonRpcMcpBackend` is the built-in generic backend for HTTP JSON-RPC MCP servers.
 
-```typescript
+```ts
 import { JsonRpcMcpBackend } from "@casys/mcp-bridge";
 
-const backend = new JsonRpcMcpBackend(config);
-const response = await backend.handleMessage(jsonRpcRequest);
-```
-
-Pass it via `backend` in `ResourceServerConfig`, or call `.handleMessage()` directly from `onMessage`.
-
-## `SessionStore`
-
-Manages active sessions. Accessible at `server.sessions`.
-
-```typescript
-// Max sessions: 10,000. HTTP 429 when exceeded.
-// Session TTL: 30 minutes inactivity.
-// Cleanup interval: 60 seconds.
-
-server.sessions.size;               // number of active sessions
-server.sessions.get(sessionId);     // BridgeSession | undefined
-```
-
-## `buildCspHeader(config)`
-
-Generates a `Content-Security-Policy` header string.
-
-```typescript
-import { buildCspHeader } from "@casys/mcp-bridge";
-
-const csp = buildCspHeader({
-  scriptSources: ["'self'"],
-  connectSources: ["wss://bridge.example.com"],
-  frameAncestors: ["https://web.telegram.org"],
-  allowInline: false,
-});
-// "default-src 'none'; script-src 'self'; connect-src wss://bridge.example.com; frame-ancestors https://web.telegram.org"
-```
-
-## `injectBridgeScript(html, config)`
-
-Injects `bridge.js` into an HTML string. Used internally by the Resource Server — exposed for testing or custom server implementations.
-
-```typescript
-import { injectBridgeScript } from "@casys/mcp-bridge";
-
-const html = await Deno.readTextFile("./index.html");
-const patched = injectBridgeScript(html, {
-  wsUrl: "wss://bridge.example.com/bridge",
-  sessionId: "abc123",
-  platform: "telegram",
+const backend = new JsonRpcMcpBackend({
+  endpointUrl: "https://my-mcp.example.com/mcp",
+  headers: {
+    Authorization: "Bearer token",
+  },
 });
 ```
 
-## `storeToolResult(data)`
+It:
 
-Stores a tool result for pre-loading in a Mini App session. Returns a ref string to include as `?ref=<ref>` in the Mini App URL.
-
-```typescript
-import { storeToolResult } from "@casys/mcp-bridge";
-
-const ref = storeToolResult({ items: [...], total: 42 });
-const miniAppUrl = `https://bridge.example.com/ui?uri=ui://my-app/index.html&ref=${ref}`;
-// When the Mini App opens, bridge.js auto-attaches the stored data
-// as a ui/notifications/tool-result notification.
-```
-
-## Protocol helpers
-
-Used when building custom message handlers:
-
-```typescript
-import {
-  buildToolCallRequest,
-  buildResourceReadRequest,
-  buildOpenLinkRequest,
-  isJsonRpcMessage,
-  isRequest,
-  isResponse,
-} from "@casys/mcp-bridge";
-
-// Type guards
-isJsonRpcMessage(msg);  // msg has jsonrpc: "2.0"
-isRequest(msg);         // msg has method field
-isResponse(msg);        // msg has result or error field
-
-// Builders
-const req = buildToolCallRequest("tool-name", { param: "value" });
-const readReq = buildResourceReadRequest("ui://my-app/data.json");
-const linkReq = buildOpenLinkRequest("https://example.com");
-```
+- POSTs JSON-RPC messages to `endpointUrl`
+- turns transport failures into JSON-RPC `-32603` errors for request messages
+- implements `readResource()` by sending a `resources/read` request
+- returns only the first `contents[0].text` field as HTML

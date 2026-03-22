@@ -1,115 +1,82 @@
 ---
-title: "Sync Rules"
-description: "UiSyncRule, validateSyncRules(), resolveSyncRules(), ValidationIssue, and the SDK validateComposition() helper."
+title: 'Sync Rules'
+description: 'Validate tool-name rules, resolve them to slots, and route events between UIs.'
 ---
 
-## Overview
+import Mermaid from '../../../../components/Mermaid.astro';
 
-Sync rules let iframes communicate with each other through the host event bus. A rule says: when iframe A emits event `X`, the host forwards it to iframe B (or all iframes) as action `Y`.
+## `UiSyncRule`
 
-Rules are authored with tool names (human-readable), then resolved to slot indices before the descriptor is handed to the renderer.
-
-```typescript
-import {
-  validateSyncRules,
-  resolveSyncRules,
-} from "@casys/mcp-compose/core";
-```
-
-## UiSyncRule
+Sync rules are authored with tool names:
 
 ```typescript
 interface UiSyncRule {
-  from: string;    // source tool name (must match a collected resource's source)
-  event: string;   // event name emitted by that iframe
-  to: string;      // target tool name, or "*" for broadcast
-  action: string;  // action name sent to the target
+  from: string;
+  event: string;
+  to: string;
+  action: string;
 }
 ```
 
-Example:
+Example from the repo tests:
 
 ```typescript
-const rules: UiSyncRule[] = [
-  {
-    from: "get_invoice",
-    event: "lineItemSelected",
-    to: "get_line_items",
-    action: "highlightItem",
-  },
-  {
-    from: "get_invoice",
-    event: "currencyChanged",
-    to: "*",                   // broadcast to all other iframes
-    action: "updateCurrency",
-  },
+const rules = [
+  { from: "postgres:query", event: "filter", to: "viz:render", action: "update" },
+  { from: "date:picker", event: "change", to: "*", action: "refresh" },
 ];
 ```
 
-## validateSyncRules(rules, knownSources)
+`to: "*"` means broadcast to every other iframe.
 
-Checks that every `from` and `to` in the rule set references a known source. Returns a structured result — no exceptions thrown.
+## `validateSyncRules(rules, knownSources)`
 
 ```typescript
-function validateSyncRules(
-  rules: UiSyncRule[],
-  knownSources: string[],
-): { valid: boolean; issues: ValidationIssue[] }
+import { validateSyncRules } from "@casys/mcp-compose";
 ```
 
 ```typescript
-import { validateSyncRules } from "@casys/mcp-compose/core";
-
-const sources = ["get_invoice", "get_line_items"];
-
-const { valid, issues } = validateSyncRules(
-  [
-    { from: "get_invoice", event: "selected", to: "get_unknown", action: "highlight" },
-  ],
-  sources,
-);
-
-// valid → false
-// issues[0] → { code: "ORPHAN_SYNC_REFERENCE", message: "...", path: "rules[0].to" }
+const result = validateSyncRules(rules, ["postgres:query", "viz:render"]);
 ```
 
-**Always call `validateSyncRules` before `buildCompositeUi`** if you need to surface errors to the caller. The composer silently drops invalid rules without setting any error flag.
+The validator checks two things:
 
-## ValidationIssue and ErrorCode
+- orphan references: `from` or `to` names that are not present in `knownSources`
+- self-reference on non-broadcast rules: `from === to`
+
+It returns:
+
+```typescript
+interface ValidationResult {
+  valid: boolean;
+  issues: ValidationIssue[];
+}
+```
 
 ```typescript
 interface ValidationIssue {
   code: ErrorCode;
   message: string;
-  path?: string;   // dot-notation path to the offending field, when applicable
-}
-
-enum ErrorCode {
-  ORPHAN_SYNC_REFERENCE = "ORPHAN_SYNC_REFERENCE",
-  CIRCULAR_SYNC_RULE    = "CIRCULAR_SYNC_RULE",
+  path?: string;
 }
 ```
 
-| Code | Meaning |
-|---|---|
-| `ORPHAN_SYNC_REFERENCE` | A `from` or `to` value does not match any collected resource source |
-| `CIRCULAR_SYNC_RULE` | A cycle was detected in the sync graph (A→B→A) |
+The relevant error codes are:
 
-## resolveSyncRules(rules, resources)
+- `ORPHAN_SYNC_REFERENCE`
+- `CIRCULAR_SYNC_RULE`
 
-Internal function (also exported) that translates tool names to slot indices. Used by `buildCompositeUi` internally.
+Important: `CIRCULAR_SYNC_RULE` is only the direct self-reference case. The validator does not detect longer cycles such as `a -> b -> a`.
+
+## `resolveSyncRules(rules, resources)`
 
 ```typescript
-function resolveSyncRules(
-  rules: UiSyncRule[],
-  resources: CollectedUiResource[],
-): ResolvedSyncRule[]
+import { resolveSyncRules } from "@casys/mcp-compose";
 ```
 
-Rules where `from` does not match any resource slot are silently excluded from the output. The `to: "*"` wildcard is preserved as-is in the resolved rule.
+This converts tool-name rules into slot-based rules:
 
 ```typescript
-// ResolvedSyncRule shape
 interface ResolvedSyncRule {
   from: number;
   event: string;
@@ -118,75 +85,93 @@ interface ResolvedSyncRule {
 }
 ```
 
-## Event bus protocol
-
-The renderer embeds a JavaScript event bus that routes `postMessage` events between iframes. All messages use JSON-RPC 2.0.
-
-### ui/initialize
-
-When an iframe loads, it should send `ui/initialize`. The host responds with:
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": "<request-id>",
-  "result": {
-    "hostInfo": { "version": "0.3.0" },
-    "hostContext": { "slot": 0, "source": "get_invoice" },
-    "sharedContext": { "invoiceId": "INV-2024-001" }
-  }
-}
-```
-
-### ui/update-model-context
-
-Iframes emit this message when their state changes. The event bus checks the resolved sync rules and forwards the event to the matching target frames as a `ui/update-model-context` with the specified `action`.
-
-```json
-{
-  "jsonrpc": "2.0",
-  "method": "ui/update-model-context",
-  "params": {
-    "event": "lineItemSelected",
-    "data": { "lineItemId": "LI-01" }
-  }
-}
-```
-
-### ui/compose/event
-
-A dedicated channel for iframe-to-iframe compose events. Handled by the `composeEvents()` SDK helper on the iframe side.
-
-### ui/message
-
-Logging channel. The host console-logs the payload; no routing occurs.
-
-## SDK: validateComposition()
-
-Higher-level semantic validation. Checks that every `to` tool in your sync rules has declared an `accepts` handler for the `action`, and every `from` tool has declared an `emits` entry for the `event`.
+`resolveSyncRules()` returns both `rules` and `issues`:
 
 ```typescript
-import { validateComposition } from "@casys/mcp-compose/sdk";
+const result = resolveSyncRules(
+  [{ from: "postgres:query", event: "filter", to: "viz:render", action: "update" }],
+  [
+    { source: "postgres:query", resourceUri: "ui://pg/1", slot: 0 },
+    { source: "viz:render", resourceUri: "ui://viz/2", slot: 1 },
+  ],
+);
+
+// result.rules[0] === { from: 0, event: "filter", to: 1, action: "update" }
+```
+
+Unknown references are reported in `result.issues` and excluded from `result.rules`.
+
+## Composer interaction
+
+`buildCompositeUi()` calls `resolveSyncRules()` internally and keeps only `result.rules`. That means bad rules disappear unless you validate before composing.
+
+Recommended pattern:
+
+```typescript
+const validation = validateSyncRules(
+  orchestration.sync ?? [],
+  resources.map((resource) => resource.source),
+);
+
+if (!validation.valid) {
+  console.error(validation.issues);
+  Deno.exit(1);
+}
+
+const descriptor = buildCompositeUi(resources, orchestration);
+```
+
+## Routing behavior in the renderer
+
+<Mermaid chart={`sequenceDiagram
+  participant UI1 as postgres:query (slot 0)
+  participant BUS as Event Bus
+  participant UI2 as viz:render (slot 1)
+  UI1->>BUS: ui/update-model-context {event: "filter"}
+  BUS->>BUS: Match sync rule: from=0, event=filter, to=1
+  BUS->>UI2: ui/notifications/tool-result {action: "update", data, sharedContext}
+  UI2-->>UI2: Apply filter update`} />
+
+The generated host script matches rules by:
+
+- source slot
+- event name
+- target slot or broadcast
+
+Implementation note: the router treats `rule.event === "*"` as an event wildcard even though the public examples use concrete event names. That behavior is inferred from the host-renderer source.
+
+## SDK-level validation
+
+If your tools declare UI contracts with `uiMeta({ emits, accepts })`, use `validateComposition()` from `@casys/mcp-compose/sdk` in addition to core sync validation:
+
+```typescript
+import { uiMeta, validateComposition } from "@casys/mcp-compose/sdk";
 
 const tools = [
   {
-    name: "get_invoice",
-    emits: ["lineItemSelected"],
-    accepts: [],
+    name: "erp:customers",
+    ...uiMeta({
+      resourceUri: "ui://erp/customers",
+      emits: ["rowSelected"],
+    }),
   },
   {
-    name: "get_line_items",
-    emits: [],
-    accepts: ["highlightItem"],
+    name: "viz:chart",
+    ...uiMeta({
+      resourceUri: "ui://viz/chart",
+      accepts: ["highlight"],
+    }),
   },
 ];
 
-const syncRules: UiSyncRule[] = [
-  { from: "get_invoice", event: "lineItemSelected", to: "get_line_items", action: "highlightItem" },
-];
-
-const { valid, issues } = validateComposition(tools, syncRules);
-// valid → true
+const result = validateComposition(tools, [
+  { from: "erp:customers", event: "rowSelected", to: "viz:chart", action: "highlight" },
+]);
 ```
 
-If a rule references an event that the source tool has not declared in `emits`, or an action that the target has not declared in `accepts`, `validateComposition` returns a `ValidationIssue` with the appropriate `ErrorCode`.
+`validateComposition()` adds semantic checks such as:
+
+- `SYNC_EVENT_NOT_EMITTED`
+- `SYNC_ACTION_NOT_ACCEPTED`
+- `ORPHAN_EMIT`
+- `ORPHAN_ACCEPT`

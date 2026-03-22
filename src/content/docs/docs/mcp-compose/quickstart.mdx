@@ -1,99 +1,90 @@
 ---
-title: "Quickstart"
-description: "Install mcp-compose and run the minimal Collector → Composer → Renderer pipeline."
+title: 'Quick Start'
+description: 'Collect two MCP UI results, validate sync rules, and render one dashboard.'
 ---
 
-## Installation
+## Install
 
-**Deno (JSR)**
+```bash
+deno add jsr:@casys/mcp-compose@0.3.0
+```
 
-```typescript
-// deno.json
+Or add the import manually:
+
+```json
 {
   "imports": {
-    "@casys/mcp-compose": "jsr:@casys/mcp-compose@^0.3.0"
+    "@casys/mcp-compose": "jsr:@casys/mcp-compose@0.3.0"
   }
 }
 ```
 
-Or add it directly with the Deno CLI:
+## Minimal pipeline
 
-```bash
-deno add jsr:@casys/mcp-compose
-```
-
-**Node / Bun via JSR shim**
-
-```bash
-npx jsr add @casys/mcp-compose
-```
-
-The package is Deno-native. On Node you get the full API but runtime features that rely on `Deno.*` globals are unavailable.
-
-## Minimal example
-
-This snippet shows the full pipeline: collect two tool results, compose them with a split layout, and render the final HTML.
+This example uses the same tool names and rule shape that appear in the repo README and tests:
 
 ```typescript
 import {
-  createCollector,
   buildCompositeUi,
+  createCollector,
   renderComposite,
+  validateSyncRules,
 } from "@casys/mcp-compose";
-
-// ── 1. Collect ─────────────────────────────────────────────────────────────
 
 const collector = createCollector();
 
-// Simulated MCP tool results — each carries _meta.ui.resourceUri
-const invoiceResult = {
-  invoiceId: "INV-2024-001",
-  _meta: {
-    ui: { resourceUri: "https://apps.example.com/invoice-viewer" },
-  },
+const pgResult = {
+  content: [{ type: "text", text: "Query executed" }],
+  _meta: { ui: { resourceUri: "ui://postgres/table/sales-q1" } },
 };
 
-const customerResult = {
-  customerId: "CUST-42",
-  _meta: {
-    ui: { resourceUri: "https://apps.example.com/customer-card" },
-  },
+const vizResult = {
+  content: [{ type: "text", text: "Chart rendered" }],
+  _meta: { ui: { resourceUri: "ui://viz/chart/sales-bar" } },
 };
 
-// Results without UI metadata are skipped; slot index only increments for
-// results that carry a resourceUri.
-collector.collect("get_invoice", invoiceResult, { invoiceId: "INV-2024-001" });
-collector.collect("get_customer", customerResult, { customerId: "CUST-42" });
-
-const resources = collector.getResources();
-// resources[0] → slot 0 (invoice), resources[1] → slot 1 (customer)
-
-// ── 2. Compose ─────────────────────────────────────────────────────────────
-
-const descriptor = buildCompositeUi(resources, {
-  layout: "split",        // side-by-side flex layout
-  sharedContext: ["invoiceId"], // extract "invoiceId" from resource contexts
+collector.collect("postgres:query", pgResult, {
+  query: "SELECT * FROM sales WHERE quarter = 'Q1'",
+  workflowId: "wf-001",
+});
+collector.collect("viz:render", vizResult, {
+  workflowId: "wf-001",
 });
 
-// descriptor.workflowId is a fresh UUID
-// descriptor.resources carries resolved slot indices
-// descriptor.sharedContext → { invoiceId: "INV-2024-001" }
+const resources = collector.getResources();
 
-// ── 3. Render ──────────────────────────────────────────────────────────────
+const orchestration = {
+  layout: "split" as const,
+  sync: [
+    { from: "postgres:query", event: "filter", to: "viz:render", action: "update" },
+  ],
+  sharedContext: ["workflowId"],
+};
 
+const validation = validateSyncRules(
+  orchestration.sync,
+  resources.map((resource) => resource.source),
+);
+
+if (!validation.valid) {
+  console.error(validation.issues);
+  Deno.exit(1);
+}
+
+const descriptor = buildCompositeUi(resources, orchestration);
 const html = renderComposite(descriptor);
 
-// html is a complete HTML5 document. Write it to a file or serve it:
-await Deno.writeTextFile("dashboard.html", html);
+await Deno.writeTextFile("./dashboard.html", html);
 ```
 
 ## What you get
 
-`dashboard.html` is a self-contained page with:
+- Two collected resources with slots `0` and `1`.
+- One composite descriptor whose sync rule is resolved to `{ from: 0, to: 1, ... }`.
+- One HTML document with inline styles, two iframes, and the host event bus.
 
-- A CSS layout matching the requested mode (`split` here — two iframes side by side)
-- One sandboxed `<iframe>` per collected resource, pointing to its `resourceUri`
-- An embedded event bus that handles `postMessage` between iframes and the host using JSON-RPC 2.0
-- Light/dark theming via CSS custom properties
+## What to remember
 
-No build step, no bundler. Open the file in a browser or serve it from any static host.
+- `collect()` returns `null` for results that do not contain `_meta.ui.resourceUri`.
+- `validateSyncRules()` is the step that surfaces sync problems. `buildCompositeUi()` does not throw on bad sync references.
+- `renderComposite()` from the root package uses the host renderer, which supports the preset layouts and areas layouts documented on the [renderer](./renderer/) page.

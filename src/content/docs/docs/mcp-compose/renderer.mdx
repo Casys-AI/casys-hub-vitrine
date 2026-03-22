@@ -1,143 +1,110 @@
 ---
-title: "Renderer"
-description: "renderComposite() — HTML output structure, sandbox attributes, XSS protection, and theming."
+title: 'Renderer'
+description: 'Render a composite descriptor into self-contained HTML, CSS, and event-bus JS.'
 ---
 
-## Overview
-
-The renderer is a pure function that serialises a `CompositeUiDescriptor` into a complete, self-contained HTML5 string. No DOM, no file system access, no side effects.
+## API
 
 ```typescript
-import { renderComposite } from "@casys/mcp-compose/core";
+import { renderComposite } from "@casys/mcp-compose";
 ```
 
-## renderComposite(descriptor)
+The root export uses the host renderer from `@casys/mcp-compose/host`.
 
 ```typescript
 function renderComposite(descriptor: CompositeUiDescriptor): string
 ```
 
-Returns a full HTML5 document. The caller decides what to do with the string: write it to disk, serve it over HTTP, inject it into a `<webview>`, etc.
+## What it generates
 
-```typescript
-import { buildCompositeUi, createCollector, renderComposite } from "@casys/mcp-compose/core";
-
-const collector = createCollector();
-collector.collect("get_invoice", {
-  _meta: { ui: { resourceUri: "https://apps.example.com/invoice-viewer" } },
-}, { invoiceId: "INV-2024-001" });
-
-const descriptor = buildCompositeUi(collector.getResources(), { layout: "split" });
-const html = renderComposite(descriptor);
-
-await Deno.writeTextFile("dashboard.html", html);
-```
-
-## Output structure
-
-The emitted document has this structure:
+`renderComposite()` returns one HTML document:
 
 ```html
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Composite UI</title>
-  <style>/* base CSS: theming custom properties */</style>
-  <style>/* layout CSS: mode-specific rules */</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mcp-compose</title>
+  <style>...</style>
 </head>
 <body>
-  <div class="compose-container compose-layout--split">
-    <iframe
-      src="https://apps.example.com/invoice-viewer"
-      data-slot="0"
-      data-source="get_invoice"
-      sandbox="allow-scripts allow-same-origin"
-      ...
-    ></iframe>
-    <!-- one <iframe> per CollectedUiResource, in slot order -->
+  <div class="layout-split" id="container">
+    <iframe id="ui-0" src="ui://postgres/table/123" data-slot="0" data-source="postgres:query"></iframe>
+    <iframe id="ui-1" src="ui://viz/chart/456" data-slot="1" data-source="viz:chart"></iframe>
   </div>
-  <script>/* event bus */</script>
+  <script>...</script>
 </body>
 </html>
 ```
 
-### Base CSS (theming)
+The renderer escapes tab labels and iframe attribute values before inserting them into the HTML.
 
-The base stylesheet defines CSS custom properties for light mode and overrides them for dark mode. All layout and component styles reference these properties so theming works by toggling a single attribute.
+## Layout behavior
 
-```css
-:root {
-  --compose-bg: #ffffff;
-  --compose-surface: #f5f5f5;
-  --compose-border: #e0e0e0;
-  --compose-text: #1a1a1a;
-  --compose-tab-active: #1976d2;
-  /* ... */
-}
+The public renderer supports:
 
-[data-theme="dark"] {
-  --compose-bg: #121212;
-  --compose-surface: #1e1e1e;
-  --compose-border: #333333;
-  --compose-text: #e0e0e0;
-  --compose-tab-active: #90caf9;
-  /* ... */
-}
+- `split`: `display: flex; height: 100vh`
+- `tabs`: tab bar plus absolute-positioned iframes with an active first tab
+- `grid`: `display: grid` with `repeat(auto-fit, minmax(400px, 1fr))`
+- `stack`: vertical flex with `min-height: 200px` per iframe
+- areas layouts: CSS `grid-template-areas` generated from `UiLayoutAreas`
+
+Areas example:
+
+```typescript
+const descriptor = buildCompositeUi(resources, {
+  layout: {
+    areas: [
+      ["filter", "main"],
+      ["filter", "detail"],
+    ],
+    columns: [1, 3],
+    rows: [2, 1],
+    gap: "compact",
+  },
+});
 ```
 
-Apply dark mode by setting `data-theme="dark"` on the `<html>` element or any ancestor of `.compose-container`.
+When an areas layout is used, the renderer looks at `descriptor.areaMap` first. If there is no `areaMap`, it falls back to each child's `source` name as the area name.
 
-### Layout CSS
+## Event bus behavior
 
-A second `<style>` block contains mode-specific rules. For example, `split` produces:
+The inline script handles JSON-RPC 2.0 messages from the child UIs:
 
-```css
-.compose-layout--split {
-  display: flex;
-  gap: var(--compose-gap, 0);
-}
-.compose-layout--split iframe {
-  flex: 1;
-  min-width: 0;
-}
+- `ui/initialize`: returns host capabilities and `hostContext.sharedContext`
+- `ui/message`: logs a message and acknowledges it
+- `ui/compose/event`: routes dedicated compose events using sync rules
+- `ui/update-model-context`: legacy routing path, also using sync rules
+
+Broadcast rules exclude the sender:
+
+```typescript
+{ from: "date:picker", event: "change", to: "*", action: "refresh" }
 ```
 
-The `tabs` layout also injects an inline tab bar above the iframes; clicking a tab toggles `display: none` on the sibling iframes via an inline `<script>` block inside the layout CSS section.
+That rule fans out to every other iframe, not back to the source iframe.
 
-### Iframes
+## Shared context at render time
 
-Each `CollectedUiResource` becomes one `<iframe>`:
+If the descriptor contains `sharedContext`, the renderer injects it into the script:
 
-```html
-<iframe
-  src="https://apps.example.com/invoice-viewer"
-  data-slot="0"
-  data-source="get_invoice"
-  sandbox="allow-scripts allow-same-origin"
-  style="width:100%;height:100%;border:none;"
-></iframe>
+```typescript
+const descriptor = buildCompositeUi(resources, {
+  layout: "stack",
+  sharedContext: ["workflowId"],
+});
 ```
 
-Attributes:
+The initialize response includes that object under `hostContext.sharedContext`, and compose-event payloads also forward it to target iframes.
 
-| Attribute | Value | Purpose |
-|---|---|---|
-| `src` | `resourceUri` (escaped) | The micro-frontend URL |
-| `data-slot` | slot index as string | Identifies the frame in sync routing |
-| `data-source` | tool name (escaped) | Human-readable label in dev tools |
-| `sandbox` | `allow-scripts allow-same-origin` | Minimum permissions for `postMessage` |
+## Security and theming
 
-### Event bus
+Current host-renderer behavior in this repo:
 
-The embedded `<script>` block at the end of `<body>` manages communication between iframes and the host page. See the [Sync Rules](/docs/mcp-compose/sync-rules) page for the full protocol.
+- tool names are HTML-escaped before becoming tab labels
+- `src`, `data-source`, and `data-area` are attribute-escaped
+- base CSS defines light and dark custom properties
+- `prefers-color-scheme: dark` is included
 
-## XSS protection
-
-Two internal escaping functions are applied before any user-controlled value enters the HTML output:
-
-- `escapeHtml()` — applied to human-readable labels (tool names used in tab titles). Replaces `&`, `<`, `>`, `"`, `'` with their HTML entities.
-- `escapeAttr()` — applied to attribute values (`src`, `data-source`). Encodes the same characters plus backtick and forward slash.
-
-No `resourceUri` or tool name value is ever inserted as raw HTML.
+One implementation detail worth knowing: there is also an older core renderer in the repo, but the root package exports the host renderer. The host renderer is the one with areas-layout and `ui/compose/event` support.

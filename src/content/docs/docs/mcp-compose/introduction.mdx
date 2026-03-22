@@ -1,50 +1,75 @@
 ---
-title: "Introduction"
-description: "What is mcp-compose, the Collect→Compose→Render pipeline, and its design principles."
+title: 'Introduction'
+description: 'Compose multiple MCP App UIs into one dashboard with layout and event routing.'
 ---
 
-## What is mcp-compose?
+import Mermaid from '../../../../components/Mermaid.astro';
 
-`@casys/mcp-compose` is a Deno library (JSR, v0.3.0) for assembling composite UIs from multiple MCP tool responses. When an MCP tool returns a `resourceUri` pointing to a micro-frontend, mcp-compose collects those references, composes them into a layout descriptor, and renders a complete self-contained HTML page that hosts each UI in a sandboxed iframe with a JSON-RPC 2.0 event bus.
+`mcp-compose` is a lightweight Deno library for taking several MCP tool results that expose `_meta.ui.resourceUri`, turning them into a single composition descriptor, and rendering a composite dashboard. These docs reflect package version `0.3.0`.
 
-It has zero dependencies, ships 219 tests, and is Deno-only.
+It is not a visual builder or end-user dashboard product. The repo README positions it as a composition primitive: you provide collected tool results plus orchestration, and it gives you HTML.
 
-## The Collect → Compose → Render pipeline
+## The pipeline
 
-Each stage is a pure function you can use independently or chain together:
+<Mermaid chart={`graph LR
+  T1[Tool Result 1] --> C[Collector]
+  T2[Tool Result 2] --> C
+  T3[Tool Result N] --> C
+  C -->|resources| COMP[Composer]
+  ORCH[Orchestration\nlayout + sync] --> COMP
+  COMP -->|descriptor| R[Renderer]
+  R --> HTML[Self-contained HTML]
+  style C fill:#FFB86F,color:#000
+  style COMP fill:#FFB86F,color:#000
+  style R fill:#FFB86F,color:#000`} />
 
+The public flow is:
+
+```typescript
+import {
+  buildCompositeUi,
+  createCollector,
+  renderComposite,
+} from "@casys/mcp-compose";
+
+const collector = createCollector();
+collector.collect("postgres:query", {
+  _meta: { ui: { resourceUri: "ui://postgres/table/abc123" } },
+});
+collector.collect("viz:render", {
+  _meta: { ui: { resourceUri: "ui://viz/chart/viz-1" } },
+});
+
+const descriptor = buildCompositeUi(collector.getResources(), {
+  layout: "split",
+  sync: [
+    { from: "postgres:query", event: "filter", to: "viz:render", action: "update" },
+  ],
+});
+
+const html = renderComposite(descriptor);
 ```
-createCollector()          buildCompositeUi()         renderComposite()
-       │                          │                          │
-  collect(tool, result)  →  CompositeUiDescriptor  →  HTML5 string
-  getResources()
-```
 
-**Collector** — scans MCP tool results for `_meta.ui.resourceUri`, assigns slot indices, and keeps a list of `CollectedUiResource` objects.
+That maps directly to the code and tests in the repo:
 
-**Composer** — takes those resources plus an optional `UiOrchestration` object (layout mode, sync rules, shared context keys) and produces a `CompositeUiDescriptor` — a plain data structure with no DOM, no side effects.
+- `createCollector()` inspects tool results and stores `CollectedUiResource` objects.
+- `buildCompositeUi()` produces a `CompositeUiDescriptor` with resolved sync rules and optional shared context.
+- `renderComposite()` turns that descriptor into a full HTML document with inline CSS and JS.
 
-**Renderer** — serialises the descriptor into a complete HTML5 document: CSS theming, layout, iframes, and the embedded event bus. The output can be written to a file, served over HTTP, or injected into an existing page.
+## What is implemented today
 
-## Design principles
+- The root package exports the collector, sync helpers, composer, host renderer, SDK helpers, and host types.
+- `buildCompositeUi()` defaults to `layout: "stack"` when you omit orchestration.
+- Invalid sync rules are not thrown from the composer. Unknown `from` or `to` references are silently excluded unless you validate first.
+- The exported renderer comes from the `host` layer, not the older `core` renderer tree.
+- The host renderer supports preset layouts (`split`, `tabs`, `grid`, `stack`) and object-based areas layouts.
 
-**Zero dependencies.** The entire library uses only Deno built-ins (`crypto.randomUUID`, `TextEncoder`). No npm packages, no bundler required.
+## What each layer is for
 
-**Pure functions.** `buildCompositeUi` and `renderComposite` are stateless. Given the same inputs they always produce the same output. The only stateful object is the collector returned by `createCollector()`.
+- [`@casys/mcp-compose`](./api-reference/) is the default entrypoint.
+- [`collector`](./collector/) covers `_meta.ui.resourceUri` extraction and slot assignment.
+- [`composer`](./composer/) covers layout, shared context, and descriptor generation.
+- [`renderer`](./renderer/) covers the generated HTML, CSS, and event bus behavior.
+- [`sync-rules`](./sync-rules/) covers validation, resolution, and broadcast routing.
 
-**Deterministic output.** Layout, slot ordering, and sync-rule resolution are all deterministic so the same tool invocations always produce the same composed page.
-
-**Machine-readable errors.** No function in the public API throws a string. Validation results carry structured `ValidationIssue` objects with `ErrorCode` enum values and optional `path` fields. Callers can handle every error case programmatically.
-
-## Entry points
-
-The package exports six sub-paths, each independently importable:
-
-| Import path | Contents |
-|---|---|
-| `@casys/mcp-compose` | Re-exports everything from the sub-paths below |
-| `@casys/mcp-compose/core` | Collector, composer, renderer, sync-rule engine |
-| `@casys/mcp-compose/sdk` | `uiMeta()`, `createMcpSdkCollector()`, `validateComposition()`, `composeEvents()` |
-| `@casys/mcp-compose/host` | Host-side helpers for the event bus |
-| `@casys/mcp-compose/runtime` | `composeDashboard()`, `composeDashboardFromFiles()` |
-| `@casys/mcp-compose/deploy` | Deployment helpers |
+The repo also exposes `sdk`, `host`, `runtime`, and `deploy` subpaths. `deploy` is currently type-only: the types exist, but there are no deploy functions exported yet.

@@ -1,0 +1,66 @@
+---
+interface Props {
+  chart: string;
+}
+
+const { chart } = Astro.props;
+const id = `mermaid-${Math.random().toString(36).slice(2, 9)}`;
+---
+
+<div class="mermaid-wrapper" id={id}>
+  <pre class="mermaid-source" style="display:none">{chart}</pre>
+  <div class="mermaid-render"></div>
+</div>
+
+<script>
+  async function initMermaid() {
+    const { default: mermaid } = await import('mermaid');
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'default',
+      fontFamily: 'Inter, system-ui, sans-serif',
+      securityLevel: 'loose',
+    });
+
+    const wrappers = document.querySelectorAll('.mermaid-wrapper');
+    for (const wrapper of wrappers) {
+      const source = wrapper.querySelector('.mermaid-source');
+      const render = wrapper.querySelector('.mermaid-render');
+      if (!source || !render) continue;
+
+      const chart = source.textContent?.trim() ?? '';
+      if (!chart) continue;
+
+      try {
+        const { svg } = await mermaid.render(`mermaid-svg-${Math.random().toString(36).slice(2)}`, chart);
+        render.innerHTML = svg;
+      } catch (e) {
+        console.error('[Mermaid] render error:', e);
+        render.innerHTML = `<pre style="color:red">${e}</pre>`;
+      }
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMermaid);
+  } else {
+    initMermaid();
+  }
+</script>
+
+<style>
+  .mermaid-wrapper {
+    margin: 24px 0;
+    overflow-x: auto;
+  }
+
+  .mermaid-render {
+    display: flex;
+    justify-content: center;
+  }
+
+  .mermaid-render :global(svg) {
+    max-width: 100%;
+    height: auto;
+  }
+</style>

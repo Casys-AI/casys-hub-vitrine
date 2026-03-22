@@ -1,80 +1,59 @@
 ---
 title: Introduction
-description: Bridge MCP Apps to Telegram and LINE. Deno-first, 120 tests, version 0.2.0.
+description: What @casys/mcp-bridge 0.2.0 ships today.
 ---
 
 import { Card, CardGrid, LinkCard, Aside } from '@astrojs/starlight/components';
 
-**@casys/mcp-bridge** (v0.2.0) connects MCP Apps — interactive UIs served via `ui://` resources — to messaging platforms like Telegram and LINE, without modifying your existing MCP App or MCP Server.
+<Aside type="note">
+  This documentation is verified against the `@casys/mcp-bridge` source tree and `deno.json` version `0.2.0`.
+</Aside>
 
-Available on [JSR](https://jsr.io/@casys/mcp-bridge) and [npm](https://www.npmjs.com/package/@casys/mcp-bridge). Deno-first; Node.js 20+ supported via Web Crypto API.
+`@casys/mcp-bridge` turns an MCP App UI into an HTTP page that can run inside a messaging-platform webview. In the current package, that means:
 
-## The problem
+1. A Resource Server serves HTML from local asset directories or a backend `ui://` resolver.
+2. The server injects `/bridge.js?...` into HTML responses.
+3. The injected runtime moves MCP JSON-RPC between the page and the server over `/bridge?session=...`.
 
-MCP Apps (`ui://` resources) only run inside developer tools like Claude Desktop or VS Code. Users on Telegram or LINE cannot access them.
+If your UI already talks to its host with MCP Apps JSON-RPC over `postMessage`, the bridge keeps that contract and handles the webview transport around it.
 
-Bridging platforms manually means:
-- Rewriting UI code for each platform SDK
-- Re-implementing auth, session management, and security per platform
-- Maintaining separate codebases
-- Losing the MCP protocol's native tool execution model
-
-## The fix
-
-`@casys/mcp-bridge` inserts a transparent bridge between your MCP App and the messaging platform:
-
-1. **Intercepts** `postMessage` calls from your MCP App via an injected IIFE (`bridge.js`)
-2. **Routes** JSON-RPC messages over WebSocket to a Resource Server
-3. **Forwards** tool calls to your unmodified MCP Server
-4. **Maps** platform-specific auth, theme, and viewport automatically
-
-```typescript
-import { startResourceServer } from "@casys/mcp-bridge";
-
-startResourceServer({
-  assetDirectories: { "my-app": "./ui-dist" },
-  platform: "telegram",
-  telegramBotToken: Deno.env.get("TELEGRAM_BOT_TOKEN"),
-  onMessage: async (_session, message) => {
-    return backend.handleMessage(message);
-  },
-  options: { resourceServerPort: 4000 },
-});
-```
-
-## Three-layer architecture
+## What is implemented
 
 <CardGrid>
-  <Card title="bridge.js (IIFE)" icon="puzzle">
-    Injected into served HTML. Monkey-patches `postMessage`, opens WebSocket, handles auth-on-connect, auto-reconnects with exponential backoff (max 5 attempts). Handles `ui/initialize` and `ui/open-link` locally.
-  </Card>
   <Card title="Resource Server" icon="server">
-    `Deno.serve()` HTTP + WebSocket server. Endpoints: `GET /health`, `POST /session`, `GET /bridge.js`, `WS /bridge?session=id`, `GET /app/<server>/<path>`, `GET /ui?uri=ui://...`.
+    `startResourceServer()` serves `/app`, `/bridge.js`, `/bridge`, `/health`, `/session`, and optionally `/ui`.
   </Card>
-  <Card title="Platform Adapters" icon="setting">
-    TelegramPlatformAdapter (complete): HMAC-SHA256 initData validation, theme params mapped to CSS custom properties. LineAdapter (partial): extends BasePostMessageAdapter, uses `liff.getAccessToken()`.
+  <Card title="Browser Runtime" icon="puzzle">
+    The injected `bridge.js` handles `ui/initialize` and `ui/open-link` locally, then forwards the rest over WebSocket.
   </Card>
-  <Card title="MCP Server" icon="rocket">
-    Your existing MCP Server stays completely unmodified. The Resource Server connects to it via `JsonRpcMcpBackend` as a standard MCP client.
+  <Card title="Telegram" icon="rocket">
+    Telegram is the only end-to-end platform path with built-in server-side auth based on Mini App `initData`.
+  </Card>
+  <Card title="LINE" icon="setting">
+    LINE is partial today: there is a low-level adapter and a browser runtime branch, but no built-in LIFF initialization or token validation.
   </Card>
 </CardGrid>
 
-## Status
+## What the package actually does
 
-- **120 tests** covering all three layers
-- **Telegram**: complete — auth, theme mapping, viewport, safe areas
-- **LINE**: partial — adapter implemented, no built-in auth handler
-- **Node.js 20+**: supported via Web Crypto API (no Deno.serve — use your own HTTP server)
+- Local HTML under `assetDirectories` is served at `/app/<server>/<path>`.
+- Backend-resolved `ui://` resources can be exposed at `/ui?uri=ui://...` when your backend implements `readResource()`.
+- Each served HTML page gets a new in-memory session ID and an injected bridge script.
+- The bridge script handles `ui/initialize` itself and reports protocol version `2025-11-25`.
+- All other JSON-RPC traffic goes to the server over WebSocket, where `onMessage()` runs first and `backend.handleMessage()` runs second.
 
-<Aside type="caution">
-  The LINE adapter is available but does not include a built-in auth handler. You must implement your own server-side LINE auth.
-</Aside>
+## Important limits
+
+- The injected script is referenced as `/bridge.js?...`, and the browser runtime always connects to `/bridge?session=...` at the same origin root. Mount the bridge at the origin root or add root-level rewrites.
+- The package exports only a `WebSocketTransport`. There is no implemented HTTP fallback transport.
+- Session state is in-memory only.
+- LINE is not feature-parity with Telegram.
 
 ## Next steps
 
 <CardGrid>
-  <LinkCard title="Quick Start" href="/docs/mcp-bridge/quickstart/" description="Run your first MCP App inside Telegram" />
-  <LinkCard title="Architecture" href="/docs/mcp-bridge/architecture/" description="The 3-layer bridge design in detail" />
-  <LinkCard title="Telegram Adapter" href="/docs/mcp-bridge/telegram/" description="HMAC auth, theme mapping, BotFather setup" />
-  <LinkCard title="Security Model" href="/docs/mcp-bridge/security/" description="CSP, path traversal, session rate limits" />
+  <LinkCard title="Quick Start" href="/docs/mcp-bridge/quickstart/" description="Run the Resource Server and open your first Telegram Mini App" />
+  <LinkCard title="Architecture" href="/docs/mcp-bridge/architecture/" description="See the exact routes, session flow, and browser/runtime split" />
+  <LinkCard title="Telegram" href="/docs/mcp-bridge/telegram/" description="What the Telegram path really implements today" />
+  <LinkCard title="Security" href="/docs/mcp-bridge/security/" description="CSP, session TTLs, Telegram auth, and current trust boundaries" />
 </CardGrid>

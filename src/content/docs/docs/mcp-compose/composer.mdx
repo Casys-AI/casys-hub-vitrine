@@ -1,17 +1,13 @@
 ---
-title: "Composer"
-description: "buildCompositeUi(), UiOrchestration, layout modes, shared context, and CompositeUiDescriptor."
+title: 'Composer'
+description: 'Build a `CompositeUiDescriptor` from collected resources and orchestration.'
 ---
 
-## Overview
-
-The composer is a pure function that takes collected resources and an optional orchestration configuration, then returns a `CompositeUiDescriptor` — a plain data object with no DOM side effects.
+## API
 
 ```typescript
-import { buildCompositeUi } from "@casys/mcp-compose/core";
+import { buildCompositeUi } from "@casys/mcp-compose";
 ```
-
-## buildCompositeUi(resources, orchestration?)
 
 ```typescript
 function buildCompositeUi(
@@ -20,149 +16,131 @@ function buildCompositeUi(
 ): CompositeUiDescriptor
 ```
 
-What the function does:
+## What it returns
 
-1. Generates a fresh `workflowId` via `crypto.randomUUID()`.
-2. Resolves sync rules: tool-name references in `sync` are translated to slot indices. Invalid rules (referencing unknown sources) are silently excluded — validate first with `validateSyncRules()` if you want to surface errors.
-3. Extracts shared context: for each key listed in `orchestration.sharedContext`, the function scans resource contexts in slot order and takes the first value it finds.
-4. Returns the descriptor.
+`buildCompositeUi()` produces:
 
 ```typescript
-import { createCollector, buildCompositeUi } from "@casys/mcp-compose/core";
-
-const collector = createCollector();
-collector.collect("get_invoice", {
-  _meta: { ui: { resourceUri: "https://apps.example.com/invoice-viewer" } },
-}, { invoiceId: "INV-2024-001", currency: "EUR" });
-
-collector.collect("get_line_items", {
-  _meta: { ui: { resourceUri: "https://apps.example.com/line-items" } },
-}, { invoiceId: "INV-2024-001" });
-
-const descriptor = buildCompositeUi(collector.getResources(), {
-  layout: "split",
-  sharedContext: ["invoiceId", "currency"],
-  sync: [
-    { from: "get_invoice", event: "lineItemSelected", to: "get_line_items", action: "highlightItem" },
-  ],
-});
+interface CompositeUiDescriptor {
+  type: "composite";
+  resourceUri: string;
+  layout: UiLayout;
+  children: CollectedUiResource[];
+  sync: ResolvedSyncRule[];
+  sharedContext?: Record<string, unknown>;
+  areaMap?: Record<string, string>;
+}
 ```
 
-## UiOrchestration
+Important implementation details:
+
+- `type` is always `"composite"`.
+- `resourceUri` is always `ui://mcp-compose/workflow/<uuid>`.
+- `children` are the original collected resources in order.
+- `layout` defaults to `"stack"` when orchestration is omitted.
+- `sync` contains resolved slot-based rules, not tool-name rules.
+
+## Basic example
+
+```typescript
+const descriptor = buildCompositeUi(
+  [
+    { source: "postgres:query", resourceUri: "ui://pg/1", slot: 0 },
+    { source: "viz:render", resourceUri: "ui://viz/2", slot: 1 },
+  ],
+  {
+    layout: "split",
+    sync: [
+      { from: "postgres:query", event: "filter", to: "viz:render", action: "update" },
+    ],
+    sharedContext: ["workflowId"],
+  },
+);
+
+// descriptor.sync[0] === { from: 0, event: "filter", to: 1, action: "update" }
+```
+
+## `UiOrchestration`
 
 ```typescript
 interface UiOrchestration {
-  layout: LayoutMode | UiLayoutAreas;
+  layout: UiLayout;
   sync?: UiSyncRule[];
   sharedContext?: string[];
 }
 ```
 
-All fields except `layout` are optional. When `orchestration` itself is omitted, the layout defaults to `"stack"`.
+### Layout presets
 
-## Layout modes
+The preset string layouts are:
 
-Four named layout modes plus a custom areas mode:
+- `"split"`: side-by-side flex panels
+- `"tabs"`: tab bar with one visible iframe at a time
+- `"grid"`: auto-fit CSS grid
+- `"stack"`: vertical stack
 
-### stack (default)
+### Areas layout
 
-Iframes stacked vertically, full width. No configuration needed.
+`UiLayout` can also be an object:
 
 ```typescript
-{ layout: "stack" }
+const layout = {
+  areas: [
+    ["filter", "list", "detail"],
+    ["filter", "chart", "chart"],
+  ],
+  columns: [1, 2, 2],
+  rows: [3, 1],
+  gap: "normal" as const,
+};
 ```
 
-### split
+The renderer treats repeated area names as CSS grid spans. `gap` is a token, not a number: `"none"`, `"compact"`, `"normal"`, or `"spacious"`.
 
-Iframes arranged side-by-side with `display: flex` and equal `flex: 1` shares.
+## Shared context
 
-```typescript
-{ layout: "split" }
-```
-
-### tabs
-
-Only one iframe is visible at a time. The renderer injects a tab bar; clicking a tab shows the corresponding iframe and hides the others.
+When you pass `sharedContext`, the composer scans resource `context` objects in order and takes the first value it finds for each requested key:
 
 ```typescript
-{ layout: "tabs" }
-```
-
-### grid
-
-CSS Grid with `auto-fit` columns of `minmax(400px, 1fr)`. Works with any number of iframes.
-
-```typescript
-{ layout: "grid" }
-```
-
-### areas (UiLayoutAreas)
-
-Full CSS Grid template areas. Gives you pixel-level control over placement.
-
-```typescript
-interface UiLayoutAreas {
-  areas: string[][];   // 2-D array → becomes grid-template-areas
-  columns?: number[];  // column widths in fr units
-  rows?: number[];     // row heights in fr units
-  gap?: number;        // gap in px, default 0
-}
-```
-
-Example — a two-column layout where slot 0 spans the left and slot 1 is top-right, slot 2 is bottom-right:
-
-```typescript
-{
-  layout: {
-    areas: [
-      ["slot-0", "slot-1"],
-      ["slot-0", "slot-2"],
-    ],
-    columns: [2, 1],
-    rows: [1, 1],
-    gap: 16,
+const descriptor = buildCompositeUi(
+  [
+    {
+      source: "postgres:query",
+      resourceUri: "ui://pg/1",
+      slot: 0,
+      context: { workflowId: "wf-123", query: "SELECT *" },
+    },
+    {
+      source: "viz:render",
+      resourceUri: "ui://viz/2",
+      slot: 1,
+      context: { workflowId: "wf-999", userId: "user-456" },
+    },
+  ],
+  {
+    layout: "split",
+    sharedContext: ["workflowId", "userId"],
   },
-}
+);
+
+// descriptor.sharedContext === {
+//   workflowId: "wf-123",
+//   userId: "user-456",
+// }
 ```
 
-## Shared context extraction
+This is first-match-wins, not last-write-wins.
 
-`orchestration.sharedContext` is a list of key names. For each key, `buildCompositeUi` iterates resources in slot order and takes the first `context[key]` value it finds. The result is attached to `CompositeUiDescriptor.sharedContext`.
+## Sync resolution
 
-The event bus then forwards this object in the `hostContext` field of `ui/initialize` responses, making it available to every iframe without manual prop drilling.
+`buildCompositeUi()` calls `resolveSyncRules()` internally. That means:
 
-```typescript
-// Resources:
-// slot 0 context: { invoiceId: "INV-2024-001", currency: "EUR" }
-// slot 1 context: { invoiceId: "INV-2024-001" }
+- valid tool-name rules become slot-based rules
+- `to: "*"` stays `"*"`
+- unknown `from` or `to` references are excluded from the final descriptor
 
-buildCompositeUi(resources, { layout: "stack", sharedContext: ["invoiceId", "currency"] });
-// descriptor.sharedContext → { invoiceId: "INV-2024-001", currency: "EUR" }
-// "currency" comes from slot 0 (first resource that has it)
-```
+If you want to surface bad sync rules to callers, run [`validateSyncRules`](./sync-rules/) before composing.
 
-## CompositeUiDescriptor shape
+## `areaMap`
 
-```typescript
-interface CompositeUiDescriptor {
-  workflowId: string;                          // crypto.randomUUID()
-  layout: LayoutMode | UiLayoutAreas;
-  resources: ResolvedUiResource[];             // slot indices assigned
-  sync: ResolvedSyncRule[];                    // tool names → slot indices
-  sharedContext: Record<string, unknown>;      // extracted values
-}
-
-interface ResolvedUiResource {
-  source: string;
-  resourceUri: string;
-  context?: Record<string, unknown>;
-  slot: number;
-}
-
-interface ResolvedSyncRule {
-  from: number;      // slot index of the emitting iframe
-  event: string;
-  to: number | "*";  // slot index of the target, or "*" for broadcast
-  action: string;
-}
-```
+The descriptor type includes `areaMap`, but `buildCompositeUi()` does not populate it. In this repo, `areaMap` is added later by the runtime layer when a dashboard template assigns source IDs for areas layouts.
