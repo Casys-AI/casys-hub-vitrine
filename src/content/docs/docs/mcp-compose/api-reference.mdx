@@ -44,10 +44,15 @@ import {
   extractUiMeta,
   resolveSyncRules,
   validateSyncRules,
+  ErrorCode,
+  isLayoutAreas,
+  isLayoutPreset,
+  isValidLayout,
+  UI_LAYOUT_PRESETS,
 } from "@casys/mcp-compose/core";
 ```
 
-`core` exports types, collector, sync helpers, and composer. It does not export the public renderer.
+`core` exports types, collector, sync helpers, composer, and layout validators. It does not export the renderer.
 
 ## `@casys/mcp-compose/sdk`
 
@@ -57,6 +62,7 @@ import {
   createMcpSdkCollector,
   uiMeta,
   validateComposition,
+  COMPOSE_EVENT_METHOD,
 } from "@casys/mcp-compose/sdk";
 ```
 
@@ -66,12 +72,13 @@ Exports:
 - `uiMeta(options)`
 - `validateComposition(tools, syncRules)`
 - `composeEvents(parent?, source?)`
+- `COMPOSE_EVENT_METHOD` — constant `"ui/compose/event"`
 - related SDK types such as `McpSdkCallToolResult`, `UiMetaOptions`, `CompositionValidationResult`, `ComposeEvents`
 
 Notes:
 
 - `createMcpSdkCollector()` only adds SDK-shaped typing plus `isError: true` skipping.
-- `composeEvents()` is browser-oriented and throws if no parent window is available.
+- `composeEvents()` is browser-oriented. Creating the channel succeeds even without a parent window, but `emit()` throws if no parent is available.
 
 ## `@casys/mcp-compose/host`
 
@@ -86,8 +93,8 @@ Exports:
 
 - `renderComposite(descriptor)`
 - `serveDashboard(html, options?)`
-- `CompositeUiHost`
-- `HostConfig`
+- `CompositeUiHost`, `HostConfig`
+- `ServeDashboardHandle`, `ServeDashboardOptions`
 
 Notes:
 
