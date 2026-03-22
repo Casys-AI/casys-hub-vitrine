@@ -80,7 +80,11 @@ if (config) {
   const server = new ConcurrentMCPServer({
     name: "my-server",
     version: "1.0.0",
-    auth: { provider },
+    auth: {
+      provider,
+      authorizationServers: config.authorizationServers ?? [],
+      resource: config.resource,
+    },
   });
 }
 ```

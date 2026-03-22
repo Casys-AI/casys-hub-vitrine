@@ -118,30 +118,25 @@ server.registerAppOnlyTool(
 
 ## Bulk viewer registration
 
-`registerViewers()` registers multiple resources at once from a configuration object:
+`registerViewers()` registers file-based viewer resources using a `RegisterViewersConfig` object:
 
 ```typescript
 server.registerViewers({
-  "ui://my-server/viewer": {
-    name: "Data Viewer",
-    description: "Interactive data viewer",
-    handler: async (uri) => ({
-      uri: uri.toString(),
-      mimeType: MCP_APP_MIME_TYPE,
-      text: renderViewer(),
-    }),
+  prefix: "ui://my-server/",
+  moduleUrl: import.meta.url,
+  exists: async (path) => {
+    try {
+      await Deno.stat(path);
+      return true;
+    } catch {
+      return false;
+    }
   },
-  "ui://my-server/dashboard": {
-    name: "Dashboard",
-    description: "Metrics dashboard",
-    handler: async (uri) => ({
-      uri: uri.toString(),
-      mimeType: MCP_APP_MIME_TYPE,
-      text: renderDashboard(await getMetrics()),
-    }),
-  },
+  readFile: async (path) => await Deno.readTextFile(path),
 });
 ```
+
+The framework uses `exists` and `readFile` to serve viewer files under the given `prefix`. `moduleUrl` resolves relative paths to absolute filesystem paths.
 
 ## Structured tool results
 
@@ -188,9 +183,11 @@ import {
 
 // Build a CSP header string
 const csp = buildCspHeader({
-  defaultSrc: ["'self'"],
-  scriptSrc: ["'self'", "'unsafe-inline'"],
-  styleSrc: ["'self'"],
+  scriptSources: ["'self'", "'unsafe-inline'"],
+  connectSources: ["'self'"],
+  imgSources: ["'self'", "data:"],
+  frameAncestors: ["'self'"],
+  allowInline: false,
 });
 
 // Or inject a <meta> CSP tag directly into HTML
@@ -205,8 +202,8 @@ const server = new ConcurrentMCPServer({
   name: "my-server",
   version: "1.0.0",
   resourceCsp: {
-    defaultSrc: ["'self'"],
-    scriptSrc: ["'self'"],
+    scriptSources: ["'self'"],
+    connectSources: ["'self'"],
   },
 });
 ```
@@ -217,14 +214,14 @@ To verify messages sent between the UI iframe and the host, use `MessageSigner` 
 
 ```typescript
 import {
-  MessageSigner,
   injectChannelAuth,
 } from "@casys/mcp-server";
 
-const signer = new MessageSigner(secretKey);
+// secret must be a 64-character hex string
+const secret = "a1b2c3..."; // 64 hex chars
 
 // In your UI HTML, inject auth credentials before serving
-const html = injectChannelAuth(rawHtml, signer);
+const html = injectChannelAuth(rawHtml, secret);
 ```
 
 The injected script handles HMAC signing of postMessage events, so the host can verify that messages originate from your UI.

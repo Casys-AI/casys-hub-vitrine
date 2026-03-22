@@ -29,6 +29,8 @@ Pick your identity provider. Each preset handles issuer URLs, JWKS endpoints, an
           audience: "https://my-mcp.example.com",
           resource: "https://my-mcp.example.com",
         }),
+        authorizationServers: ["https://accounts.google.com"],
+        resource: "https://my-mcp.example.com",
       },
     });
     ```
@@ -50,6 +52,9 @@ Pick your identity provider. Each preset handles issuer URLs, JWKS endpoints, an
           resource: "https://my-mcp.example.com",
           scopesSupported: ["read", "write"],
         }),
+        authorizationServers: ["https://my-tenant.auth0.com"],
+        resource: "https://my-mcp.example.com",
+        scopesSupported: ["read", "write"],
       },
     });
     ```
@@ -69,6 +74,8 @@ Pick your identity provider. Each preset handles issuer URLs, JWKS endpoints, an
           audience: "https://my-mcp.example.com",
           resource: "https://my-mcp.example.com",
         }),
+        authorizationServers: ["https://token.actions.githubusercontent.com"],
+        resource: "https://my-mcp.example.com",
       },
     });
     ```
@@ -92,8 +99,9 @@ Pick your identity provider. Each preset handles issuer URLs, JWKS endpoints, an
           issuer: "https://my-idp.example.com",
           audience: "https://my-mcp.example.com",
           resource: "https://my-mcp.example.com",
-          authorizationServers: ["https://my-idp.example.com"],
         }),
+        authorizationServers: ["https://my-idp.example.com"],
+        resource: "https://my-mcp.example.com",
       },
     });
     ```
@@ -166,7 +174,7 @@ interface AuthInfo {
   clientId?: string;                   // Token "client_id" or "azp" claim
   scopes: string[];                    // Parsed from "scope" claim (space-separated)
   claims?: Record<string, unknown>;    // All token claims
-  expiresAt?: Date;                    // Token expiry
+  expiresAt?: number;                  // Token expiry as Unix epoch seconds
 }
 ```
 
@@ -207,6 +215,10 @@ const oauthProvider = await prepareOAuthProvider(
     clientId: "my-client-id",
     scopes: ["read", "write"],
     tokenStore: new FileTokenStore("./.tokens"),
+    openBrowser: (url) => {
+      // Open the authorization URL in the user's browser
+      console.log(`Open this URL to authorize: ${url}`);
+    },
   },
 );
 ```

@@ -8,7 +8,7 @@ import { Aside } from '@astrojs/starlight/components';
 The main entry point for the framework. `ConcurrentMCPServer` handles tool registration, middleware composition, transport selection, and lifecycle management.
 
 <Aside type="note">
-  Deno-first. Node.js 22+ is supported via the JSR npm compatibility layer.
+  Deno-first. Node.js 20+ is supported via the JSR npm compatibility layer.
 </Aside>
 
 ## Constructor
@@ -30,6 +30,7 @@ interface ConcurrentServerOptions {
   // Concurrency
   maxConcurrent?: number;                // Default: 10
   backpressureStrategy?: "sleep" | "queue" | "reject";  // Default: "sleep"
+  backpressureSleepMs?: number;          // Sleep interval for "sleep" strategy (ms)
 
   // Rate limiting
   rateLimit?: RateLimitOptions;
@@ -39,6 +40,10 @@ interface ConcurrentServerOptions {
 
   // Sampling
   enableSampling?: boolean;              // Enable bidirectional LLM delegation
+  samplingClient?: SamplingClient;       // External sampling client (alternative to bridge)
+
+  // Resources
+  expectResources?: boolean;             // Enable dynamic resource support
 
   // Auth
   auth?: AuthOptions;                    // OAuth2/Bearer config
@@ -66,13 +71,16 @@ interface RateLimitOptions {
 
 ```typescript
 interface AuthOptions {
-  provider: AuthProvider;   // Use presets (createGoogleAuthProvider, etc.) or JwtAuthProvider
+  provider: AuthProvider;              // Use presets (createGoogleAuthProvider, etc.) or JwtAuthProvider
+  authorizationServers: string[];      // Authorization server URLs (e.g., ["https://accounts.google.com"])
+  resource: string;                    // This server's resource URL (used for RFC 9728 discovery)
+  scopesSupported?: string[];          // Scopes advertised in the discovery document
 }
 ```
 
 ## Registration methods
 
-All registration must happen **before** calling `start()` or `startHttp()`.
+All registration must happen **before** calling `start()` or `startHttp()`. Exception: `registerToolLive()` is designed for post-start registration. Setting `expectResources: true` also enables dynamic resource registration after start.
 
 ### registerTool
 
@@ -119,7 +127,7 @@ Bulk-register tools. Map keys must match tool names exactly.
 server.registerToolLive(tool: MCPTool, handler: ToolHandler): void;
 ```
 
-Register a tool after the server has started. Sends a `tools/list_changed` notification to connected clients automatically.
+Register a tool after the server has started. Clients will see the new tool on their next `tools/list` request.
 
 ### unregisterTool
 
@@ -127,7 +135,7 @@ Register a tool after the server has started. Sends a `tools/list_changed` notif
 server.unregisterTool(toolName: string): void;
 ```
 
-Remove a registered tool. Sends a `tools/list_changed` notification to connected clients.
+Remove a registered tool. Clients will no longer see it on subsequent `tools/list` requests.
 
 ### registerAppOnlyTool
 
@@ -159,24 +167,21 @@ Bulk-register resources.
 ### registerViewers
 
 ```typescript
-server.registerViewers(config: ViewersConfig): void;
+server.registerViewers(config: RegisterViewersConfig): void;
 ```
 
-Bulk-register UI viewer resources from a configuration object:
+Bulk-register file-based viewer resources. Each entry maps a URI prefix to a module configuration:
 
 ```typescript
 server.registerViewers({
-  "ui://my-server/dashboard": {
-    name: "Dashboard",
-    description: "Metrics dashboard",
-    handler: async (uri) => ({
-      uri: uri.toString(),
-      mimeType: MCP_APP_MIME_TYPE,
-      text: renderDashboard(),
-    }),
-  },
+  prefix: "ui://my-server/",
+  moduleUrl: import.meta.url,
+  exists: async (path) => /* check if path exists */,
+  readFile: async (path) => /* return file contents as string */,
 });
 ```
+
+The `prefix` is the base URI for all registered resources. `moduleUrl` is used to resolve relative paths. `exists` and `readFile` are called by the framework to serve viewer files.
 
 ### use
 
@@ -212,10 +217,10 @@ Start with STDIO transport. Use this for local tools (Claude Desktop, Cursor, et
 ### startHttp
 
 ```typescript
-await server.startHttp(options: HttpServerOptions): Promise<void>;
+server.startHttp(options: HttpServerOptions): HttpServerInstance;
 ```
 
-Start with Streamable HTTP transport. Includes SSE streaming, session management, and RFC 9728 discovery.
+Start with Streamable HTTP transport. Includes SSE streaming, session management, and RFC 9728 discovery. Returns an `HttpServerInstance` (not a Promise).
 
 ```typescript
 interface HttpServerOptions {
@@ -229,6 +234,8 @@ interface HttpServerOptions {
   ipRateLimit?: {
     maxRequests: number;
     windowMs: number;
+    keyExtractor?: (request: Request) => string;   // Custom key extraction (default: IP)
+    onLimitExceeded?: (request: Request) => void;  // Called when a limit is hit
   };
 }
 ```
@@ -299,10 +306,10 @@ Push a message to a specific SSE session by ID (HTTP transport).
 ### getServerMetrics
 
 ```typescript
-server.getServerMetrics(): ServerMetrics;
+server.getServerMetrics(): ServerMetricsSnapshot;
 ```
 
-Returns current server metrics including in-flight requests, queued requests, and active sessions.
+Returns a snapshot of current server metrics including in-flight requests, queued requests, and active sessions.
 
 ### getPrometheusMetrics
 
@@ -310,28 +317,28 @@ Returns current server metrics including in-flight requests, queued requests, an
 server.getPrometheusMetrics(): string;
 ```
 
-Returns metrics in Prometheus text format. Same data served at `GET /metrics`:
+Returns metrics in Prometheus text format. Same data served at `GET /metrics`. All metric names use the `mcp_server_` prefix:
 
 ```
-# HELP tool_calls_total Total number of tool calls
-# TYPE tool_calls_total counter
-tool_calls_total{tool="greet",status="success"} 42
+# HELP mcp_server_tool_calls_total Total number of tool calls
+# TYPE mcp_server_tool_calls_total counter
+mcp_server_tool_calls_total{tool="greet",status="success"} 42
 
-# HELP tool_call_duration_ms Tool call duration in milliseconds
-# TYPE tool_call_duration_ms histogram
-tool_call_duration_ms_bucket{tool="greet",le="100"} 40
+# HELP mcp_server_tool_call_duration_ms Tool call duration in milliseconds
+# TYPE mcp_server_tool_call_duration_ms histogram
+mcp_server_tool_call_duration_ms_bucket{tool="greet",le="100"} 40
 ...
 
-# HELP active_requests Currently active requests
-# TYPE active_requests gauge
-active_requests 3
+# HELP mcp_server_active_requests Currently active requests
+# TYPE mcp_server_active_requests gauge
+mcp_server_active_requests 3
 
-# HELP active_sessions Currently active SSE sessions
-# TYPE active_sessions gauge
-active_sessions 7
+# HELP mcp_server_active_sessions Currently active SSE sessions
+# TYPE mcp_server_active_sessions gauge
+mcp_server_active_sessions 7
 ```
 
-Counters available: `tool_calls_total`, `auth_success_total`, `auth_failed_total`.
+Counters available: `mcp_server_tool_calls_total`, `mcp_server_auth_success_total`, `mcp_server_auth_failed_total`.
 
 ### getRateLimitMetrics
 
@@ -364,20 +371,25 @@ Returns `true` after `start()` or `startHttp()` has been called.
 
 ## Sampling bridge
 
-When `enableSampling: true` is set, the server can delegate LLM calls back through the client connection:
+When `enableSampling: true` is set, the server can delegate LLM calls back through the client connection. A `samplingClient` must also be provided to handle the actual requests:
 
 ```typescript
+import { ConcurrentMCPServer, createSamplingClient } from "@casys/mcp-server";
+
+const samplingClient = createSamplingClient(/* client config */);
+
 const server = new ConcurrentMCPServer({
   name: "my-server",
   version: "1.0.0",
   enableSampling: true,
+  samplingClient,
 });
 
 server.registerTool(
   { name: "summarize", description: "Summarize text", inputSchema: { type: "object", properties: { text: { type: "string" } } } },
-  async ({ text }, { bridge }) => {
-    const result = await bridge.requestSampling({
-      messages: [{ role: "user", content: text }],
+  async (args) => {
+    const result = await samplingClient.requestSampling({
+      messages: [{ role: "user", content: args.text as string }],
       maxTokens: 500,
       maxIterations: 3,
     });
@@ -385,6 +397,8 @@ server.registerTool(
   },
 );
 ```
+
+Note: `ToolHandler` only receives `args` — there is no `{ bridge }` second argument.
 
 ## OpenTelemetry
 

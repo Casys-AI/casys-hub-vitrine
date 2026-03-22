@@ -121,7 +121,7 @@ interface AuthInfo {
   clientId?: string;                   // Token "client_id" or "azp" claim
   scopes: string[];                    // Parsed from "scope" claim
   claims?: Record<string, unknown>;    // All token claims
-  expiresAt?: Date;                    // Token expiry
+  expiresAt?: number;                  // Token expiry as Unix epoch seconds
 }
 ```
 
@@ -171,7 +171,9 @@ const errorHandler: Middleware = async (ctx, next) => {
     return await next();
   } catch (error) {
     console.error(`Tool ${ctx.toolName} failed:`, error);
-    return { error: true, message: String(error) };
+    // Re-throw so the framework converts it to an MCP error response.
+    // Returning a plain object here produces a normal (non-error) result.
+    throw error;
   }
 };
 
@@ -180,6 +182,10 @@ server.use(errorHandler);
 server.use(logging);
 server.use(caching);
 ```
+
+<Aside type="caution">
+  Returning `{ error: true, message }` from a middleware serializes as a **normal** tool result, not an MCP `isError` response. To signal a tool error, throw an `Error` (or let it propagate) — the framework's `toolErrorMapper` will convert it to the correct MCP error format.
+</Aside>
 
 ## Recipes
 

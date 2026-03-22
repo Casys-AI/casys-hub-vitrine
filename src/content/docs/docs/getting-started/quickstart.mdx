@@ -71,6 +71,8 @@ const server = new ConcurrentMCPServer({
       audience: "https://my-mcp.example.com",
       resource: "https://my-mcp.example.com",
     }),
+    authorizationServers: ["https://accounts.google.com"],
+    resource: "https://my-mcp.example.com",
   },
 });
 
@@ -127,10 +129,10 @@ To launch the MCP Inspector for debugging your server:
 ```typescript
 import { launchInspector } from "@casys/mcp-server";
 
-await launchInspector();
+await launchInspector("deno", ["run", "--allow-all", "server.ts"], { port: 6274 });
 ```
 
-This spawns the MCP Inspector process connected to your server.
+Real signature: `launchInspector(serverCommand, serverArgs, options?)`. The first argument is the runtime command, the second is its argument array, and `options.port` sets the Inspector UI port.
 
 ## Where to go from here
 

@@ -63,6 +63,30 @@ const remaining = limiter.getRemainingRequests("client-123");
 // e.g., 7 if 3 of 10 requests have been used
 ```
 
+### getTimeUntilSlot
+
+```typescript
+limiter.getTimeUntilSlot(key: string): number;
+```
+
+Returns the number of milliseconds until the next slot opens for the given key. Returns `0` if a slot is already available.
+
+### clear
+
+```typescript
+limiter.clear(key: string): void;
+```
+
+Clears the request history for a specific key, immediately freeing its slots.
+
+### clearAll
+
+```typescript
+limiter.clearAll(): void;
+```
+
+Clears all tracked keys and their request histories.
+
 ### getMetrics
 
 ```typescript
@@ -153,7 +177,7 @@ validator.validate(name: string, data: unknown): ValidationResult;
 ```typescript
 interface ValidationResult {
   valid: boolean;
-  errors: string[];  // Human-readable error messages (empty if valid)
+  errors: ValidationError[];  // Structured error objects (empty if valid)
 }
 ```
 
@@ -164,6 +188,22 @@ validator.validate("my_tool", { count: -1 });
 validator.validate("my_tool", { count: 5 });
 // { valid: true, errors: [] }
 ```
+
+### hasSchema
+
+```typescript
+validator.hasSchema(name: string): boolean;
+```
+
+Returns `true` if a schema with the given name has been added.
+
+### removeSchema
+
+```typescript
+validator.removeSchema(name: string): void;
+```
+
+Removes a previously added schema. Subsequent calls to `validate()` with that name will throw.
 
 ### validateOrThrow
 

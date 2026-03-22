@@ -62,7 +62,7 @@ const provider = createOIDCAuthProvider({
 });
 ```
 
-Generic OIDC provider. JWKS URI is derived automatically from the issuer's `.well-known/openid-configuration`.
+Generic OIDC provider. If `jwksUri` is omitted, the JWKS URI defaults to `${issuer}/.well-known/jwks.json`. The provider does not fetch `.well-known/openid-configuration`.
 
 <Aside type="tip">
   Not sure which preset to use? See the [Authentication guide](/docs/guides/auth/) for usage examples with each provider.
@@ -100,7 +100,7 @@ interface AuthInfo {
   clientId?: string;                   // Token "client_id" or "azp" claim
   scopes: string[];                    // Parsed from "scope" claim (space-separated)
   claims?: Record<string, unknown>;    // All token claims
-  expiresAt?: Date;                    // Token expiry
+  expiresAt?: number;                  // Token expiry as Unix epoch seconds
 }
 ```
 
@@ -162,6 +162,10 @@ const oauthProvider = await prepareOAuthProvider(
     clientId: "my-client-id",
     scopes: ["read", "write"],
     tokenStore: new FileTokenStore("./.tokens"),  // or new MemoryTokenStore()
+    openBrowser: (url) => {
+      // Open the authorization URL in the user's browser
+      console.log(`Open this URL to authorize: ${url}`);
+    },
   },
 );
 ```
