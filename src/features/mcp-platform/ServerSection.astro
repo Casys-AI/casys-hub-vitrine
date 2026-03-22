@@ -1,0 +1,380 @@
+---
+import { useTranslations } from '../../i18n';
+const locale = (Astro as any).currentLocale ?? 'en';
+const t = useTranslations(locale).mcpPlatform;
+
+const pipelineSteps = [
+  { label: 'Request', type: 'neutral' },
+  { label: 'Auth', type: 'accent' },
+  { label: 'Rate Limit', type: 'accent' },
+  { label: 'Your Code', type: 'highlight' },
+  { label: 'Logger', type: 'accent' },
+  { label: 'Response', type: 'neutral' },
+];
+---
+
+<section id="server">
+  <div class="container">
+    <div class="step-indicator">
+      <span class="step-num">{t.serverStep}</span>
+      <span class="step-label">{t.serverLabel}</span>
+    </div>
+
+    <div class="section-head">
+      <h2>{t.serverTitle}</h2>
+      <p class="section-subtitle"><em>{t.serverSubtitle}</em></p>
+      <p class="section-body">{t.serverBody}</p>
+    </div>
+
+    <div class="main-grid">
+      <ul class="features-grid">
+        {t.serverFeatures.map((f: any) => (
+          <li class="feature-item">
+            <span class="material-symbols-rounded feature-icon">{f.icon}</span>
+            <span class="feature-name">{f.name}</span>
+            <span class="feature-desc">{f.desc}</span>
+          </li>
+        ))}
+      </ul>
+
+      <div class="right-col">
+        <div class="pipeline-card">
+          <div class="pipeline-header">
+            <span class="material-symbols-rounded">account_tree</span>
+            <span>{t.serverPipelineTitle}</span>
+          </div>
+          <div class="pipeline-flow">
+            {pipelineSteps.map((step, i) => (
+              <div class="flow-row">
+                <div class={`flow-node flow-${step.type}`}>
+                  <span class="flow-label">{step.label}</span>
+                </div>
+                {i < pipelineSteps.length - 1 && (
+                  <span class="material-symbols-rounded flow-arrow">arrow_downward</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div class="terminal-card">
+          <div class="terminal-dots">
+            <span class="dot dot-r"></span>
+            <span class="dot dot-y"></span>
+            <span class="dot dot-g"></span>
+            <span class="term-title">mcp-server</span>
+          </div>
+          <pre class="terminal-body"><code><span class="t-dim">$</span> <span class="t-cmd">deno run -A server.ts</span>
+<span class="t-dim">  @casys/mcp-server v0.12.0</span>
+
+<span class="t-ok">✓</span> Transport  Streamable HTTP on <span class="t-accent">:3000</span>
+<span class="t-ok">✓</span> Auth       Google OIDC (JWT + cache)
+<span class="t-ok">✓</span> Rate limit 100 req/min per client
+<span class="t-ok">✓</span> Middleware  4 active (onion model)
+<span class="t-ok">✓</span> Tools      5 registered
+
+<span class="t-ok">●</span> Ready in <span class="t-accent">23ms</span></code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  #server {
+    padding: 80px 0 88px;
+    background: var(--md-sys-color-surface-container-lowest);
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  .step-indicator {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin-bottom: 36px;
+  }
+
+  .step-num {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: clamp(3rem, 6vw, 4.5rem);
+    font-weight: 700;
+    font-style: italic;
+    color: var(--md-sys-color-primary);
+    line-height: 1;
+    opacity: 0.4;
+  }
+
+  .step-label {
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--md-sys-color-primary);
+  }
+
+  .section-head {
+    max-width: 640px;
+    margin-bottom: 40px;
+  }
+
+  h2 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: clamp(2rem, 4.5vw, 3rem);
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    color: var(--md-sys-color-on-surface);
+    margin: 0 0 12px;
+  }
+
+  .section-subtitle {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.15rem;
+    color: var(--md-sys-color-primary);
+    margin: 0 0 12px;
+    line-height: 1.5;
+  }
+
+  .section-body {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--md-sys-color-on-surface-variant);
+    margin: 0;
+  }
+
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 32px;
+    align-items: start;
+  }
+
+  .features-grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1px;
+    background: var(--md-sys-color-outline-variant);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .feature-item {
+    display: grid;
+    grid-template-columns: 30px 1fr;
+    grid-template-rows: auto auto;
+    column-gap: 10px;
+    row-gap: 2px;
+    padding: 14px 16px;
+    background: var(--md-sys-color-surface);
+    transition: background 150ms ease-out;
+  }
+
+  .feature-item:hover { background: var(--md-sys-color-surface-container); }
+
+  .feature-icon {
+    grid-row: 1 / 3;
+    align-self: center;
+    font-size: 20px;
+    color: var(--md-sys-color-primary);
+  }
+
+  .feature-name {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--md-sys-color-on-surface);
+    line-height: 1.3;
+  }
+
+  .feature-desc {
+    font-size: 0.7rem;
+    color: var(--md-sys-color-on-surface-variant);
+    line-height: 1.4;
+  }
+
+  .right-col {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .pipeline-card {
+    border-radius: 12px;
+    border: 1px solid var(--md-sys-color-outline-variant);
+    background: var(--md-sys-color-surface);
+    overflow: hidden;
+  }
+
+  .pipeline-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: var(--md-sys-color-surface-container);
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .pipeline-header .material-symbols-rounded {
+    font-size: 18px;
+    color: var(--md-sys-color-primary);
+  }
+
+  .pipeline-flow {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .flow-row {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .flow-node {
+    width: 100%;
+    padding: 10px 16px;
+    border-radius: 8px;
+    text-align: center;
+  }
+
+  .flow-neutral {
+    background: var(--md-sys-color-surface-container-lowest);
+    border: 1px solid var(--md-sys-color-outline-variant);
+  }
+
+  .flow-accent {
+    background: var(--md-sys-color-surface-container);
+    border: 1px solid var(--md-sys-color-outline-variant);
+  }
+
+  .flow-highlight {
+    background: var(--md-sys-color-primary-container, #e8eaff);
+    border: 2px dashed var(--md-sys-color-primary);
+  }
+
+  .flow-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .flow-arrow {
+    font-size: 16px;
+    color: var(--md-sys-color-primary);
+    margin: 3px 0;
+    opacity: 0.5;
+  }
+
+  .terminal-card {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--md-sys-color-outline-variant);
+  }
+
+  .terminal-dots {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    background: var(--md-sys-color-surface-container);
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  }
+
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+
+  .dot-r { background: #ff5f57; }
+  .dot-y { background: #ffbd2e; }
+  .dot-g { background: #28ca41; }
+
+  .term-title {
+    margin-left: 8px;
+    font-size: 0.73rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .terminal-body {
+    margin: 0;
+    padding: 18px 20px;
+    background: #111;
+    overflow-x: auto;
+  }
+
+  .terminal-body code {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 0.76rem;
+    line-height: 1.8;
+    color: #e0e0e0;
+    display: block;
+  }
+
+  .t-dim { color: #555; }
+  .t-cmd { color: #b0c4ff; }
+  .t-ok { color: #6fdc8c; }
+  .t-accent { color: #FFB86F; }
+
+  @media (max-width: 900px) {
+    .main-grid { grid-template-columns: 1fr; }
+    .right-col { order: -1; }
+  }
+
+  @media (max-width: 768px) {
+    #server { padding: 56px 0 64px; }
+    .features-grid { grid-template-columns: 1fr; }
+  }
+</style>
+
+<style is:global>
+  html[data-theme="dark"] #server { background: #0d0c0a; }
+  html[data-theme="dark"] #server .step-num { color: var(--casys-warm-accent); opacity: 0.35; }
+  html[data-theme="dark"] #server .step-label { color: var(--casys-warm-accent); }
+  html[data-theme="dark"] #server h2 { color: var(--casys-warm-text-primary); }
+  html[data-theme="dark"] #server .section-subtitle { color: var(--casys-warm-accent); }
+  html[data-theme="dark"] #server .section-body { color: var(--casys-warm-text-secondary); }
+
+  html[data-theme="dark"] #server .features-grid {
+    background: rgba(255, 184, 111, 0.06);
+    border-color: rgba(255, 184, 111, 0.08);
+  }
+  html[data-theme="dark"] #server .feature-item { background: #0d0c0a; }
+  html[data-theme="dark"] #server .feature-item:hover { background: #1a1815; }
+  html[data-theme="dark"] #server .feature-icon { color: var(--casys-warm-accent); }
+  html[data-theme="dark"] #server .feature-name { color: var(--casys-warm-text-primary); }
+  html[data-theme="dark"] #server .feature-desc { color: var(--casys-warm-text-muted); }
+
+  html[data-theme="dark"] #server .pipeline-card {
+    background: var(--casys-warm-surface);
+    border-color: rgba(255, 184, 111, 0.1);
+  }
+  html[data-theme="dark"] #server .pipeline-header {
+    background: #1a1815;
+    border-color: rgba(255, 184, 111, 0.08);
+    color: var(--casys-warm-text-secondary);
+  }
+  html[data-theme="dark"] #server .pipeline-header .material-symbols-rounded { color: var(--casys-warm-accent); }
+
+  html[data-theme="dark"] #server .flow-neutral { background: #0d0c0a; border-color: rgba(255,184,111,0.08); }
+  html[data-theme="dark"] #server .flow-accent { background: #1a1815; border-color: rgba(255,184,111,0.1); }
+  html[data-theme="dark"] #server .flow-highlight { background: rgba(255,184,111,0.1); border-color: var(--casys-warm-accent); }
+  html[data-theme="dark"] #server .flow-label { color: var(--casys-warm-text-primary); }
+  html[data-theme="dark"] #server .flow-arrow { color: var(--casys-warm-accent); }
+
+  html[data-theme="dark"] #server .terminal-card { border-color: rgba(255,184,111,0.1); }
+  html[data-theme="dark"] #server .terminal-dots { background: #1a1815; border-color: rgba(255,184,111,0.08); }
+</style>

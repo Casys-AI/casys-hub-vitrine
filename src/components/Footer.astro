@@ -46,12 +46,10 @@ const extAttrs = isSubsite ? { target: '_blank' as const, rel: 'noopener' } : {}
         <div class="nav-column">
           <h3 class="nav-title">{t.openSource}</h3>
           <nav class="nav-links" aria-label={t.openSource}>
+            <a href={`${basePath}/mcp-platform`} {...extAttrs}>MCP Platform</a>
+            <a href={`${basePath}/mcp-std`} {...extAttrs}>@casys/mcp-std</a>
             <a href={`${basePath}/use-cases/mcp-erpnext`} {...extAttrs}>MCP ERPNext</a>
             <a href={`${basePath}/use-cases/mcp-einvoice`} {...extAttrs}>MCP E-Invoice</a>
-            <a href={`${basePath}/mcp-compose`} {...extAttrs}>MCP Compose</a>
-            <a href={`${basePath}/mcp-server`} {...extAttrs}>@casys/mcp-server</a>
-            <a href={`${basePath}/mcp-std`} {...extAttrs}>@casys/mcp-std</a>
-            <a href={`${basePath}/mcp-bridge`} {...extAttrs}>@casys/mcp-bridge</a>
             <a href="https://jsr.io/@casys" target="_blank" rel="noopener" class="jsr-link">
               <svg class="jsr-icon" width="16" height="16" viewBox="0 -3 64 64" fill="none" aria-hidden="true">
                 <path d="M 0,21.846 H 9.846 V 12 h 34.462 v 4.923 H 64 V 36.616 H 54.155 V 46.462 H 19.693 V 41.539 H 0" fill="#083344"/>

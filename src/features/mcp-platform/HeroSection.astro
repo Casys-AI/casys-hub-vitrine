@@ -1,0 +1,243 @@
+---
+import { useTranslations } from '../../i18n';
+const locale = (Astro as any).currentLocale ?? 'en';
+const t = useTranslations(locale).mcpPlatform;
+---
+
+<section id="hero-platform">
+  <div class="glow" aria-hidden="true"></div>
+  <div class="hero-inner">
+    <span class="eyebrow">{t.eyebrow}</span>
+    <h1>{t.title}</h1>
+    <p class="subtitle">{t.subtitle}</p>
+    <p class="description">{t.description}</p>
+    <div class="cta-group">
+      <a href="#server" class="cta-primary">
+        <span class="material-symbols-rounded">rocket_launch</span>
+        <span>{t.ctaPrimary}</span>
+      </a>
+      <a href="https://github.com/casys-ai" target="_blank" rel="noopener" class="cta-secondary">
+        <span class="material-symbols-rounded">open_in_new</span>
+        <span>{t.ctaGithub}</span>
+      </a>
+    </div>
+    <div class="nav-cards">
+      {t.navCards.map((card: any) => (
+        <a href={card.href} class="nav-card">
+          <span class="nav-label">{card.label}</span>
+          <span class="nav-name">{card.name}</span>
+          <span class="nav-desc">{card.desc}</span>
+        </a>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  #hero-platform {
+    position: relative;
+    padding: 120px 0 80px;
+    background: var(--md-sys-color-surface);
+    overflow: hidden;
+  }
+
+  .glow {
+    position: absolute;
+    top: -200px;
+    left: -100px;
+    width: 600px;
+    height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(103, 80, 164, 0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero-inner {
+    position: relative;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 0 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .eyebrow {
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--md-sys-color-primary);
+  }
+
+  h1 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: clamp(3rem, 7vw, 5rem);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    margin: 0;
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .subtitle {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.3rem;
+    font-style: italic;
+    color: var(--md-sys-color-primary);
+    margin: 0;
+  }
+
+  .description {
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: var(--md-sys-color-on-surface-variant);
+    margin: 0;
+    max-width: 600px;
+  }
+
+  .cta-group {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+
+  .cta-primary, .cta-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 20px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: opacity 0.15s ease;
+  }
+
+  .cta-primary {
+    background: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+  }
+
+  .cta-primary:hover { opacity: 0.88; }
+
+  .cta-secondary {
+    border: 1px solid var(--md-sys-color-outline-variant);
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .cta-secondary:hover {
+    background: var(--md-sys-color-surface-container-low);
+  }
+
+  .nav-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-top: 32px;
+  }
+
+  .nav-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 20px;
+    border-radius: 14px;
+    background: var(--md-sys-color-surface-container-low);
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.18s ease, transform 0.18s ease;
+  }
+
+  .nav-card:hover {
+    background: var(--md-sys-color-surface-container);
+    transform: translateY(-2px);
+  }
+
+  .nav-label {
+    font-size: 0.65rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .nav-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .nav-desc {
+    font-size: 0.8rem;
+    color: var(--md-sys-color-on-surface-variant);
+    line-height: 1.4;
+  }
+
+  @media (max-width: 768px) {
+    #hero-platform { padding: 80px 0 56px; }
+    .nav-cards { grid-template-columns: 1fr; }
+  }
+</style>
+
+<style is:global>
+  html[data-theme="dark"] #hero-platform {
+    background: var(--casys-warm-background);
+  }
+
+  html[data-theme="dark"] #hero-platform .glow {
+    background: radial-gradient(circle, rgba(255, 184, 111, 0.06) 0%, transparent 70%);
+  }
+
+  html[data-theme="dark"] #hero-platform .eyebrow {
+    color: var(--casys-warm-accent);
+  }
+
+  html[data-theme="dark"] #hero-platform h1 {
+    color: var(--casys-warm-text-primary);
+  }
+
+  html[data-theme="dark"] #hero-platform .subtitle {
+    color: var(--casys-warm-accent);
+  }
+
+  html[data-theme="dark"] #hero-platform .description {
+    color: var(--casys-warm-text-secondary);
+  }
+
+  html[data-theme="dark"] #hero-platform .cta-primary {
+    background: var(--casys-warm-accent);
+    color: #0a0908;
+  }
+
+  html[data-theme="dark"] #hero-platform .cta-secondary {
+    border-color: rgba(255, 184, 111, 0.2);
+    color: var(--casys-warm-text-primary);
+  }
+
+  html[data-theme="dark"] #hero-platform .cta-secondary:hover {
+    border-color: var(--casys-warm-accent);
+    background: rgba(255, 184, 111, 0.06);
+  }
+
+  html[data-theme="dark"] #hero-platform .nav-card {
+    background: var(--casys-warm-surface);
+  }
+
+  html[data-theme="dark"] #hero-platform .nav-card:hover {
+    background: rgba(255, 184, 111, 0.08);
+  }
+
+  html[data-theme="dark"] #hero-platform .nav-label {
+    color: var(--casys-warm-text-muted);
+  }
+
+  html[data-theme="dark"] #hero-platform .nav-name {
+    color: var(--casys-warm-text-primary);
+  }
+
+  html[data-theme="dark"] #hero-platform .nav-desc {
+    color: var(--casys-warm-text-secondary);
+  }
+</style>

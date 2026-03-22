@@ -15,28 +15,16 @@ const projectGroups = [
     label: t.projectGroupInfra,
     items: [
       {
-        name: 'MCP Compose',
-        href: `${localePrefix}/mcp-compose`,
-        description: t.projectDescriptions.compose,
-        icon: 'dashboard_customize',
-      },
-      {
-        name: '@casys/mcp-server',
-        href: `${localePrefix}/mcp-server`,
-        description: t.projectDescriptions.server,
-        icon: 'dns',
+        name: 'MCP Platform',
+        href: `${localePrefix}/mcp-platform`,
+        description: t.projectDescriptions.platform ?? 'Server, Bridge, Compose — one stack',
+        icon: 'hub',
       },
       {
         name: '@casys/mcp-std',
         href: `${localePrefix}/mcp-std`,
         description: t.projectDescriptions.std,
         icon: 'handyman',
-      },
-      {
-        name: '@casys/mcp-bridge',
-        href: `${localePrefix}/mcp-bridge`,
-        description: t.projectDescriptions.bridge,
-        icon: 'cable',
       },
     ],
   },

@@ -1,0 +1,292 @@
+---
+import { useTranslations } from '../../i18n';
+const locale = (Astro as any).currentLocale ?? 'en';
+const t = useTranslations(locale).mcpPlatform;
+---
+
+<section id="bridge">
+  <div class="container">
+    <div class="step-indicator">
+      <span class="step-num">{t.bridgeStep}</span>
+      <span class="step-label">{t.bridgeLabel}</span>
+    </div>
+
+    <div class="section-head">
+      <h2>{t.bridgeTitle}</h2>
+      <p class="section-subtitle"><em>{t.bridgeSubtitle}</em></p>
+      <p class="section-body">{t.bridgeBody}</p>
+    </div>
+
+    <div class="arch-diagram">
+      <div class="arch-node arch-source">
+        <span class="material-symbols-rounded">dns</span>
+        <span class="arch-label">{t.bridgeSource}</span>
+      </div>
+      <div class="arch-connector">
+        <div class="arch-line"></div>
+        <span class="material-symbols-rounded arch-arrow">arrow_forward</span>
+        <div class="arch-line"></div>
+      </div>
+      <div class="arch-node arch-bridge">
+        <span class="material-symbols-rounded">cable</span>
+        <span class="arch-label">{t.bridgeCenter}</span>
+        <span class="arch-sublabel">{t.bridgePipelineLabel}</span>
+      </div>
+      <div class="arch-connector">
+        <div class="arch-line"></div>
+        <span class="material-symbols-rounded arch-arrow">arrow_forward</span>
+        <div class="arch-line"></div>
+      </div>
+      <div class="arch-destinations">
+        <div class="arch-dest">
+          <span class="material-symbols-rounded">send</span>
+          <span>Telegram</span>
+        </div>
+        <div class="arch-dest">
+          <span class="material-symbols-rounded">chat_bubble</span>
+          <span>LINE</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="bridge-features">
+      {t.bridgeFeatures.map((f: any) => (
+        <div class="bridge-feat">
+          <span class="material-symbols-rounded">{f.icon}</span>
+          <span>{f.name}</span>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  #bridge {
+    padding: 80px 0 88px;
+    background: var(--md-sys-color-surface);
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  .step-indicator {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin-bottom: 36px;
+  }
+
+  .step-num {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: clamp(3rem, 6vw, 4.5rem);
+    font-weight: 700;
+    font-style: italic;
+    color: var(--md-sys-color-primary);
+    line-height: 1;
+    opacity: 0.4;
+  }
+
+  .step-label {
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--md-sys-color-primary);
+  }
+
+  .section-head {
+    max-width: 640px;
+    margin-bottom: 48px;
+  }
+
+  h2 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: clamp(2rem, 4.5vw, 3rem);
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    color: var(--md-sys-color-on-surface);
+    margin: 0 0 12px;
+  }
+
+  .section-subtitle {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.15rem;
+    color: var(--md-sys-color-primary);
+    margin: 0 0 12px;
+    line-height: 1.5;
+  }
+
+  .section-body {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--md-sys-color-on-surface-variant);
+    margin: 0;
+  }
+
+  .arch-diagram {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    padding: 48px 24px;
+    background: var(--md-sys-color-surface-container-lowest);
+    border-radius: 18px;
+    margin-bottom: 40px;
+  }
+
+  .arch-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 24px 28px;
+    border-radius: 14px;
+    background: var(--md-sys-color-surface-container);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    flex-shrink: 0;
+  }
+
+  .arch-bridge {
+    background: var(--md-sys-color-primary-container, #e8eaff);
+    border-color: var(--md-sys-color-primary);
+  }
+
+  .arch-node .material-symbols-rounded {
+    font-size: 28px;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .arch-bridge .material-symbols-rounded {
+    color: var(--md-sys-color-primary);
+  }
+
+  .arch-label {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .arch-sublabel {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .arch-connector {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 0 8px;
+  }
+
+  .arch-line {
+    width: 24px;
+    height: 2px;
+    background: var(--md-sys-color-outline-variant);
+  }
+
+  .arch-arrow {
+    font-size: 18px;
+    color: var(--md-sys-color-primary);
+  }
+
+  .arch-destinations {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .arch-dest {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 20px;
+    border-radius: 10px;
+    background: var(--md-sys-color-surface-container);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .arch-dest .material-symbols-rounded {
+    font-size: 20px;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .bridge-features {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  .bridge-feat {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    border-radius: 10px;
+    background: var(--md-sys-color-surface-container-lowest);
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .bridge-feat .material-symbols-rounded {
+    font-size: 20px;
+    color: var(--md-sys-color-primary);
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 900px) {
+    .arch-diagram { flex-direction: column; gap: 12px; padding: 32px 20px; }
+    .arch-connector { transform: rotate(90deg); padding: 4px 0; }
+    .bridge-features { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  @media (max-width: 768px) {
+    #bridge { padding: 56px 0 64px; }
+    .bridge-features { grid-template-columns: 1fr; }
+  }
+</style>
+
+<style is:global>
+  html[data-theme="dark"] #bridge { background: var(--casys-warm-background); }
+  html[data-theme="dark"] #bridge .step-num { color: var(--casys-warm-accent); opacity: 0.35; }
+  html[data-theme="dark"] #bridge .step-label { color: var(--casys-warm-accent); }
+  html[data-theme="dark"] #bridge h2 { color: var(--casys-warm-text-primary); }
+  html[data-theme="dark"] #bridge .section-subtitle { color: var(--casys-warm-accent); }
+  html[data-theme="dark"] #bridge .section-body { color: var(--casys-warm-text-secondary); }
+
+  html[data-theme="dark"] #bridge .arch-diagram { background: var(--casys-warm-surface); }
+  html[data-theme="dark"] #bridge .arch-node {
+    background: #1a1815;
+    border-color: rgba(255,184,111,0.1);
+  }
+  html[data-theme="dark"] #bridge .arch-bridge {
+    background: rgba(255,184,111,0.1);
+    border-color: var(--casys-warm-accent);
+  }
+  html[data-theme="dark"] #bridge .arch-node .material-symbols-rounded { color: var(--casys-warm-text-secondary); }
+  html[data-theme="dark"] #bridge .arch-bridge .material-symbols-rounded { color: var(--casys-warm-accent); }
+  html[data-theme="dark"] #bridge .arch-label { color: var(--casys-warm-text-primary); }
+  html[data-theme="dark"] #bridge .arch-sublabel { color: var(--casys-warm-text-muted); }
+  html[data-theme="dark"] #bridge .arch-line { background: rgba(255,184,111,0.15); }
+  html[data-theme="dark"] #bridge .arch-arrow { color: var(--casys-warm-accent); }
+  html[data-theme="dark"] #bridge .arch-dest {
+    background: #1a1815;
+    border-color: rgba(255,184,111,0.1);
+    color: var(--casys-warm-text-primary);
+  }
+  html[data-theme="dark"] #bridge .arch-dest .material-symbols-rounded { color: var(--casys-warm-text-secondary); }
+
+  html[data-theme="dark"] #bridge .bridge-feat {
+    background: var(--casys-warm-surface);
+    color: var(--casys-warm-text-primary);
+  }
+  html[data-theme="dark"] #bridge .bridge-feat .material-symbols-rounded { color: var(--casys-warm-accent); }
+</style>

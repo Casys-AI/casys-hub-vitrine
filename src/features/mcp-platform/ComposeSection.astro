@@ -1,0 +1,232 @@
+---
+import { useTranslations } from '../../i18n';
+const locale = (Astro as any).currentLocale ?? 'en';
+const t = useTranslations(locale).mcpPlatform;
+---
+
+<section id="compose">
+  <div class="container">
+    <div class="step-indicator">
+      <span class="step-num">{t.composeStep}</span>
+      <span class="step-label">{t.composeLabel}</span>
+    </div>
+
+    <div class="section-head">
+      <h2>{t.composeTitle}</h2>
+      <p class="section-subtitle"><em>{t.composeSubtitle}</em></p>
+    </div>
+
+    <div class="steps-grid">
+      {t.composeSteps.map((step: any) => (
+        <div class="step-card">
+          <span class="card-num">{step.step}.</span>
+          <h3>{step.title}</h3>
+          <p>{step.desc}</p>
+        </div>
+      ))}
+    </div>
+
+    <div class="code-card">
+      <div class="code-header">
+        <span class="code-dot"></span>
+        <span class="code-dot"></span>
+        <span class="code-dot"></span>
+        <span class="code-title">{t.composeCodeTitle}</span>
+      </div>
+      <pre><code set:html={t.composeCode
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/(\/\/.*)/g, '<span class="hl-comment">$1</span>')
+        .replace(/("@casys\/mcp-compose\/core")/g, '<span class="hl-string">$1</span>')
+        .replace(/("[^"]*")/g, '<span class="hl-string">$1</span>')
+        .replace(/\b(import|from|const)\b/g, '<span class="hl-keyword">$1</span>')
+      } /></code></pre>
+    </div>
+  </div>
+</section>
+
+<style>
+  #compose {
+    padding: 80px 0 88px;
+    background: var(--md-sys-color-surface-container-lowest);
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  .step-indicator {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin-bottom: 36px;
+  }
+
+  .step-num {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: clamp(3rem, 6vw, 4.5rem);
+    font-weight: 700;
+    font-style: italic;
+    color: var(--md-sys-color-primary);
+    line-height: 1;
+    opacity: 0.4;
+  }
+
+  .step-label {
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--md-sys-color-primary);
+  }
+
+  .section-head {
+    max-width: 640px;
+    margin-bottom: 40px;
+  }
+
+  h2 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: clamp(2rem, 4.5vw, 3rem);
+    font-weight: 600;
+    letter-spacing: -0.025em;
+    color: var(--md-sys-color-on-surface);
+    margin: 0 0 12px;
+  }
+
+  .section-subtitle {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.15rem;
+    color: var(--md-sys-color-primary);
+    margin: 0;
+    line-height: 1.5;
+  }
+
+  .steps-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .step-card {
+    padding: 28px 24px;
+    border-radius: 14px;
+    background: var(--md-sys-color-surface);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    transition: transform 0.2s ease;
+  }
+
+  .step-card:hover {
+    transform: translateY(-3px);
+  }
+
+  .card-num {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 2rem;
+    font-style: italic;
+    font-weight: 700;
+    color: var(--md-sys-color-primary);
+    display: block;
+    margin-bottom: 10px;
+    line-height: 1;
+  }
+
+  .step-card h3 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.2rem;
+    font-style: italic;
+    margin: 0 0 10px;
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .step-card p {
+    margin: 0;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .code-card {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--md-sys-color-outline-variant);
+  }
+
+  .code-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    background: var(--md-sys-color-surface-container);
+  }
+
+  .code-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--md-sys-color-outline);
+  }
+
+  .code-title {
+    margin-left: 8px;
+    font-size: 0.75rem;
+    color: var(--md-sys-color-on-surface-variant);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  pre {
+    margin: 0;
+    padding: 20px 24px;
+    background: var(--md-sys-color-surface);
+    overflow-x: auto;
+  }
+
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.7;
+    color: var(--md-sys-color-on-surface);
+  }
+
+  @media (max-width: 900px) {
+    .steps-grid { grid-template-columns: 1fr; }
+  }
+
+  @media (max-width: 768px) {
+    #compose { padding: 56px 0 64px; }
+  }
+</style>
+
+<style is:global>
+  html[data-theme="dark"] #compose { background: #0d0c0a; }
+  html[data-theme="dark"] #compose .step-num { color: var(--casys-warm-accent); opacity: 0.35; }
+  html[data-theme="dark"] #compose .step-label { color: var(--casys-warm-accent); }
+  html[data-theme="dark"] #compose h2 { color: var(--casys-warm-text-primary); }
+  html[data-theme="dark"] #compose .section-subtitle { color: var(--casys-warm-accent); }
+
+  html[data-theme="dark"] #compose .step-card {
+    background: var(--casys-warm-surface);
+    border-color: rgba(255,184,111,0.1);
+  }
+  html[data-theme="dark"] #compose .card-num { color: var(--casys-warm-accent); }
+  html[data-theme="dark"] #compose .step-card h3 { color: var(--casys-warm-text-primary); }
+  html[data-theme="dark"] #compose .step-card p { color: var(--casys-warm-text-secondary); }
+
+  html[data-theme="dark"] #compose .code-card { border-color: rgba(255,184,111,0.08); }
+  html[data-theme="dark"] #compose .code-header { background: #1a1815; }
+  html[data-theme="dark"] #compose .code-dot { background: rgba(255,184,111,0.3); }
+  html[data-theme="dark"] #compose pre { background: #0d0c0a; }
+  html[data-theme="dark"] #compose code { color: var(--casys-warm-text-primary); }
+
+  #compose .hl-comment { color: var(--md-sys-color-outline); }
+  #compose .hl-keyword { color: var(--md-sys-color-primary); }
+  #compose .hl-string { color: var(--md-sys-color-tertiary, #4caf50); }
+
+  html[data-theme="dark"] #compose .hl-comment { color: #7a6f63; }
+  html[data-theme="dark"] #compose .hl-keyword { color: var(--casys-warm-accent); }
+  html[data-theme="dark"] #compose .hl-string { color: #C9DC9A; }
+</style>

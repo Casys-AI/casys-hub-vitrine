@@ -24,6 +24,7 @@ export const fr: Translations = {
       std: "508 outils MCP standards",
       server: "Framework serveur MCP production",
       bridge: "Apps MCP vers plateformes de messagerie",
+      platform: "Server, Bridge, Compose — un seul stack",
     },
     projectGroupServers: "Serveurs MCP",
     projectGroupInfra: "Infrastructure",
@@ -626,6 +627,88 @@ export const fr: Translations = {
     ],
     ctaPrimary: { text: "Voir sur GitHub" },
     ctaSecondary: { text: "Nous parler" },
+  },
+  // ========================================
+  // MCP PLATFORM (unified page)
+  // ========================================
+  mcpPlatform: {
+    eyebrow: "CASYS MCP PLATFORM",
+    title: "Build. Connect. Compose.",
+    subtitle: "Trois packages. Un seul stack MCP en production.",
+    description: "Un toolkit TypeScript open-source pour construire des serveurs MCP en production, les connecter aux plateformes de messagerie, et composer leurs UIs en dashboards unifiés.",
+    ctaPrimary: "Commencer",
+    ctaGithub: "Voir sur GitHub",
+    navCards: [
+      { label: "Build", name: "@casys/mcp-server", desc: "Framework serveur production", href: "#server" },
+      { label: "Connect", name: "@casys/mcp-bridge", desc: "Pont vers les plateformes de messagerie", href: "#bridge" },
+      { label: "Compose", name: "@casys/mcp-compose", desc: "Moteur de composition UI", href: "#compose" },
+    ],
+    serverStep: "01",
+    serverLabel: "BUILD",
+    serverTitle: "@casys/mcp-server",
+    serverSubtitle: "Le Hono pour MCP — middleware composable, OAuth2, double transport",
+    serverBody: "Middleware prêt à l'emploi pour l'auth, la limitation de débit et la validation. Chaque requête traverse un pipeline composable que vous contrôlez — sans mauvaises surprises à 3h du matin.",
+    serverFeatures: [
+      { icon: "lock", name: "Bearer auth", desc: "Middleware d'authentification par token prêt à l'emploi." },
+      { icon: "speed", name: "Rate limiting", desc: "Limitation par client avec fenêtres configurables." },
+      { icon: "verified", name: "Zod validation", desc: "Schémas entrée/sortie validés à l'exécution avec Zod." },
+      { icon: "bug_report", name: "Error handling", desc: "Propagation d'erreurs structurée avec codes JSON-RPC." },
+      { icon: "bolt", name: "Streaming SSE", desc: "Transport Server-Sent Events complet en parallèle du stdio." },
+      { icon: "layers", name: "Middleware stack", desc: "Chaîne de middleware composable et ordonnée sur chaque requête." },
+      { icon: "extension", name: "MCP primitives", desc: "Ressources, prompts, outils — toutes les primitives MCP couvertes." },
+      { icon: "description", name: "Typed schemas", desc: "TypeScript en premier avec inférence stricte partout." },
+      { icon: "sync", name: "Lifecycle hooks", desc: "Hooks onStart / onStop pour la gestion gracieuse des ressources." },
+      { icon: "monitor_heart", name: "Health endpoint", desc: "Route /health intégrée pour les sondes load-balancer." },
+      { icon: "monitoring", name: "Prometheus metrics", desc: "Endpoint /metrics, durée des requêtes, taux d'erreur." },
+      { icon: "terminal", name: "CLI scaffold", desc: "deno run scaffold pour démarrer un nouveau serveur instantanément." },
+    ],
+    serverPipelineTitle: "Pipeline de middleware",
+    bridgeStep: "02",
+    bridgeLabel: "CONNECT",
+    bridgeTitle: "@casys/mcp-bridge",
+    bridgeSubtitle: "Transformez vos outils MCP en Telegram Mini Apps et LINE LIFF",
+    bridgeBody: "Une couche de transformation de protocole qui connecte votre serveur MCP aux plateformes de messagerie. Client OAuth, auth HMAC-SHA256, transport WebSocket — tout est géré.",
+    bridgeSource: "Serveur MCP",
+    bridgeCenter: "mcp-bridge",
+    bridgePipelineLabel: "Couche de transformation de protocole",
+    bridgeFeatures: [
+      { icon: "key", name: "OAuth client" },
+      { icon: "fingerprint", name: "HMAC-SHA256 auth" },
+      { icon: "cable", name: "WebSocket transport" },
+      { icon: "security", name: "CSP headers" },
+      { icon: "extension", name: "Platform adapters" },
+      { icon: "autorenew", name: "Auto-reconnect" },
+    ],
+    composeStep: "03",
+    composeLabel: "COMPOSE",
+    composeTitle: "@casys/mcp-compose",
+    composeSubtitle: "Collectez, composez et synchronisez plusieurs UIs MCP Apps",
+    composeSteps: [
+      { step: "1", title: "Collecter", desc: "L'agent appelle N outils → le Collector extrait les URI de ressources _meta.ui de chaque résultat" },
+      { step: "2", title: "Composer", desc: "Définissez le layout (split/tabs/grid) + les règles de sync → le Composer valide et construit le descripteur" },
+      { step: "3", title: "Rendre", desc: "Le Renderer génère du HTML autonome avec un bus d'événements JSON-RPC pour la sync cross-UI" },
+    ],
+    composeCodeTitle: "compose.ts",
+    composeCode: `import { createCollector, buildCompositeUi, renderComposite } from "@casys/mcp-compose/core";
+
+// 1. Collect UI resources from tool results
+const collector = createCollector();
+collector.add(invoiceResult);  // has _meta.ui
+collector.add(statusResult);   // has _meta.ui
+
+// 2. Compose with layout + sync rules
+const descriptor = buildCompositeUi({
+  resources: collector.resources(),
+  layout: "split",
+  sync: [
+    { from: "invoice-viewer", event: "status-change", to: "status-timeline", action: "refresh" },
+  ],
+});
+
+// 3. Render self-contained HTML
+const html = renderComposite(descriptor);`,
+    installTitle: "Commencer à construire",
+    quote: "Trois packages qui fonctionnent seuls. Encore mieux ensemble.",
   },
   mcpComposePage: {
     eyebrow: "MCP COMPOSE",

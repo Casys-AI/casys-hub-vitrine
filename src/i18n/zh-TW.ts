@@ -24,6 +24,7 @@ export const zh_TW: Translations = {
       std: "508 個標準 MCP 工具",
       server: "生產級 MCP 伺服器框架",
       bridge: "MCP Apps 連接訊息平台",
+      platform: "Server、Bridge、Compose — 一套完整技術棧",
     },
     projectGroupServers: "MCP 伺服器",
     projectGroupInfra: "基礎設施",
@@ -559,6 +560,88 @@ export const zh_TW: Translations = {
     ],
     ctaPrimary: { text: "View on GitHub" },
     ctaSecondary: { text: "Talk to us" },
+  },
+  // ========================================
+  // MCP PLATFORM (unified page)
+  // ========================================
+  mcpPlatform: {
+    eyebrow: "CASYS MCP PLATFORM",
+    title: "Build. Connect. Compose.",
+    subtitle: "三個套件。一套生產級 MCP 技術棧。",
+    description: "一款開源 TypeScript 工具包，用於構建生產級 MCP 伺服器、將其橋接至訊息平台，並將各自的 UI 組合為統一儀表板。",
+    ctaPrimary: "立即開始",
+    ctaGithub: "在 GitHub 上查看",
+    navCards: [
+      { label: "Build", name: "@casys/mcp-server", desc: "生產級伺服器框架", href: "#server" },
+      { label: "Connect", name: "@casys/mcp-bridge", desc: "訊息平台橋接器", href: "#bridge" },
+      { label: "Compose", name: "@casys/mcp-compose", desc: "UI 組合引擎", href: "#compose" },
+    ],
+    serverStep: "01",
+    serverLabel: "BUILD",
+    serverTitle: "@casys/mcp-server",
+    serverSubtitle: "MCP 的 Hono — 可組合中間件、OAuth2、雙傳輸",
+    serverBody: "即插即用的中間件，用於身份驗證、限流和驗證。每個請求都流經由你掌控的可組合管道 — 凌晨三點不再有意外。",
+    serverFeatures: [
+      { icon: "lock", name: "Bearer auth", desc: "開箱即用的基於令牌的身份驗證中間件。" },
+      { icon: "speed", name: "Rate limiting", desc: "可配置時間視窗的每客戶端請求限流。" },
+      { icon: "verified", name: "Zod validation", desc: "使用 Zod 在執行時驗證輸入/輸出結構描述。" },
+      { icon: "bug_report", name: "Error handling", desc: "帶有 JSON-RPC 錯誤碼的結構化錯誤傳播。" },
+      { icon: "bolt", name: "Streaming SSE", desc: "完整的 Server-Sent Events 傳輸，與 stdio 並行支援。" },
+      { icon: "layers", name: "Middleware stack", desc: "每個請求上可組合、有序的中間件鏈。" },
+      { icon: "extension", name: "MCP primitives", desc: "資源、提示詞、工具 — 涵蓋所有 MCP 原語。" },
+      { icon: "description", name: "Typed schemas", desc: "TypeScript 優先，全程嚴格型別推斷。" },
+      { icon: "sync", name: "Lifecycle hooks", desc: "onStart / onStop 鉤子用於優雅的資源管理。" },
+      { icon: "monitor_heart", name: "Health endpoint", desc: "內建 /health 路由，供負載平衡器探測使用。" },
+      { icon: "monitoring", name: "Prometheus metrics", desc: "/metrics 端點，請求耗時與錯誤率。" },
+      { icon: "terminal", name: "CLI scaffold", desc: "deno run scaffold 快速啟動新伺服器。" },
+    ],
+    serverPipelineTitle: "中間件管道",
+    bridgeStep: "02",
+    bridgeLabel: "CONNECT",
+    bridgeTitle: "@casys/mcp-bridge",
+    bridgeSubtitle: "將 MCP 工具轉化為 Telegram Mini Apps 和 LINE LIFF",
+    bridgeBody: "一個協定轉換層，將你的 MCP 伺服器連接到訊息平台。OAuth 客戶端、HMAC-SHA256 認證、WebSocket 傳輸 — 全部內建處理。",
+    bridgeSource: "MCP 伺服器",
+    bridgeCenter: "mcp-bridge",
+    bridgePipelineLabel: "協定轉換層",
+    bridgeFeatures: [
+      { icon: "key", name: "OAuth client" },
+      { icon: "fingerprint", name: "HMAC-SHA256 auth" },
+      { icon: "cable", name: "WebSocket transport" },
+      { icon: "security", name: "CSP headers" },
+      { icon: "extension", name: "Platform adapters" },
+      { icon: "autorenew", name: "Auto-reconnect" },
+    ],
+    composeStep: "03",
+    composeLabel: "COMPOSE",
+    composeTitle: "@casys/mcp-compose",
+    composeSubtitle: "收集、組合並同步多個 MCP Apps UI",
+    composeSteps: [
+      { step: "1", title: "收集", desc: "Agent 呼叫 N 個工具 → Collector 從每個結果中提取 _meta.ui 資源 URI" },
+      { step: "2", title: "組合", desc: "定義版面（split/tabs/grid）+ 同步規則 → Composer 驗證並建構描述符" },
+      { step: "3", title: "渲染", desc: "Renderer 輸出帶有 JSON-RPC 事件匯流排的獨立 HTML，用於跨 UI 同步" },
+    ],
+    composeCodeTitle: "compose.ts",
+    composeCode: `import { createCollector, buildCompositeUi, renderComposite } from "@casys/mcp-compose/core";
+
+// 1. Collect UI resources from tool results
+const collector = createCollector();
+collector.add(invoiceResult);  // has _meta.ui
+collector.add(statusResult);   // has _meta.ui
+
+// 2. Compose with layout + sync rules
+const descriptor = buildCompositeUi({
+  resources: collector.resources(),
+  layout: "split",
+  sync: [
+    { from: "invoice-viewer", event: "status-change", to: "status-timeline", action: "refresh" },
+  ],
+});
+
+// 3. Render self-contained HTML
+const html = renderComposite(descriptor);`,
+    installTitle: "開始構建",
+    quote: "三個套件各自獨立運作。組合在一起更強大。",
   },
   mcpComposePage: {
     eyebrow: "MCP COMPOSE",
