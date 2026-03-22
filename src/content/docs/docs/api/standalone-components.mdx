@@ -1,6 +1,6 @@
 ---
 title: Standalone Components
-description: Use RateLimiter, RequestQueue, and SchemaValidator independently.
+description: Use RateLimiter, RequestQueue, and SchemaValidator independently of ConcurrentMCPServer.
 next: false
 ---
 
@@ -10,7 +10,7 @@ The building blocks of `@casys/mcp-server` are useful on their own. Rate limitin
 
 ## RateLimiter
 
-Sliding-window rate limiter with per-key tracking. Lightweight, no external dependencies.
+Sliding-window rate limiter with per-key tracking. No external dependencies.
 
 ```typescript
 import { RateLimiter } from "@casys/mcp-server";
@@ -43,17 +43,30 @@ if (limiter.checkLimit("client-123")) {
 await limiter.waitForSlot(key: string): Promise<void>;
 ```
 
-Blocks until a slot opens. Timeout equals `windowMs`.
+Blocks until a slot opens. Maximum wait time equals `windowMs`.
 
 ```typescript
 await limiter.waitForSlot("client-123");
-// Guaranteed to have a slot
+// Guaranteed to have a slot when this resolves
+```
+
+### getRemainingRequests
+
+```typescript
+limiter.getRemainingRequests(key: string): number;
+```
+
+Returns how many requests the given key can still make in the current window. Returns `maxRequests` for keys with no history.
+
+```typescript
+const remaining = limiter.getRemainingRequests("client-123");
+// e.g., 7 if 3 of 10 requests have been used
 ```
 
 ### getMetrics
 
 ```typescript
-limiter.getMetrics(): { keys: number, totalRequests: number };
+limiter.getMetrics(): { keys: number; totalRequests: number };
 ```
 
 ## RequestQueue
@@ -66,7 +79,7 @@ import { RequestQueue } from "@casys/mcp-server";
 const queue = new RequestQueue({
   maxConcurrent: 5,
   strategy: "queue",     // "sleep" | "queue" | "reject"
-  sleepMs: 10,           // For "sleep" strategy only
+  sleepMs: 10,           // For "sleep" strategy only — default: 10
 });
 ```
 
@@ -75,7 +88,7 @@ const queue = new RequestQueue({
 | Strategy | Behavior | Best for |
 |----------|----------|----------|
 | `sleep` | Spin-wait with `sleepMs` delay until a slot opens | Low-latency, CPU-tolerant |
-| `queue` | FIFO queue — requests wait in order | Fair ordering, predictable |
+| `queue` | FIFO queue — requests wait in order | Fair ordering, predictable latency |
 | `reject` | Immediately reject if at capacity | Fail-fast, circuit-breaker style |
 
 ### acquire / release
@@ -90,7 +103,7 @@ Always use try/finally to prevent slot leaks:
 ```typescript
 await queue.acquire();
 try {
-  await processRequest();  // 1 of maxConcurrent
+  await processRequest();  // 1 of maxConcurrent slots occupied
 } finally {
   queue.release();
 }
@@ -99,12 +112,12 @@ try {
 ### getMetrics
 
 ```typescript
-queue.getMetrics(): { inFlight: number, queued: number };
+queue.getMetrics(): { inFlight: number; queued: number };
 ```
 
 ## SchemaValidator
 
-JSON Schema validation powered by ajv. Schemas are compiled once at registration time — validation is fast.
+JSON Schema validation powered by ajv 8 with `allErrors` and `useDefaults`. Schemas are compiled once at `addSchema()` time — validation calls are fast.
 
 ```typescript
 import { SchemaValidator } from "@casys/mcp-server";
@@ -115,10 +128,10 @@ const validator = new SchemaValidator();
 ### addSchema
 
 ```typescript
-validator.addSchema(toolName: string, schema: object): void;
+validator.addSchema(name: string, schema: object): void;
 ```
 
-Compiles and caches the schema. Call once per tool at startup:
+Compiles and caches the schema. Call once at startup:
 
 ```typescript
 validator.addSchema("my_tool", {
@@ -134,13 +147,13 @@ validator.addSchema("my_tool", {
 ### validate
 
 ```typescript
-validator.validate(toolName: string, args: unknown): ValidationResult;
+validator.validate(name: string, data: unknown): ValidationResult;
 ```
 
 ```typescript
 interface ValidationResult {
   valid: boolean;
-  errors: string[];  // Human-readable error messages
+  errors: string[];  // Human-readable error messages (empty if valid)
 }
 ```
 
@@ -150,6 +163,23 @@ validator.validate("my_tool", { count: -1 });
 
 validator.validate("my_tool", { count: 5 });
 // { valid: true, errors: [] }
+```
+
+### validateOrThrow
+
+```typescript
+validator.validateOrThrow(name: string, data: unknown): void;
+```
+
+Throws a `ValidationError` if the data is invalid. Useful when you want to fail fast rather than handle a result object:
+
+```typescript
+try {
+  validator.validateOrThrow("my_tool", args);
+  // args are valid — proceed
+} catch (error) {
+  // error.message contains all validation errors
+}
 ```
 
 <Aside type="tip">

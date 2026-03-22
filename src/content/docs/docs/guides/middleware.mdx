@@ -12,9 +12,9 @@ Every tool call in `@casys/mcp-server` flows through a composable middleware cha
 <img src="/diagrams/mcp-server/mcp-middleware-pipeline.svg" alt="Middleware Pipeline" style="width: 100%; max-width: 600px; margin: 24px auto; display: block;" />
 
 ```
-Request → Rate Limit → Auth → Custom Middlewares → Scope Check → Validation → Backpressure → Handler
-                                                                                              ↓
-Response ← Rate Limit ← Auth ← Custom Middlewares ← Scope Check ← Validation ← Backpressure ← Result
+Request → Rate Limit → Auth → [Custom] → Scope Check → Validation → Backpressure → Handler
+                                                                                    ↓
+Response ← Rate Limit ← Auth ← [Custom] ← Scope Check ← Validation ← Backpressure ← Result
 ```
 
 Each middleware receives a `context` object and a `next()` function. Call `next()` to pass control downstream. The response flows back through the same chain in reverse — so a single middleware can act on both the request and the response.
@@ -38,11 +38,11 @@ const logging: Middleware = async (ctx, next) => {
 };
 ```
 
-That's it. No base class, no decorators, no registration boilerplate.
+No base class, no decorators, no registration boilerplate.
 
 ## Registering middlewares
 
-Use `server.use()` to add your middlewares. They slot in between the built-in layers (rate limit, auth) and the built-in checks (validation, backpressure):
+Use `server.use()` to add your middlewares. They slot in between the built-in auth layer and the built-in scope-check/validation layers:
 
 ```typescript
 const server = new ConcurrentMCPServer({
@@ -58,31 +58,37 @@ server.registerTool(/* ... */);
 await server.startHttp({ port: 3000 });
 ```
 
+`use()` is chainable:
+
+```typescript
+server.use(logging).use(metrics).use(caching);
+```
+
 <Aside type="caution">
   `use()` must be called **before** `start()` or `startHttp()`. The pipeline is compiled at startup and cannot be modified after.
 </Aside>
 
 ## Pipeline order
 
-Here's exactly what runs for every tool call, and in what order:
+Here's exactly what runs for every tool call, in order:
 
 | Order | Layer | Source | What it does |
 |-------|-------|--------|-------------|
 | 1 | Rate Limit | Built-in (if configured) | Sliding-window per-client throttling |
-| 2 | Auth | Built-in (if configured) | JWT/Bearer token validation |
+| 2 | Auth | Built-in (if configured) | JWT/Bearer token validation, populates `ctx.authInfo` |
 | 3 | **Your middlewares** | `server.use()` | Your code, in registration order |
-| 4 | Scope Check | Built-in (if auth + scopes) | Verifies token scopes match `requiredScopes` |
-| 5 | Validation | Built-in (if configured) | JSON Schema validation via ajv |
-| 6 | Backpressure | Built-in | Queue/sleep/reject based on concurrency |
+| 4 | Scope Check | Built-in (if auth + `requiredScopes`) | Verifies token scopes match tool definition |
+| 5 | Validation | Built-in (if `validateSchema: true`) | JSON Schema validation via ajv 8 |
+| 6 | Backpressure | Built-in | Queue/sleep/reject based on `maxConcurrent` |
 | 7 | Handler | `registerTool()` | Your tool handler function |
 
 <Aside type="tip">
-  Your middlewares run **after** auth but **before** validation. This means you have access to `ctx.authInfo` and can enrich the context before the handler runs.
+  Your middlewares run **after** auth but **before** scope checking and validation. This means `ctx.authInfo` is already populated when your middleware runs.
 </Aside>
 
 ## The context object
 
-Every middleware and handler receives the same context:
+Every middleware receives a `MiddlewareContext`:
 
 ```typescript
 interface MiddlewareContext {
@@ -90,13 +96,26 @@ interface MiddlewareContext {
   args: Record<string, unknown>;     // The tool's input arguments
   request?: Request;                 // HTTP Request (HTTP transport only)
   sessionId?: string;                // Session ID (HTTP transport only)
+  authInfo?: AuthInfo;               // Populated by auth middleware (if configured)
   [key: string]: unknown;            // Extensible — add your own fields
+}
+```
+
+`authInfo` is available after the auth layer:
+
+```typescript
+interface AuthInfo {
+  subject: string;                     // Token "sub" claim
+  clientId?: string;                   // Token "client_id" or "azp" claim
+  scopes: string[];                    // Parsed from "scope" claim
+  claims?: Record<string, unknown>;    // All token claims
+  expiresAt?: Date;                    // Token expiry
 }
 ```
 
 ## Enriching context
 
-Middlewares can attach data for downstream middlewares and the handler. This is the recommended way to share cross-cutting data:
+Middlewares can attach data for downstream middlewares and the handler:
 
 ```typescript
 const tenantResolver: Middleware = async (ctx, next) => {
@@ -104,7 +123,7 @@ const tenantResolver: Middleware = async (ctx, next) => {
   if (!tenantId) {
     throw new Error("Missing X-Tenant-Id header");
   }
-  ctx.tenantId = tenantId;  // Now available to all downstream middlewares + handler
+  ctx.tenantId = tenantId;  // Available to all downstream middlewares + handler
   return next();
 };
 ```
@@ -152,7 +171,7 @@ server.use(caching);
 
 ## Recipes
 
-### Request timing with metrics export
+### Request timing
 
 ```typescript
 const timing: Middleware = async (ctx, next) => {
@@ -180,18 +199,16 @@ const adminOnly: Middleware = async (ctx, next) => {
 };
 ```
 
-### Request/response transformation
+### Input sanitization
 
 ```typescript
 const sanitizer: Middleware = async (ctx, next) => {
-  // Sanitize input before handler
   if (typeof ctx.args.query === "string") {
     ctx.args.query = ctx.args.query.trim().slice(0, 1000);
   }
 
   const result = await next();
 
-  // Transform output after handler
   return { ...result, processedAt: new Date().toISOString() };
 };
 ```

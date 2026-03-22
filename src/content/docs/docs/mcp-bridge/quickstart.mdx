@@ -1,23 +1,23 @@
 ---
 title: Quick Start
-description: Get your MCP App running inside Telegram in 5 minutes.
+description: Get your MCP App running inside Telegram. Deno or Node.js 20+.
 ---
 
 import { Steps, Aside } from '@astrojs/starlight/components';
 
 ## Prerequisites
 
-- [Deno](https://deno.land) 2.x or Node.js 20+
+- [Deno](https://deno.land) 2.x, or Node.js 20+ (Web Crypto required)
 - A Telegram Bot token (from [@BotFather](https://t.me/botfather))
-- An existing MCP server with `ui://` resources
+- An existing MCP Server with `ui://` resources
 
 ## Installation
 
 ```bash
-# Deno
+# Deno (JSR)
 deno add jsr:@casys/mcp-bridge
 
-# Node.js
+# Node.js (via JSR on npm)
 npx jsr add @casys/mcp-bridge
 ```
 
@@ -29,53 +29,83 @@ npx jsr add @casys/mcp-bridge
 
    ```typescript
    // bridge.ts
-   import { startResourceServer } from "@casys/mcp-bridge";
+   import { startResourceServer, JsonRpcMcpBackend } from "@casys/mcp-bridge";
 
-   const server = startResourceServer({
+   // Connect to your existing MCP server
+   const backend = new JsonRpcMcpBackend({ /* your MCP server config */ });
+
+   startResourceServer({
      assetDirectories: { "my-app": "./ui-dist" },
      platform: "telegram",
      telegramBotToken: Deno.env.get("TELEGRAM_BOT_TOKEN")!,
-     onMessage: async (_session, message) => {
-       // Forward tool calls to your MCP server and return the response
-       console.log("Received:", message);
-       return null;
+     backend,
+     options: {
+       resourceServerPort: 4000,
+       allowedOrigins: ["https://your-domain.com"],
+       debug: true,
      },
-     options: { resourceServerPort: 4000, debug: true },
    });
-
-   console.log(`Bridge ready at ${server.baseUrl}`);
    ```
 
-2. **Expose your server**
+   Run it:
 
-   For development, use a tunnel like [ngrok](https://ngrok.com):
+   ```bash
+   deno run --allow-net --allow-read --allow-env bridge.ts
+   ```
+
+2. **Expose your server publicly**
+
+   For development, use a tunnel:
 
    ```bash
    ngrok http 4000
    ```
 
-3. **Configure your Telegram Bot**
+   Note the HTTPS URL — you'll need it for BotFather.
 
-   Set the Mini App URL in [@BotFather](https://t.me/botfather):
-   - Send `/setmenubutton`
-   - Select your bot
-   - Set the URL to your ngrok/production URL
+3. **Configure the Telegram Mini App via @BotFather**
 
-4. **Test it**
+   In Telegram, open [@BotFather](https://t.me/botfather) and run `/setmenubutton`. Select your bot and set the URL to your public HTTPS URL (e.g., `https://abc123.ngrok.io`).
 
-   Open your bot in Telegram and tap the menu button. Your MCP App UI should appear inside Telegram!
+   The bridge serves your MCP App at `GET /ui?uri=ui://my-app/index.html`.
+
+4. **Open the Mini App**
+
+   Open your bot in Telegram and tap the menu button. The bridge:
+   - Creates a session via `POST /session` (with Telegram `initData`)
+   - Validates `initData` HMAC-SHA256 using your bot token
+   - Serves your HTML with `bridge.js` injected
+   - Opens a WebSocket at `WS /bridge?session=<id>`
+   - Forwards all `postMessage` JSON-RPC calls to your MCP Server
 
 </Steps>
 
 <Aside type="tip">
-  The bridge automatically handles theme synchronization. If the user switches Telegram to dark mode, your MCP App receives a `host-context-changed` notification with the new theme.
+  Theme synchronization is automatic. When the user switches Telegram to dark mode, `TelegramPlatformAdapter` maps `themeParams` to CSS custom properties and sends a `ui/notifications/host-context-changed` notification to your app.
 </Aside>
 
-## What happens under the hood
+## Message flow
 
-1. Telegram loads your bridge URL in a WebView
-2. The Resource Server serves your `ui://` HTML with `bridge.js` injected
-3. When your MCP App calls `postMessage`, bridge.js intercepts it
-4. The message is routed via WebSocket to the Resource Server
-5. The Resource Server forwards `tools/call` requests to your MCP Server
-6. Results flow back through the same path
+```
+Telegram WebView
+  -> POST /session (initData validated via HMAC-SHA256)
+  -> GET /ui?uri=ui://... (HTML + injected bridge.js)
+  -> WS /bridge?session=id (auth as first WS message)
+  -> postMessage({ jsonrpc: "2.0", method: "tools/call", ... })
+  -> bridge.js intercepts -> sends via WebSocket
+  -> Resource Server -> backend.handleMessage()
+  -> MCP Server executes tool
+  -> result flows back via WebSocket -> window.dispatchEvent(MessageEvent)
+```
+
+## Tool Result Push Pattern
+
+If your MCP tool produces a result you want pre-loaded in the Mini App before it opens:
+
+```typescript
+import { storeToolResult } from "@casys/mcp-bridge";
+
+const ref = storeToolResult(toolOutputData);
+// Include ?ref=<ref> in the Mini App URL.
+// bridge.js will auto-attach it as ui/notifications/tool-result on session connect.
+```

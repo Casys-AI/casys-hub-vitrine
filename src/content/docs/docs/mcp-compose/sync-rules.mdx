@@ -1,0 +1,192 @@
+---
+title: "Sync Rules"
+description: "UiSyncRule, validateSyncRules(), resolveSyncRules(), ValidationIssue, and the SDK validateComposition() helper."
+---
+
+## Overview
+
+Sync rules let iframes communicate with each other through the host event bus. A rule says: when iframe A emits event `X`, the host forwards it to iframe B (or all iframes) as action `Y`.
+
+Rules are authored with tool names (human-readable), then resolved to slot indices before the descriptor is handed to the renderer.
+
+```typescript
+import {
+  validateSyncRules,
+  resolveSyncRules,
+} from "@casys/mcp-compose/core";
+```
+
+## UiSyncRule
+
+```typescript
+interface UiSyncRule {
+  from: string;    // source tool name (must match a collected resource's source)
+  event: string;   // event name emitted by that iframe
+  to: string;      // target tool name, or "*" for broadcast
+  action: string;  // action name sent to the target
+}
+```
+
+Example:
+
+```typescript
+const rules: UiSyncRule[] = [
+  {
+    from: "get_invoice",
+    event: "lineItemSelected",
+    to: "get_line_items",
+    action: "highlightItem",
+  },
+  {
+    from: "get_invoice",
+    event: "currencyChanged",
+    to: "*",                   // broadcast to all other iframes
+    action: "updateCurrency",
+  },
+];
+```
+
+## validateSyncRules(rules, knownSources)
+
+Checks that every `from` and `to` in the rule set references a known source. Returns a structured result — no exceptions thrown.
+
+```typescript
+function validateSyncRules(
+  rules: UiSyncRule[],
+  knownSources: string[],
+): { valid: boolean; issues: ValidationIssue[] }
+```
+
+```typescript
+import { validateSyncRules } from "@casys/mcp-compose/core";
+
+const sources = ["get_invoice", "get_line_items"];
+
+const { valid, issues } = validateSyncRules(
+  [
+    { from: "get_invoice", event: "selected", to: "get_unknown", action: "highlight" },
+  ],
+  sources,
+);
+
+// valid → false
+// issues[0] → { code: "ORPHAN_SYNC_REFERENCE", message: "...", path: "rules[0].to" }
+```
+
+**Always call `validateSyncRules` before `buildCompositeUi`** if you need to surface errors to the caller. The composer silently drops invalid rules without setting any error flag.
+
+## ValidationIssue and ErrorCode
+
+```typescript
+interface ValidationIssue {
+  code: ErrorCode;
+  message: string;
+  path?: string;   // dot-notation path to the offending field, when applicable
+}
+
+enum ErrorCode {
+  ORPHAN_SYNC_REFERENCE = "ORPHAN_SYNC_REFERENCE",
+  CIRCULAR_SYNC_RULE    = "CIRCULAR_SYNC_RULE",
+}
+```
+
+| Code | Meaning |
+|---|---|
+| `ORPHAN_SYNC_REFERENCE` | A `from` or `to` value does not match any collected resource source |
+| `CIRCULAR_SYNC_RULE` | A cycle was detected in the sync graph (A→B→A) |
+
+## resolveSyncRules(rules, resources)
+
+Internal function (also exported) that translates tool names to slot indices. Used by `buildCompositeUi` internally.
+
+```typescript
+function resolveSyncRules(
+  rules: UiSyncRule[],
+  resources: CollectedUiResource[],
+): ResolvedSyncRule[]
+```
+
+Rules where `from` does not match any resource slot are silently excluded from the output. The `to: "*"` wildcard is preserved as-is in the resolved rule.
+
+```typescript
+// ResolvedSyncRule shape
+interface ResolvedSyncRule {
+  from: number;
+  event: string;
+  to: number | "*";
+  action: string;
+}
+```
+
+## Event bus protocol
+
+The renderer embeds a JavaScript event bus that routes `postMessage` events between iframes. All messages use JSON-RPC 2.0.
+
+### ui/initialize
+
+When an iframe loads, it should send `ui/initialize`. The host responds with:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": "<request-id>",
+  "result": {
+    "hostInfo": { "version": "0.3.0" },
+    "hostContext": { "slot": 0, "source": "get_invoice" },
+    "sharedContext": { "invoiceId": "INV-2024-001" }
+  }
+}
+```
+
+### ui/update-model-context
+
+Iframes emit this message when their state changes. The event bus checks the resolved sync rules and forwards the event to the matching target frames as a `ui/update-model-context` with the specified `action`.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "ui/update-model-context",
+  "params": {
+    "event": "lineItemSelected",
+    "data": { "lineItemId": "LI-01" }
+  }
+}
+```
+
+### ui/compose/event
+
+A dedicated channel for iframe-to-iframe compose events. Handled by the `composeEvents()` SDK helper on the iframe side.
+
+### ui/message
+
+Logging channel. The host console-logs the payload; no routing occurs.
+
+## SDK: validateComposition()
+
+Higher-level semantic validation. Checks that every `to` tool in your sync rules has declared an `accepts` handler for the `action`, and every `from` tool has declared an `emits` entry for the `event`.
+
+```typescript
+import { validateComposition } from "@casys/mcp-compose/sdk";
+
+const tools = [
+  {
+    name: "get_invoice",
+    emits: ["lineItemSelected"],
+    accepts: [],
+  },
+  {
+    name: "get_line_items",
+    emits: [],
+    accepts: ["highlightItem"],
+  },
+];
+
+const syncRules: UiSyncRule[] = [
+  { from: "get_invoice", event: "lineItemSelected", to: "get_line_items", action: "highlightItem" },
+];
+
+const { valid, issues } = validateComposition(tools, syncRules);
+// valid → true
+```
+
+If a rule references an event that the source tool has not declared in `emits`, or an action that the target has not declared in `accepts`, `validateComposition` returns a `ValidationIssue` with the appropriate `ErrorCode`.

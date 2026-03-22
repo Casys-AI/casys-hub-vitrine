@@ -1,0 +1,99 @@
+---
+title: "Quickstart"
+description: "Install mcp-compose and run the minimal Collector → Composer → Renderer pipeline."
+---
+
+## Installation
+
+**Deno (JSR)**
+
+```typescript
+// deno.json
+{
+  "imports": {
+    "@casys/mcp-compose": "jsr:@casys/mcp-compose@^0.3.0"
+  }
+}
+```
+
+Or add it directly with the Deno CLI:
+
+```bash
+deno add jsr:@casys/mcp-compose
+```
+
+**Node / Bun via JSR shim**
+
+```bash
+npx jsr add @casys/mcp-compose
+```
+
+The package is Deno-native. On Node you get the full API but runtime features that rely on `Deno.*` globals are unavailable.
+
+## Minimal example
+
+This snippet shows the full pipeline: collect two tool results, compose them with a split layout, and render the final HTML.
+
+```typescript
+import {
+  createCollector,
+  buildCompositeUi,
+  renderComposite,
+} from "@casys/mcp-compose";
+
+// ── 1. Collect ─────────────────────────────────────────────────────────────
+
+const collector = createCollector();
+
+// Simulated MCP tool results — each carries _meta.ui.resourceUri
+const invoiceResult = {
+  invoiceId: "INV-2024-001",
+  _meta: {
+    ui: { resourceUri: "https://apps.example.com/invoice-viewer" },
+  },
+};
+
+const customerResult = {
+  customerId: "CUST-42",
+  _meta: {
+    ui: { resourceUri: "https://apps.example.com/customer-card" },
+  },
+};
+
+// Results without UI metadata are skipped; slot index only increments for
+// results that carry a resourceUri.
+collector.collect("get_invoice", invoiceResult, { invoiceId: "INV-2024-001" });
+collector.collect("get_customer", customerResult, { customerId: "CUST-42" });
+
+const resources = collector.getResources();
+// resources[0] → slot 0 (invoice), resources[1] → slot 1 (customer)
+
+// ── 2. Compose ─────────────────────────────────────────────────────────────
+
+const descriptor = buildCompositeUi(resources, {
+  layout: "split",        // side-by-side flex layout
+  sharedContext: ["invoiceId"], // extract "invoiceId" from resource contexts
+});
+
+// descriptor.workflowId is a fresh UUID
+// descriptor.resources carries resolved slot indices
+// descriptor.sharedContext → { invoiceId: "INV-2024-001" }
+
+// ── 3. Render ──────────────────────────────────────────────────────────────
+
+const html = renderComposite(descriptor);
+
+// html is a complete HTML5 document. Write it to a file or serve it:
+await Deno.writeTextFile("dashboard.html", html);
+```
+
+## What you get
+
+`dashboard.html` is a self-contained page with:
+
+- A CSS layout matching the requested mode (`split` here — two iframes side by side)
+- One sandboxed `<iframe>` per collected resource, pointing to its `resourceUri`
+- An embedded event bus that handles `postMessage` between iframes and the host using JSON-RPC 2.0
+- Light/dark theming via CSS custom properties
+
+No build step, no bundler. Open the file in a browser or serve it from any static host.

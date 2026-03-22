@@ -1,54 +1,122 @@
 ---
 title: Telegram Adapter
-description: Full guide for integrating MCP Apps as Telegram Mini Apps.
+description: HMAC-SHA256 initData auth, theme mapping, and BotFather setup for Telegram Mini Apps.
 ---
 
-import { Aside } from '@astrojs/starlight/components';
+import { Aside, Steps } from '@astrojs/starlight/components';
 
 ## Overview
 
-The Telegram adapter maps the Telegram WebApp SDK to MCP Apps protocol, providing:
+The Telegram integration is complete. It covers:
 
-- Theme synchronization (light/dark)
+- HMAC-SHA256 `initData` validation (Web Crypto, timing-safe)
+- Theme params mapped to CSS custom properties
 - Viewport and safe area insets
-- Authentication via `initData` (HMAC-SHA256)
-- Lifecycle events (activation, deactivation)
-- Native link opening
+- Authentication on WebSocket connect
+- Native link opening via `openLink`
 
-## Setup
+## BotFather setup
+
+<Steps>
+
+1. Open [@BotFather](https://t.me/botfather) in Telegram
+2. Send `/setmenubutton`
+3. Select your bot
+4. Set the URL to your Resource Server's public HTTPS URL
+
+</Steps>
+
+The URL you configure becomes the entry point. Telegram opens it in a WebView and passes `initData` as a query parameter.
+
+## Server-side: auth handler
+
+When `platform: "telegram"` is set and `telegramBotToken` is provided, `startResourceServer` automatically creates a `TelegramAuthHandler` using `createTelegramAuthHandler()`. You do not need to configure this manually.
+
+The handler runs on every `POST /session` call:
 
 ```typescript
-import { TelegramPlatformAdapter } from "@casys/mcp-bridge";
+import { createTelegramAuthHandler, validateTelegramInitData } from "@casys/mcp-bridge";
 
-// Client-side: runs inside the Telegram Mini App WebView
-const adapter = new TelegramPlatformAdapter();
-const hostContext = await adapter.initialize();
+// Manual usage (if you need custom auth logic)
+const authHandler = createTelegramAuthHandler({
+  botToken: Deno.env.get("TELEGRAM_BOT_TOKEN")!,
+  maxAgeSeconds: 86400, // 24 hours (default)
+});
 ```
 
-## Theme Mapping
-
-Telegram themes are automatically mapped to MCP host context:
-
-| Telegram | MCP Host Context |
-|----------|-----------------|
-| `colorScheme: "dark"` | `{ theme: "dark" }` |
-| `colorScheme: "light"` | `{ theme: "light" }` |
-| `themeParams.bg_color` | `backgroundColor` |
-| `themeParams.text_color` | `textColor` |
-
-## Authentication
-
-The adapter validates Telegram `initData` using HMAC-SHA256:
-
-1. Telegram sends `initData` query string with user info
-2. The adapter verifies the signature using your bot token
-3. Valid sessions receive a crypto-secure session token
-4. Invalid requests are rejected with 401
-
 <Aside type="caution">
-  Never expose your bot token to the client. The adapter handles validation server-side.
+  If `platform` is `"telegram"` but `telegramBotToken` is not provided, `startResourceServer` throws immediately at startup. This is intentional — serving Telegram sessions without auth is a security hole.
 </Aside>
 
-## Viewport & Safe Areas
+## initData validation
 
-The adapter reports Telegram's viewport dimensions and safe area insets, which your MCP App receives via `host-context-changed` notifications.
+The validation algorithm implemented in `validateTelegramInitData()`:
+
+```
+1. Parse initData query string into key-value pairs
+2. Extract and remove the "hash" field
+3. Sort remaining pairs alphabetically by key
+4. Join as "key=value\nkey=value\n..." (data_check_string)
+5. secret_key = HMAC-SHA256("WebAppData", botToken)
+6. expected_hash = HMAC-SHA256(data_check_string, secret_key)
+7. Compare expected_hash to received hash using timing-safe comparison
+8. Check auth_date is within maxAgeSeconds (default 86400 = 24h)
+```
+
+All crypto uses the Web Crypto API (`crypto.subtle`) — no third-party crypto dependencies.
+
+```typescript
+import { validateTelegramInitData } from "@casys/mcp-bridge";
+
+const result = await validateTelegramInitData(initData, botToken);
+// result: { valid: true, userId: "123456", userData: { ... } }
+// or: { valid: false, reason: "hash_mismatch" | "expired" | ... }
+```
+
+## Client-side: TelegramPlatformAdapter
+
+`TelegramPlatformAdapter` runs inside the Telegram WebView. It is used by `bridge.js` internally — you do not instantiate it yourself unless building a custom client.
+
+```typescript
+import { TelegramPlatformAdapter, getTelegramWebApp } from "@casys/mcp-bridge";
+
+const adapter = new TelegramPlatformAdapter();
+const hostContext = await adapter.initialize();
+// hostContext.theme: "light" | "dark"
+// hostContext.backgroundColor, textColor from themeParams
+```
+
+### Theme params mapping
+
+`themeParams` from the Telegram WebApp SDK are mapped to CSS custom properties on `document.documentElement`:
+
+| Telegram `themeParams` key | CSS custom property |
+|---------------------------|---------------------|
+| `bg_color` | `--tg-theme-bg-color` |
+| `text_color` | `--tg-theme-text-color` |
+| `hint_color` | `--tg-theme-hint-color` |
+| `link_color` | `--tg-theme-link-color` |
+| `button_color` | `--tg-theme-button-color` |
+| `button_text_color` | `--tg-theme-button-text-color` |
+| `secondary_bg_color` | `--tg-theme-secondary-bg-color` |
+
+When the user changes the Telegram color scheme, the adapter fires a `ui/notifications/host-context-changed` notification with the updated `HostContext`.
+
+### getTelegramWebApp
+
+```typescript
+import { getTelegramWebApp } from "@casys/mcp-bridge";
+
+const webApp = getTelegramWebApp();
+// Returns window.Telegram.WebApp or null if not in Telegram context
+```
+
+## TelegramAdapter (transport-level)
+
+`TelegramAdapter` is the lower-level transport adapter (extends `BasePostMessageAdapter`). Use `TelegramPlatformAdapter` for full SDK integration.
+
+```typescript
+import { TelegramAdapter } from "@casys/mcp-bridge";
+```
+
+Both are exported from `@casys/mcp-bridge`.

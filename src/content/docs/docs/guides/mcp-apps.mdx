@@ -1,11 +1,20 @@
 ---
 title: MCP Apps (UI Resources)
-description: Serve interactive UIs alongside your MCP tools using the ui:// scheme.
+description: Serve interactive HTML UIs alongside your MCP tools using the MCP App MIME type (SDK 1.27).
 ---
 
 import { Aside } from '@astrojs/starlight/components';
 
-MCP tools return data. MCP Apps render it. Register HTML UIs as resources, and clients that support SEP-1865 will render them inline — dashboards, data viewers, forms, config panels, right next to your tools.
+MCP Apps let you serve interactive HTML UIs as resources alongside your tools. Clients that support the `text/html;profile=mcp-app` MIME type (MCP SDK 1.27) will render them inline — dashboards, data viewers, forms, config panels, right next to your tools.
+
+## The MIME type
+
+```typescript
+import { MCP_APP_MIME_TYPE } from "@casys/mcp-server";
+// "text/html;profile=mcp-app"
+```
+
+Use `MCP_APP_MIME_TYPE` (the exported constant) as the MIME type for any resource that should be rendered as an interactive UI.
 
 ## Registering a UI resource
 
@@ -31,9 +40,6 @@ server.registerResource(
         <body>
           <h1>Data Viewer</h1>
           <div id="app"></div>
-          <script>
-            // Your interactive UI code here
-          </script>
         </body>
       </html>
     `,
@@ -43,21 +49,9 @@ server.registerResource(
 await server.start();
 ```
 
-## The `ui://` scheme
-
-The `ui://` URI scheme tells MCP clients that this resource is an interactive HTML application, not raw data.
-
-- **URI format**: `ui://{server-name}/{path}`
-- **MIME type**: Use `MCP_APP_MIME_TYPE` (exported constant)
-- **Content**: Full HTML document as a string
-
-<Aside>
-  Not all MCP clients support `ui://` resources yet. The resource simply won't appear in clients without SEP-1865 support — no errors, no broken UIs.
-</Aside>
-
 ## Dynamic UI resources
 
-The handler receives the URI and can return different content based on state, fetched data, or anything else:
+The handler receives the URI and can return different content based on fetched data or any other state:
 
 ```typescript
 server.registerResource(
@@ -77,18 +71,175 @@ server.registerResource(
 );
 ```
 
-<Aside type="tip">
-  Since the handler runs on every resource read, your UI always reflects the latest state. No need for polling or websockets — the MCP client handles the refresh lifecycle.
-</Aside>
+## Tool `_meta.ui` — linking tools to UI views
+
+SDK 1.27 adds `_meta.ui` to tool definitions to describe how a tool's output connects to a UI:
+
+```typescript
+server.registerTool(
+  {
+    name: "get_report",
+    description: "Fetch a sales report",
+    inputSchema: {
+      type: "object",
+      properties: { reportId: { type: "string" } },
+      required: ["reportId"],
+    },
+    _meta: {
+      ui: {
+        resourceUri: "ui://my-server/viewer",       // Which viewer renders this tool's output
+        visibility: ["model", "app"],               // Visible to both LLM and UI
+        emits: ["report:loaded"],                   // Events this tool emits to the UI
+        accepts: ["filter:changed"],                // Events this tool accepts from the UI
+      },
+    },
+  },
+  async ({ reportId }) => fetchReport(reportId),
+);
+```
+
+## App-only tools
+
+Register tools visible only to UI clients, not to the LLM:
+
+```typescript
+server.registerAppOnlyTool(
+  {
+    name: "update_filter",
+    description: "Update dashboard filter",
+    inputSchema: {
+      type: "object",
+      properties: { filter: { type: "string" } },
+    },
+  },
+  async ({ filter }) => applyFilter(filter),
+);
+```
+
+## Bulk viewer registration
+
+`registerViewers()` registers multiple resources at once from a configuration object:
+
+```typescript
+server.registerViewers({
+  "ui://my-server/viewer": {
+    name: "Data Viewer",
+    description: "Interactive data viewer",
+    handler: async (uri) => ({
+      uri: uri.toString(),
+      mimeType: MCP_APP_MIME_TYPE,
+      text: renderViewer(),
+    }),
+  },
+  "ui://my-server/dashboard": {
+    name: "Dashboard",
+    description: "Metrics dashboard",
+    handler: async (uri) => ({
+      uri: uri.toString(),
+      mimeType: MCP_APP_MIME_TYPE,
+      text: renderDashboard(await getMetrics()),
+    }),
+  },
+});
+```
+
+## Structured tool results
+
+Tools can return both a text response (for the LLM) and structured data (for the UI) simultaneously:
+
+```typescript
+import type { StructuredToolResult } from "@casys/mcp-server";
+
+server.registerTool(
+  {
+    name: "get_data",
+    description: "Fetch data",
+    inputSchema: { type: "object", properties: {} },
+    outputSchema: {
+      type: "object",
+      properties: {
+        rows: { type: "array" },
+        total: { type: "number" },
+      },
+    },
+  },
+  async (): Promise<StructuredToolResult> => {
+    const data = await fetchData();
+    return {
+      content: `Found ${data.rows.length} rows`,   // LLM-readable string
+      structuredContent: {                          // Machine-readable for UI
+        rows: data.rows,
+        total: data.rows.length,
+      },
+    };
+  },
+);
+```
+
+## Content Security Policy
+
+When serving HTML resources, inject a CSP header to control what the iframe can load:
+
+```typescript
+import {
+  buildCspHeader,
+  injectCspMetaTag,
+} from "@casys/mcp-server";
+
+// Build a CSP header string
+const csp = buildCspHeader({
+  defaultSrc: ["'self'"],
+  scriptSrc: ["'self'", "'unsafe-inline'"],
+  styleSrc: ["'self'"],
+});
+
+// Or inject a <meta> CSP tag directly into HTML
+const html = `<html><head></head><body>...</body></html>`;
+const secureHtml = injectCspMetaTag(html, csp);
+```
+
+You can also set CSP globally via `resourceCsp` in the server options:
+
+```typescript
+const server = new ConcurrentMCPServer({
+  name: "my-server",
+  version: "1.0.0",
+  resourceCsp: {
+    defaultSrc: ["'self'"],
+    scriptSrc: ["'self'"],
+  },
+});
+```
+
+## PostMessage authentication (HMAC)
+
+To verify messages sent between the UI iframe and the host, use `MessageSigner` and `injectChannelAuth`:
+
+```typescript
+import {
+  MessageSigner,
+  injectChannelAuth,
+} from "@casys/mcp-server";
+
+const signer = new MessageSigner(secretKey);
+
+// In your UI HTML, inject auth credentials before serving
+const html = injectChannelAuth(rawHtml, signer);
+```
+
+The injected script handles HMAC signing of postMessage events, so the host can verify that messages originate from your UI.
 
 ## Checking registered resources
 
 ```typescript
 server.getResourceCount();  // 2
-server.getResourceUris();   // ["ui://my-server/viewer", "ui://my-server/dashboard"]
 ```
+
+<Aside>
+  Not all MCP clients render `text/html;profile=mcp-app` resources. Clients without support simply won't show the UI — no errors, no broken tool calls.
+</Aside>
 
 ## See Also
 
-- [ConcurrentMCPServer API](/docs/api/concurrent-mcp-server/) — `registerResource()` and `registerResources()` reference
+- [ConcurrentMCPServer API](/docs/api/concurrent-mcp-server/) — `registerResource()`, `registerViewers()`, `registerAppOnlyTool()` reference
 - [Quick Start](/docs/getting-started/quickstart/) — Server setup basics

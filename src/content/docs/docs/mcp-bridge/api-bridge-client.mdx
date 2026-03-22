@@ -1,59 +1,145 @@
 ---
 title: Bridge Client API
-description: API reference for the browser-side Bridge Client.
+description: API reference for BridgeClient, MessageRouter, WebSocketTransport, and BasePostMessageAdapter.
 ---
+
+import { Aside } from '@astrojs/starlight/components';
 
 ## Overview
 
-The Bridge Client (`bridge.js`) is automatically injected into HTML responses by the Resource Server. You typically don't interact with it directly, but understanding its API helps with debugging.
+`bridge.js` is an IIFE automatically injected into HTML responses by the Resource Server. It self-initializes on page load — you do not call it directly.
 
-## Initialization
+These exports are useful if you are building a custom bridge client, writing tests, or integrating the transport layer without the full Resource Server.
 
-The bridge self-initializes when the page loads:
+## `BridgeClient`
 
-1. Detects the platform (Telegram, LINE, or generic)
-2. Establishes WebSocket connection to the Resource Server
-3. Monkey-patches `window.parent.postMessage`
-4. Sends `ui/initialize` handshake
-5. Begins forwarding JSON-RPC messages
-
-## JSON-RPC Methods
-
-### Outgoing (App to Host)
-
-| Method | Description |
-|--------|-------------|
-| `ui/initialize` | Handshake — get host context, capabilities |
-| `tools/call` | Execute an MCP tool |
-| `resources/read` | Read an MCP resource |
-| `ui/open-link` | Open an external URL via the platform |
-| `ui/message` | Send a message to the host |
-| `ui/request-display-mode` | Request inline, fullscreen, or PiP display |
-
-### Incoming (Host to App)
-
-| Method | Description |
-|--------|-------------|
-| `ui/notifications/host-context-changed` | Theme, viewport, or locale changed |
-| `ui/notifications/tool-input` | Tool input data from the host |
-| `ui/notifications/tool-result` | Tool execution result notification |
-| `ui/notifications/tool-cancelled` | Tool execution was cancelled |
-| `ui/resource-teardown` | Platform is closing — clean up |
-| `tools/call` (response) | Tool execution result (JSON-RPC response) |
-| `resources/read` (response) | Resource content (JSON-RPC response) |
-
-## Message Routing
-
-The `MessageRouter` tracks pending requests with a 30-second timeout:
+The main class orchestrating the client-side bridge. Used internally by `bridge.js`.
 
 ```typescript
-// Internal flow (simplified)
-app.postMessage(request)
-  -> bridge.js intercepts
-  -> router.send(request)
-  -> WebSocket.send(JSON.stringify(request))
-  -> ... server processes ...
-  -> WebSocket.onmessage(response)
-  -> router.resolve(response.id, response)
-  -> window.dispatchEvent(MessageEvent)
+import { BridgeClient } from "@casys/mcp-bridge";
+
+const client = new BridgeClient({
+  wsUrl: "wss://bridge.example.com/bridge",
+  sessionId: "abc123",
+  platform: "telegram",
+  authData: { initData: window.Telegram.WebApp.initData },
+});
+
+await client.connect();
+client.send({ jsonrpc: "2.0", method: "tools/call", id: 1, params: { name: "my-tool", arguments: {} } });
+client.on("message", (msg) => console.log("received", msg));
 ```
+
+`BridgeClient` uses `MessageRouter` for request/response correlation and `WebSocketTransport` for the underlying connection.
+
+## `MessageRouter`
+
+Tracks pending JSON-RPC requests and correlates responses by `id`.
+
+```typescript
+import { MessageRouter } from "@casys/mcp-bridge";
+
+const router = new MessageRouter();
+
+// Send a request and await its response
+const response = await router.send(transport, request);
+
+// Route an incoming response to the waiting promise
+router.resolve(response.id, response);
+```
+
+Pending requests time out after **30 seconds**.
+
+## `WebSocketTransport`
+
+Wraps a `WebSocket` with auto-reconnect logic.
+
+```typescript
+import { WebSocketTransport } from "@casys/mcp-bridge";
+
+const transport = new WebSocketTransport("wss://bridge.example.com/bridge");
+await transport.connect();
+transport.send(JSON.stringify(message));
+transport.onMessage((raw) => { /* handle raw string */ });
+```
+
+**Reconnection behaviour:** exponential backoff, maximum **5 attempts**. After 5 consecutive failures the transport emits an `error` event and stops reconnecting.
+
+## `BasePostMessageAdapter`
+
+Base class for platform adapters. Extend it to implement a new platform.
+
+```typescript
+import { BasePostMessageAdapter } from "@casys/mcp-bridge";
+
+class MyPlatformAdapter extends BasePostMessageAdapter {
+  readonly name = "my-platform";
+
+  async initialize(): Promise<HostContext> {
+    // Read platform SDK, return theme/viewport/locale
+    return {
+      theme: "light",
+      backgroundColor: "#ffffff",
+      textColor: "#000000",
+      viewport: { width: 390, height: 844 },
+      safeArea: { top: 44, bottom: 34, left: 0, right: 0 },
+    };
+  }
+
+  getTheme(): "light" | "dark" { return "light"; }
+
+  getContainerDimensions() {
+    return { width: window.innerWidth, height: window.innerHeight };
+  }
+
+  onLifecycleEvent(handler) { /* register platform callbacks */ }
+
+  async openLink(url: string) {
+    window.open(url, "_blank");
+  }
+}
+```
+
+## What bridge.js does on load
+
+1. Reads session ID and WebSocket URL from injected configuration
+2. Monkey-patches `window.parent.postMessage` to intercept outgoing JSON-RPC messages
+3. Opens `WebSocketTransport` to `WS /bridge?session=<id>`
+4. Sends auth payload as the first WebSocket message (platform `initData` or token)
+5. Handles `ui/initialize` and `ui/open-link` locally — these are not forwarded to the server
+6. Forwards all other messages via `MessageRouter`
+7. Dispatches incoming responses as `MessageEvent` on `window` so the MCP App receives them
+
+<Aside type="note">
+  `ui/initialize` returns a `HostContext` built by the platform adapter immediately, without a server round-trip. `ui/open-link` calls `adapter.openLink()` directly. All other methods (`tools/call`, `resources/read`, custom notifications) go through the WebSocket.
+</Aside>
+
+## Protocol type guards
+
+```typescript
+import {
+  isJsonRpcMessage,
+  isRequest,
+  isResponse,
+} from "@casys/mcp-bridge";
+
+isJsonRpcMessage(value); // value is { jsonrpc: "2.0", ... }
+isRequest(value);        // value is { jsonrpc: "2.0", method: string, ... }
+isResponse(value);       // value is { jsonrpc: "2.0", result | error, ... }
+```
+
+These are plain type guard functions with no side effects, safe to use in any environment.
+
+## `parseResourceUri` / `resolveToHttp`
+
+```typescript
+import { parseResourceUri, resolveToHttp } from "@casys/mcp-bridge";
+
+const parsed = parseResourceUri("ui://my-app/dashboard/index.html");
+// { server: "my-app", path: "dashboard/index.html" }
+
+const httpUrl = resolveToHttp(parsed, "https://bridge.example.com");
+// "https://bridge.example.com/app/my-app/dashboard/index.html"
+```
+
+Used by bridge.js when handling `ui/open-link` to convert `ui://` URIs to HTTP before passing to `adapter.openLink()`.

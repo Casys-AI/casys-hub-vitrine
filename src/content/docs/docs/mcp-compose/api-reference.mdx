@@ -1,0 +1,290 @@
+---
+title: "API Reference"
+description: "Complete API for @casys/mcp-compose 0.3.0 — all exports from each sub-path with type shapes."
+---
+
+## Package info
+
+- **Version:** 0.3.0
+- **Registry:** JSR (`jsr:@casys/mcp-compose`)
+- **Runtime:** Deno (primary); Node/Bun via JSR shim
+- **Dependencies:** zero
+
+---
+
+## `@casys/mcp-compose` (mod.ts)
+
+Re-exports everything from the six sub-paths below. Use this when you want everything in one import.
+
+```typescript
+import { createCollector, buildCompositeUi, renderComposite } from "@casys/mcp-compose";
+```
+
+---
+
+## `@casys/mcp-compose/core`
+
+The three pipeline stages plus sync-rule utilities.
+
+### createCollector()
+
+```typescript
+function createCollector(): UiCollector
+```
+
+Returns a new stateful collector. See [Collector](/docs/mcp-compose/collector).
+
+### extractUiMeta(result)
+
+```typescript
+function extractUiMeta(result: unknown): string | null
+```
+
+Null-safe read of `result._meta?.ui?.resourceUri`. Returns the URI string or `null`.
+
+### buildCompositeUi(resources, orchestration?)
+
+```typescript
+function buildCompositeUi(
+  resources: CollectedUiResource[],
+  orchestration?: UiOrchestration,
+): CompositeUiDescriptor
+```
+
+See [Composer](/docs/mcp-compose/composer).
+
+### renderComposite(descriptor)
+
+```typescript
+function renderComposite(descriptor: CompositeUiDescriptor): string
+```
+
+Returns a complete HTML5 string. See [Renderer](/docs/mcp-compose/renderer).
+
+### validateSyncRules(rules, knownSources)
+
+```typescript
+function validateSyncRules(
+  rules: UiSyncRule[],
+  knownSources: string[],
+): { valid: boolean; issues: ValidationIssue[] }
+```
+
+### resolveSyncRules(rules, resources)
+
+```typescript
+function resolveSyncRules(
+  rules: UiSyncRule[],
+  resources: CollectedUiResource[],
+): ResolvedSyncRule[]
+```
+
+### Core types
+
+```typescript
+interface UiCollector {
+  collect(toolName: string, result: unknown, context?: Record<string, unknown>): void;
+  getResources(): CollectedUiResource[];
+  clear(): void;
+}
+
+interface CollectedUiResource {
+  source: string;
+  resourceUri: string;
+  context?: Record<string, unknown>;
+  slot: number;
+}
+
+type LayoutMode = "split" | "tabs" | "grid" | "stack";
+
+interface UiLayoutAreas {
+  areas: string[][];
+  columns?: number[];
+  rows?: number[];
+  gap?: number;
+}
+
+interface UiOrchestration {
+  layout: LayoutMode | UiLayoutAreas;
+  sync?: UiSyncRule[];
+  sharedContext?: string[];
+}
+
+interface UiSyncRule {
+  from: string;
+  event: string;
+  to: string;       // tool name or "*"
+  action: string;
+}
+
+interface ResolvedSyncRule {
+  from: number;
+  event: string;
+  to: number | "*";
+  action: string;
+}
+
+interface CompositeUiDescriptor {
+  workflowId: string;
+  layout: LayoutMode | UiLayoutAreas;
+  resources: ResolvedUiResource[];
+  sync: ResolvedSyncRule[];
+  sharedContext: Record<string, unknown>;
+}
+
+interface ResolvedUiResource {
+  source: string;
+  resourceUri: string;
+  context?: Record<string, unknown>;
+  slot: number;
+}
+
+interface ValidationIssue {
+  code: ErrorCode;
+  message: string;
+  path?: string;
+}
+
+enum ErrorCode {
+  ORPHAN_SYNC_REFERENCE = "ORPHAN_SYNC_REFERENCE",
+  CIRCULAR_SYNC_RULE    = "CIRCULAR_SYNC_RULE",
+}
+```
+
+---
+
+## `@casys/mcp-compose/sdk`
+
+Helpers for MCP tool authors and iframe-side code.
+
+### uiMeta(options)
+
+Produces a `_meta` fragment to spread into a tool's return value.
+
+```typescript
+function uiMeta(options: { resourceUri: string; [key: string]: unknown }): {
+  _meta: { ui: { resourceUri: string; [key: string]: unknown } };
+}
+```
+
+```typescript
+import { uiMeta } from "@casys/mcp-compose/sdk";
+
+return {
+  invoiceId: "INV-001",
+  ...uiMeta({ resourceUri: "https://apps.example.com/invoice-viewer" }),
+};
+```
+
+### createMcpSdkCollector()
+
+Wraps the core collector with MCP SDK-aware behaviour: skips results where `isError === true`.
+
+```typescript
+function createMcpSdkCollector(): UiCollector
+```
+
+### validateComposition(tools, syncRules)
+
+Semantic validation: checks `emits`/`accepts` coherence between tool declarations and sync rules.
+
+```typescript
+function validateComposition(
+  tools: Array<{
+    name: string;
+    emits?: string[];
+    accepts?: string[];
+  }>,
+  syncRules: UiSyncRule[],
+): { valid: boolean; issues: ValidationIssue[] }
+```
+
+### composeEvents()
+
+UI-side event channel for use inside an iframe. Wraps `postMessage` for the `ui/compose/event` method.
+
+```typescript
+function composeEvents(): {
+  emit(event: string, data: unknown): void;
+  on(event: string, handler: (data: unknown) => void): void;
+  destroy(): void;
+}
+```
+
+### COMPOSE_EVENT_METHOD
+
+```typescript
+const COMPOSE_EVENT_METHOD = "ui/compose/event";
+```
+
+The JSON-RPC method string used by the compose event channel.
+
+---
+
+## `@casys/mcp-compose/host`
+
+Helpers for the host page (the page embedding the rendered composite).
+
+These utilities let a host page interact with the event bus programmatically: dispatch messages to specific slots, subscribe to events, and override shared context after initial load. See the source for the full interface — the host API surface mirrors the embedded event bus protocol.
+
+---
+
+## `@casys/mcp-compose/runtime`
+
+Full pipeline with process management. For server-side or CLI use.
+
+### composeDashboard(request)
+
+```typescript
+function composeDashboard(request: DashboardRequest): Promise<string>
+```
+
+Runs the full pipeline (spawn MCP processes → collect → compose → render) and returns the HTML string.
+
+### composeDashboardFromFiles(manifestDir, templatePath, args)
+
+```typescript
+function composeDashboardFromFiles(
+  manifestDir: string,
+  templatePath: string,
+  args: Record<string, unknown>,
+): Promise<string>
+```
+
+Reads an `McpManifest` (JSON) and a `DashboardTemplate` (YAML) from disk, then runs the pipeline.
+
+### Runtime types
+
+```typescript
+// McpManifest — JSON file declaring the MCP servers to start
+interface McpManifest {
+  servers: Array<{
+    name: string;
+    command: string;
+    args?: string[];
+    env?: Record<string, string>;
+  }>;
+}
+
+// DashboardTemplate — YAML file describing which tools to call and with what args
+interface DashboardTemplate {
+  tools: Array<{
+    server: string;
+    tool: string;
+    args?: Record<string, unknown>;
+  }>;
+  orchestration?: UiOrchestration;
+}
+
+// McpCluster — manages a set of running MCP server processes
+interface McpCluster {
+  call(server: string, tool: string, args?: unknown): Promise<unknown>;
+  close(): Promise<void>;
+}
+```
+
+---
+
+## `@casys/mcp-compose/deploy`
+
+Deployment helpers. Provides utilities for writing the rendered HTML to a target path and for serving it via a minimal HTTP handler compatible with Deno Deploy and similar edge runtimes. See the source for the current interface — this sub-path is stable but not yet documented in full.

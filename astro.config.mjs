@@ -101,6 +101,34 @@ export default defineConfig({
             },
           ],
         },
+        {
+          label: '@casys/mcp-compose',
+          collapsed: false,
+          items: [
+            {
+              label: 'Getting Started',
+              items: [
+                { label: 'Introduction', slug: 'docs/mcp-compose/introduction' },
+                { label: 'Quick Start', slug: 'docs/mcp-compose/quickstart' },
+              ],
+            },
+            {
+              label: 'Guides',
+              items: [
+                { label: 'Collector', slug: 'docs/mcp-compose/collector' },
+                { label: 'Composer & Layouts', slug: 'docs/mcp-compose/composer' },
+                { label: 'Renderer', slug: 'docs/mcp-compose/renderer' },
+                { label: 'Sync Rules', slug: 'docs/mcp-compose/sync-rules' },
+              ],
+            },
+            {
+              label: 'API Reference',
+              items: [
+                { label: 'Full API', slug: 'docs/mcp-compose/api-reference' },
+              ],
+            },
+          ],
+        },
       ],
     }),
     mdx({

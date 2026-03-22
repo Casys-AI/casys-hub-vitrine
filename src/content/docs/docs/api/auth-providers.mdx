@@ -20,7 +20,7 @@ const provider = createGoogleAuthProvider({
 });
 ```
 
-Uses Google's OIDC issuer (`https://accounts.google.com`) and public JWKS endpoint.
+Uses Google's OIDC issuer (`https://accounts.google.com`) and public JWKS endpoint. JWKS URI is `https://www.googleapis.com/oauth2/v3/certs`.
 
 ### createAuth0AuthProvider
 
@@ -89,19 +89,28 @@ const provider = new JwtAuthProvider({
 
 ```typescript
 const authInfo = await provider.verifyToken(token: string);
+// AuthInfo | null
 ```
 
-Returns an `AuthInfo` object on success, or `null` if the token is invalid:
+Returns an `AuthInfo` object on success, `null` if the token is invalid or expired.
 
 ```typescript
 interface AuthInfo {
   subject: string;                     // Token "sub" claim
   clientId?: string;                   // Token "client_id" or "azp" claim
   scopes: string[];                    // Parsed from "scope" claim (space-separated)
-  claims: Record<string, unknown>;     // All token claims
-  expiresAt: Date;                     // Token expiry
+  claims?: Record<string, unknown>;    // All token claims
+  expiresAt?: Date;                    // Token expiry
 }
 ```
+
+### Token cache
+
+`JwtAuthProvider` maintains an in-memory cache to avoid repeated JWKS roundtrips:
+
+- Cache key: SHA-256 hash of the raw token string
+- TTL: 5 minutes
+- Max entries: 1000
 
 ## Config loader
 
@@ -126,6 +135,38 @@ import { createAuthProviderFromConfig } from "@casys/mcp-server";
 const provider = createAuthProviderFromConfig(config: AuthConfig);
 // Returns the appropriate AuthProvider based on config.provider
 ```
+
+Dispatches to the correct preset based on `config.provider`:
+
+| `config.provider` | Preset used |
+|-------------------|-------------|
+| `"google"` | `createGoogleAuthProvider` |
+| `"auth0"` | `createAuth0AuthProvider` |
+| `"github"` | `createGitHubAuthProvider` |
+| `"oidc"` | `createOIDCAuthProvider` |
+
+## Client OAuth
+
+For building MCP clients that authenticate against protected servers:
+
+```typescript
+import {
+  prepareOAuthProvider,
+  FileTokenStore,
+  MemoryTokenStore,
+} from "@casys/mcp-server";
+
+const oauthProvider = await prepareOAuthProvider(
+  "https://my-mcp.example.com",
+  {
+    clientId: "my-client-id",
+    scopes: ["read", "write"],
+    tokenStore: new FileTokenStore("./.tokens"),  // or new MemoryTokenStore()
+  },
+);
+```
+
+`FileTokenStore(path)` persists tokens to disk between restarts. `MemoryTokenStore()` is in-memory only.
 
 ## See Also
 

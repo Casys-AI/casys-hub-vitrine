@@ -1,0 +1,168 @@
+---
+title: "Composer"
+description: "buildCompositeUi(), UiOrchestration, layout modes, shared context, and CompositeUiDescriptor."
+---
+
+## Overview
+
+The composer is a pure function that takes collected resources and an optional orchestration configuration, then returns a `CompositeUiDescriptor` — a plain data object with no DOM side effects.
+
+```typescript
+import { buildCompositeUi } from "@casys/mcp-compose/core";
+```
+
+## buildCompositeUi(resources, orchestration?)
+
+```typescript
+function buildCompositeUi(
+  resources: CollectedUiResource[],
+  orchestration?: UiOrchestration,
+): CompositeUiDescriptor
+```
+
+What the function does:
+
+1. Generates a fresh `workflowId` via `crypto.randomUUID()`.
+2. Resolves sync rules: tool-name references in `sync` are translated to slot indices. Invalid rules (referencing unknown sources) are silently excluded — validate first with `validateSyncRules()` if you want to surface errors.
+3. Extracts shared context: for each key listed in `orchestration.sharedContext`, the function scans resource contexts in slot order and takes the first value it finds.
+4. Returns the descriptor.
+
+```typescript
+import { createCollector, buildCompositeUi } from "@casys/mcp-compose/core";
+
+const collector = createCollector();
+collector.collect("get_invoice", {
+  _meta: { ui: { resourceUri: "https://apps.example.com/invoice-viewer" } },
+}, { invoiceId: "INV-2024-001", currency: "EUR" });
+
+collector.collect("get_line_items", {
+  _meta: { ui: { resourceUri: "https://apps.example.com/line-items" } },
+}, { invoiceId: "INV-2024-001" });
+
+const descriptor = buildCompositeUi(collector.getResources(), {
+  layout: "split",
+  sharedContext: ["invoiceId", "currency"],
+  sync: [
+    { from: "get_invoice", event: "lineItemSelected", to: "get_line_items", action: "highlightItem" },
+  ],
+});
+```
+
+## UiOrchestration
+
+```typescript
+interface UiOrchestration {
+  layout: LayoutMode | UiLayoutAreas;
+  sync?: UiSyncRule[];
+  sharedContext?: string[];
+}
+```
+
+All fields except `layout` are optional. When `orchestration` itself is omitted, the layout defaults to `"stack"`.
+
+## Layout modes
+
+Four named layout modes plus a custom areas mode:
+
+### stack (default)
+
+Iframes stacked vertically, full width. No configuration needed.
+
+```typescript
+{ layout: "stack" }
+```
+
+### split
+
+Iframes arranged side-by-side with `display: flex` and equal `flex: 1` shares.
+
+```typescript
+{ layout: "split" }
+```
+
+### tabs
+
+Only one iframe is visible at a time. The renderer injects a tab bar; clicking a tab shows the corresponding iframe and hides the others.
+
+```typescript
+{ layout: "tabs" }
+```
+
+### grid
+
+CSS Grid with `auto-fit` columns of `minmax(400px, 1fr)`. Works with any number of iframes.
+
+```typescript
+{ layout: "grid" }
+```
+
+### areas (UiLayoutAreas)
+
+Full CSS Grid template areas. Gives you pixel-level control over placement.
+
+```typescript
+interface UiLayoutAreas {
+  areas: string[][];   // 2-D array → becomes grid-template-areas
+  columns?: number[];  // column widths in fr units
+  rows?: number[];     // row heights in fr units
+  gap?: number;        // gap in px, default 0
+}
+```
+
+Example — a two-column layout where slot 0 spans the left and slot 1 is top-right, slot 2 is bottom-right:
+
+```typescript
+{
+  layout: {
+    areas: [
+      ["slot-0", "slot-1"],
+      ["slot-0", "slot-2"],
+    ],
+    columns: [2, 1],
+    rows: [1, 1],
+    gap: 16,
+  },
+}
+```
+
+## Shared context extraction
+
+`orchestration.sharedContext` is a list of key names. For each key, `buildCompositeUi` iterates resources in slot order and takes the first `context[key]` value it finds. The result is attached to `CompositeUiDescriptor.sharedContext`.
+
+The event bus then forwards this object in the `hostContext` field of `ui/initialize` responses, making it available to every iframe without manual prop drilling.
+
+```typescript
+// Resources:
+// slot 0 context: { invoiceId: "INV-2024-001", currency: "EUR" }
+// slot 1 context: { invoiceId: "INV-2024-001" }
+
+buildCompositeUi(resources, { layout: "stack", sharedContext: ["invoiceId", "currency"] });
+// descriptor.sharedContext → { invoiceId: "INV-2024-001", currency: "EUR" }
+// "currency" comes from slot 0 (first resource that has it)
+```
+
+## CompositeUiDescriptor shape
+
+```typescript
+interface CompositeUiDescriptor {
+  workflowId: string;                          // crypto.randomUUID()
+  layout: LayoutMode | UiLayoutAreas;
+  resources: ResolvedUiResource[];             // slot indices assigned
+  sync: ResolvedSyncRule[];                    // tool names → slot indices
+  sharedContext: Record<string, unknown>;      // extracted values
+}
+
+interface ResolvedUiResource {
+  source: string;
+  resourceUri: string;
+  context?: Record<string, unknown>;
+  slot: number;
+}
+
+interface ResolvedSyncRule {
+  from: number;      // slot index of the emitting iframe
+  event: string;
+  to: number | "*";  // slot index of the target, or "*" for broadcast
+  action: string;
+}
+```

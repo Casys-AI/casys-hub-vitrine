@@ -1,73 +1,80 @@
 ---
 title: Introduction
-description: Bridge MCP Apps to messaging platforms like Telegram and LINE. Zero code changes required.
+description: Bridge MCP Apps to Telegram and LINE. Deno-first, 120 tests, version 0.2.0.
 ---
 
 import { Card, CardGrid, LinkCard, Aside } from '@astrojs/starlight/components';
 
-**@casys/mcp-bridge** brings MCP Apps from developer tools (Claude Desktop, VS Code) to messaging platforms with 2+ billion users — without changing a single line of your MCP App code.
+**@casys/mcp-bridge** (v0.2.0) connects MCP Apps — interactive UIs served via `ui://` resources — to messaging platforms like Telegram and LINE, without modifying your existing MCP App or MCP Server.
+
+Available on [JSR](https://jsr.io/@casys/mcp-bridge) and [npm](https://www.npmjs.com/package/@casys/mcp-bridge). Deno-first; Node.js 20+ supported via Web Crypto API.
 
 ## The problem
 
-MCP Apps (interactive UIs served via `ui://` resources) only work inside developer tools. Your users on Telegram, LINE, and other messaging platforms can't access them.
+MCP Apps (`ui://` resources) only run inside developer tools like Claude Desktop or VS Code. Users on Telegram or LINE cannot access them.
 
-Building custom integrations for each platform means:
-- Rewriting UI code for each platform's SDK
-- Implementing auth, session management, and security from scratch
-- Maintaining separate codebases per platform
-- Losing the MCP protocol's built-in tool execution
+Bridging platforms manually means:
+- Rewriting UI code for each platform SDK
+- Re-implementing auth, session management, and security per platform
+- Maintaining separate codebases
+- Losing the MCP protocol's native tool execution model
 
 ## The fix
 
-`@casys/mcp-bridge` is a transparent bridge that:
+`@casys/mcp-bridge` inserts a transparent bridge between your MCP App and the messaging platform:
 
-1. **Intercepts** `postMessage` calls from your MCP App (via injected `bridge.js`)
-2. **Routes** JSON-RPC messages through WebSocket to a Resource Server
+1. **Intercepts** `postMessage` calls from your MCP App via an injected IIFE (`bridge.js`)
+2. **Routes** JSON-RPC messages over WebSocket to a Resource Server
 3. **Forwards** tool calls to your unmodified MCP Server
-4. **Maps** platform-specific features (themes, auth, viewport) automatically
+4. **Maps** platform-specific auth, theme, and viewport automatically
 
 ```typescript
 import { startResourceServer } from "@casys/mcp-bridge";
 
-const server = startResourceServer({
+startResourceServer({
   assetDirectories: { "my-app": "./ui-dist" },
   platform: "telegram",
   telegramBotToken: Deno.env.get("TELEGRAM_BOT_TOKEN"),
+  onMessage: async (_session, message) => {
+    return backend.handleMessage(message);
+  },
+  options: { resourceServerPort: 4000 },
 });
-// Your MCP App now works inside Telegram!
 ```
 
-## Architecture
+## Three-layer architecture
 
 <CardGrid>
-  <Card title="Bridge Client" icon="puzzle">
-    Browser-side IIFE injected into served HTML. Monkey-patches `postMessage` to intercept MCP JSON-RPC calls.
+  <Card title="bridge.js (IIFE)" icon="puzzle">
+    Injected into served HTML. Monkey-patches `postMessage`, opens WebSocket, handles auth-on-connect, auto-reconnects with exponential backoff (max 5 attempts). Handles `ui/initialize` and `ui/open-link` locally.
   </Card>
   <Card title="Resource Server" icon="server">
-    HTTP + WebSocket server. Serves `ui://` resources, injects bridge.js, manages sessions, forwards tool calls.
+    `Deno.serve()` HTTP + WebSocket server. Endpoints: `GET /health`, `POST /session`, `GET /bridge.js`, `WS /bridge?session=id`, `GET /app/<server>/<path>`, `GET /ui?uri=ui://...`.
   </Card>
   <Card title="Platform Adapters" icon="setting">
-    Telegram and LINE adapters handle auth, theme mapping, viewport, and lifecycle events.
+    TelegramPlatformAdapter (complete): HMAC-SHA256 initData validation, theme params mapped to CSS custom properties. LineAdapter (partial): extends BasePostMessageAdapter, uses `liff.getAccessToken()`.
   </Card>
   <Card title="MCP Server" icon="rocket">
-    Your existing MCP server stays completely unmodified. The bridge acts as an MCP client.
+    Your existing MCP Server stays completely unmodified. The Resource Server connects to it via `JsonRpcMcpBackend` as a standard MCP client.
   </Card>
 </CardGrid>
 
-## Key features
+## Status
 
-- **Zero code changes** — existing MCP Apps work as-is
-- **Telegram Mini Apps** — full WebApp SDK integration (theme, viewport, safe areas, auth)
-- **LINE LIFF** — Coming soon
-- **Security by default** — CSP enforcement, HMAC-SHA256 auth, crypto-secure sessions
-- **107 tests** — comprehensive test coverage
-- **Extensible** — add Discord, WhatsApp, or any platform via the adapter pattern
+- **120 tests** covering all three layers
+- **Telegram**: complete — auth, theme mapping, viewport, safe areas
+- **LINE**: partial — adapter implemented, no built-in auth handler
+- **Node.js 20+**: supported via Web Crypto API (no Deno.serve — use your own HTTP server)
+
+<Aside type="caution">
+  The LINE adapter is available but does not include a built-in auth handler. You must implement your own server-side LINE auth.
+</Aside>
 
 ## Next steps
 
 <CardGrid>
-  <LinkCard title="Quick Start" href="/docs/mcp-bridge/quickstart/" description="Get your first MCP App running in Telegram in 5 minutes" />
-  <LinkCard title="Architecture" href="/docs/mcp-bridge/architecture/" description="Deep dive into the 3-layer bridge design" />
-  <LinkCard title="Telegram Adapter" href="/docs/mcp-bridge/telegram/" description="Full guide for Telegram Mini App integration" />
-  <LinkCard title="Security Model" href="/docs/mcp-bridge/security/" description="CSP, auth, and session management details" />
+  <LinkCard title="Quick Start" href="/docs/mcp-bridge/quickstart/" description="Run your first MCP App inside Telegram" />
+  <LinkCard title="Architecture" href="/docs/mcp-bridge/architecture/" description="The 3-layer bridge design in detail" />
+  <LinkCard title="Telegram Adapter" href="/docs/mcp-bridge/telegram/" description="HMAC auth, theme mapping, BotFather setup" />
+  <LinkCard title="Security Model" href="/docs/mcp-bridge/security/" description="CSP, path traversal, session rate limits" />
 </CardGrid>

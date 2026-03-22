@@ -74,7 +74,7 @@ Pick your identity provider. Each preset handles issuer URLs, JWKS endpoints, an
     ```
 
     <Aside type="tip">
-      Perfect for CI/CD pipelines. GitHub Actions automatically provisions OIDC tokens — no secrets to manage.
+      GitHub Actions automatically provisions OIDC tokens — no secrets to manage.
     </Aside>
   </TabItem>
   <TabItem label="Generic OIDC">
@@ -102,7 +102,7 @@ Pick your identity provider. Each preset handles issuer URLs, JWKS endpoints, an
 
 ## Scope enforcement
 
-Tools can declare required scopes. The framework automatically checks the token before the handler runs:
+Tools can declare required scopes. The scope-check middleware runs automatically after auth, before the handler:
 
 ```typescript
 server.registerTool(
@@ -128,6 +128,16 @@ server.registerTool(
   Scope checking is **AND-based** — the token must have *all* listed scopes. Need OR-based logic? Implement it in a [custom middleware](/docs/guides/middleware/).
 </Aside>
 
+## Token caching
+
+`JwtAuthProvider` includes an in-memory cache to avoid repeated JWKS lookups:
+
+- Cache key: SHA-256 hash of the raw token string
+- TTL: 5 minutes
+- Max size: 1000 entries
+
+This means a token is verified once against the JWKS endpoint, then served from cache on subsequent calls within the TTL window.
+
 ## Advanced: JwtAuthProvider
 
 For full control over validation parameters, use `JwtAuthProvider` directly:
@@ -145,12 +155,24 @@ const provider = new JwtAuthProvider({
 });
 
 const authInfo = await provider.verifyToken(token);
-// { subject, clientId, scopes, claims, expiresAt } — or null if invalid
+// AuthInfo | null
+```
+
+`AuthInfo` fields:
+
+```typescript
+interface AuthInfo {
+  subject: string;                     // Token "sub" claim
+  clientId?: string;                   // Token "client_id" or "azp" claim
+  scopes: string[];                    // Parsed from "scope" claim (space-separated)
+  claims?: Record<string, unknown>;    // All token claims
+  expiresAt?: Date;                    // Token expiry
+}
 ```
 
 ## Automatic discovery (RFC 9728)
 
-When auth is configured on an HTTP server, the framework automatically serves a discovery endpoint. MCP clients use this to figure out how to authenticate:
+When auth is configured on an HTTP server, the framework automatically serves a discovery endpoint at startup. MCP clients use this to figure out how to authenticate:
 
 ```
 GET /.well-known/oauth-protected-resource
@@ -166,8 +188,33 @@ GET /.well-known/oauth-protected-resource
 ```
 
 <Aside type="tip">
-  You don't need to set this up manually. It's derived from your auth provider configuration and served automatically.
+  You don't need to set this up manually. It's derived from your auth provider configuration and served automatically when you call `startHttp()`.
 </Aside>
+
+## Client OAuth flow
+
+For building MCP clients that need to authenticate against a protected server:
+
+```typescript
+import {
+  prepareOAuthProvider,
+  FileTokenStore,
+} from "@casys/mcp-server";
+
+const oauthProvider = await prepareOAuthProvider(
+  "https://my-mcp.example.com",
+  {
+    clientId: "my-client-id",
+    scopes: ["read", "write"],
+    tokenStore: new FileTokenStore("./.tokens"),
+  },
+);
+```
+
+Two token store implementations are provided:
+
+- `FileTokenStore(path)` — persists tokens to disk
+- `MemoryTokenStore()` — in-memory, tokens lost on restart
 
 ## YAML-based auth
 

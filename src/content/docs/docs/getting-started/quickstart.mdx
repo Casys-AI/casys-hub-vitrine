@@ -33,7 +33,7 @@ Let's build a working MCP server. By the end of this page you'll have a server r
       ({ name }) => `Hello, ${name}!`,
     );
 
-    await server.start(); // STDIO transport
+    await server.start(); // STDIO transport — blocks until disconnect
     ```
 
 2. **Run it**:
@@ -62,9 +62,9 @@ import {
 const server = new ConcurrentMCPServer({
   name: "my-api",
   version: "1.0.0",
-  maxConcurrent: 10,                                    // 10 concurrent tool calls
+  maxConcurrent: 10,                                    // 10 concurrent tool calls max
   backpressureStrategy: "queue",                         // FIFO queue when at capacity
-  validateSchema: true,                                  // Reject bad input automatically
+  validateSchema: true,                                  // Reject bad input via ajv
   rateLimit: { maxRequests: 100, windowMs: 60_000 },    // 100 req/min per client
   auth: {
     provider: createGoogleAuthProvider({
@@ -81,8 +81,9 @@ server.registerTool(
     inputSchema: {
       type: "object",
       properties: { sql: { type: "string" } },
+      required: ["sql"],
     },
-    requiredScopes: ["db:read"],  // Token must have this scope
+    requiredScopes: ["db:read"],  // Token must include this scope
   },
   async ({ sql }) => ({ rows: await db.query(sql) }),
 );
@@ -91,7 +92,7 @@ await server.startHttp({ port: 3000 });
 ```
 
 <Aside>
-  With HTTP transport you automatically get: RFC 9728 metadata discovery at `/.well-known/oauth-protected-resource`, SSE streaming, and session management. No extra code needed.
+  With HTTP transport you automatically get: RFC 9728 metadata discovery at `/.well-known/oauth-protected-resource`, SSE streaming at `GET /mcp`, JSON-RPC at `POST /mcp`, health at `GET /health`, and metrics at `GET /metrics`. No extra code needed.
 </Aside>
 
 ## Ship as a binary with YAML config
@@ -119,6 +120,18 @@ MCP_AUTH_AUDIENCE=https://prod.example.com ./my-server --http --port 3000
 
 Priority: `programmatic > env vars > YAML > no auth`
 
+## Debugging with the Inspector
+
+To launch the MCP Inspector for debugging your server:
+
+```typescript
+import { launchInspector } from "@casys/mcp-server";
+
+await launchInspector();
+```
+
+This spawns the MCP Inspector process connected to your server.
+
 ## Where to go from here
 
 You've got a running server. Now make it yours:
@@ -126,4 +139,5 @@ You've got a running server. Now make it yours:
 - **[Middleware Pipeline](/docs/guides/middleware/)** — Add logging, caching, metrics, or any custom logic to the request chain
 - **[Authentication](/docs/guides/auth/)** — Deep dive into OAuth2 presets for Google, Auth0, GitHub, and OIDC
 - **[Configuration](/docs/guides/configuration/)** — YAML + env var configuration for binary distribution
+- **[MCP Apps](/docs/guides/mcp-apps/)** — Serve interactive HTML UIs alongside your tools
 - **[API Reference](/docs/api/concurrent-mcp-server/)** — Every method and option, documented

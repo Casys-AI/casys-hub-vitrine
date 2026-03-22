@@ -8,7 +8,7 @@ import { Aside } from '@astrojs/starlight/components';
 The main entry point for the framework. `ConcurrentMCPServer` handles tool registration, middleware composition, transport selection, and lifecycle management.
 
 <Aside type="note">
-  Works on **Deno** and **Node.js** (18+). The framework uses a runtime adapter (`RuntimePort`) so the same API works on both platforms. `maxBodyBytes` enforcement is implemented at both the Deno and Node.js HTTP layers.
+  Deno-first. Node.js 22+ is supported via the JSR npm compatibility layer.
 </Aside>
 
 ## Constructor
@@ -23,18 +23,33 @@ const server = new ConcurrentMCPServer(options: ConcurrentServerOptions);
 
 ```typescript
 interface ConcurrentServerOptions {
+  // Required
   name: string;                          // Server name (shown to clients)
-  version: string;                       // Semver version
+  version: string;                       // Semver version string
+
+  // Concurrency
   maxConcurrent?: number;                // Default: 10
   backpressureStrategy?: "sleep" | "queue" | "reject";  // Default: "sleep"
-  backpressureSleepMs?: number;          // Default: 10
-  rateLimit?: RateLimitOptions;          // Optional rate limiting
-  validateSchema?: boolean;              // Default: false
-  enableSampling?: boolean;              // Enable LLM sampling bridge
-  samplingClient?: SamplingClient;       // Custom sampling client
-  logger?: (msg: string) => void;        // Default: console.error
+
+  // Rate limiting
+  rateLimit?: RateLimitOptions;
+
+  // Schema validation
+  validateSchema?: boolean;              // Default: false — enables ajv 8
+
+  // Sampling
+  enableSampling?: boolean;              // Enable bidirectional LLM delegation
+
+  // Auth
   auth?: AuthOptions;                    // OAuth2/Bearer config
-  resourceCsp?: CspOptions;              // CSP meta-tag injection for MCP Apps HTML
+
+  // MCP Apps
+  resourceCsp?: CspOptions;             // CSP options for HTML resource injection
+
+  // Customization
+  instructions?: string;                // Instructions sent to clients at initialization
+  toolErrorMapper?: (error: unknown) => string;  // Custom error message formatter
+  logger?: (msg: string) => void;       // Default: console.error
 }
 ```
 
@@ -77,15 +92,18 @@ server.registerTool(
       properties: { name: { type: "string" } },
       required: ["name"],
     },
-    requiredScopes: ["read"],  // Optional — requires this scope if auth is configured
+    requiredScopes: ["read"],   // Optional — requires this scope if auth is configured
+    outputSchema: {             // Optional — for structured tool results (SDK 1.27)
+      type: "object",
+      properties: { message: { type: "string" } },
+    },
+    annotations: {              // Optional — hints for clients
+      readOnlyHint: true,
+    },
   },
   ({ name }) => `Hello, ${name}!`,
 );
 ```
-
-<Aside type="tip">
-  The handler can return any JSON-serializable value. Strings, objects, arrays — it all works.
-</Aside>
 
 ### registerTools
 
@@ -95,13 +113,37 @@ server.registerTools(tools: MCPTool[], handlers: Map<string, ToolHandler>): void
 
 Bulk-register tools. Map keys must match tool names exactly.
 
+### registerToolLive
+
+```typescript
+server.registerToolLive(tool: MCPTool, handler: ToolHandler): void;
+```
+
+Register a tool after the server has started. Sends a `tools/list_changed` notification to connected clients automatically.
+
+### unregisterTool
+
+```typescript
+server.unregisterTool(toolName: string): void;
+```
+
+Remove a registered tool. Sends a `tools/list_changed` notification to connected clients.
+
+### registerAppOnlyTool
+
+```typescript
+server.registerAppOnlyTool(tool: MCPTool, handler: ToolHandler): void;
+```
+
+Register a tool visible to UI clients only — it does not appear in the LLM's tool list.
+
 ### registerResource
 
 ```typescript
 server.registerResource(resource: MCPResource, handler: ResourceHandler): void;
 ```
 
-Register a single resource. See [MCP Apps](/docs/guides/mcp-apps/) for `ui://` resources.
+Register a single resource. See [MCP Apps](/docs/guides/mcp-apps/) for `text/html;profile=mcp-app` resources.
 
 ### registerResources
 
@@ -113,6 +155,28 @@ server.registerResources(
 ```
 
 Bulk-register resources.
+
+### registerViewers
+
+```typescript
+server.registerViewers(config: ViewersConfig): void;
+```
+
+Bulk-register UI viewer resources from a configuration object:
+
+```typescript
+server.registerViewers({
+  "ui://my-server/dashboard": {
+    name: "Dashboard",
+    description: "Metrics dashboard",
+    handler: async (uri) => ({
+      uri: uri.toString(),
+      mimeType: MCP_APP_MIME_TYPE,
+      text: renderDashboard(),
+    }),
+  },
+});
+```
 
 ### use
 
@@ -143,24 +207,15 @@ See the [Middleware Pipeline guide](/docs/guides/middleware/) for patterns and r
 await server.start(): Promise<void>;
 ```
 
-Start with STDIO transport. Use this for local tools (Claude Desktop, Cursor, etc.). Blocks until the server is stopped.
+Start with STDIO transport. Use this for local tools (Claude Desktop, Cursor, etc.). Blocks until the client disconnects.
 
 ### startHttp
 
 ```typescript
-await server.startHttp(options: HttpServerOptions): Promise<HttpServerInstance>;
+await server.startHttp(options: HttpServerOptions): Promise<void>;
 ```
 
 Start with Streamable HTTP transport. Includes SSE streaming, session management, and RFC 9728 discovery.
-
-Returns an `HttpServerInstance` with `shutdown()` and `addr`:
-
-```typescript
-interface HttpServerInstance {
-  shutdown(): Promise<void>;   // Graceful shutdown
-  addr: { hostname: string; port: number };
-}
-```
 
 ```typescript
 interface HttpServerOptions {
@@ -170,21 +225,27 @@ interface HttpServerOptions {
   corsOrigins?: "*" | string[];   // Default: "*" — use allowlist in production
   maxBodyBytes?: number | null;   // Default: 1_000_000 (1 MB). null = no limit
   requireAuth?: boolean;          // Default: false — throws at startup if true without auth
+  customRoutes?: RouteConfig[];   // Additional HTTP routes
   ipRateLimit?: {
-    maxRequests: number;          // Max requests per window per IP
-    windowMs: number;             // Window in ms
-    keyExtractor?: (ctx) => string;
-    onLimitExceeded?: "reject" | "wait";  // Default: "reject"
+    maxRequests: number;
+    windowMs: number;
   };
-  onListen?: (info: { hostname: string; port: number }) => void;
 }
 ```
 
-<Aside type="tip">
-  Security-first defaults: `maxBodyBytes` limits payload to 1 MB (returns 413), `ipRateLimit` returns 429 with `Retry-After` header, `corsOrigins` logs a warning when set to `"*"`, and `requireAuth: true` fails fast at startup if no auth is configured.
-</Aside>
+HTTP routes served automatically:
 
-**Example with all security options:**
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/mcp` | JSON-RPC tool calls |
+| `GET` | `/mcp` | SSE stream for notifications |
+| `GET` | `/health` | Health check |
+| `GET` | `/metrics` | Prometheus metrics |
+| `GET` | `/.well-known/oauth-protected-resource` | RFC 9728 discovery (if auth configured) |
+
+Sessions: 32-character hex IDs, 30-minute TTL, max 10,000 active sessions, per-IP rate limit of 10 `initialize` calls per 60 seconds.
+
+**Example with security options:**
 
 ```typescript
 await server.startHttp({
@@ -204,19 +265,78 @@ await server.stop(): Promise<void>;
 
 Graceful shutdown. Waits for in-flight requests to complete before closing.
 
-## Monitoring methods
+## Notification methods
 
-### getMetrics
+### sendNotification
 
 ```typescript
-server.getMetrics(): QueueMetrics;
-// { inFlight: number, queued: number }
+server.sendNotification(method: string, params?: Record<string, unknown>): void;
 ```
+
+Send a notification to the current session (STDIO transport).
+
+### broadcastNotification
+
+```typescript
+server.broadcastNotification(
+  method: string,
+  params?: Record<string, unknown>,
+): void;
+```
+
+Push a notification to **all** connected SSE clients (HTTP transport).
+
+### sendToSession
+
+```typescript
+server.sendToSession(sessionId: string, message: Record<string, unknown>): void;
+```
+
+Push a message to a specific SSE session by ID (HTTP transport).
+
+## Observability methods
+
+### getServerMetrics
+
+```typescript
+server.getServerMetrics(): ServerMetrics;
+```
+
+Returns current server metrics including in-flight requests, queued requests, and active sessions.
+
+### getPrometheusMetrics
+
+```typescript
+server.getPrometheusMetrics(): string;
+```
+
+Returns metrics in Prometheus text format. Same data served at `GET /metrics`:
+
+```
+# HELP tool_calls_total Total number of tool calls
+# TYPE tool_calls_total counter
+tool_calls_total{tool="greet",status="success"} 42
+
+# HELP tool_call_duration_ms Tool call duration in milliseconds
+# TYPE tool_call_duration_ms histogram
+tool_call_duration_ms_bucket{tool="greet",le="100"} 40
+...
+
+# HELP active_requests Currently active requests
+# TYPE active_requests gauge
+active_requests 3
+
+# HELP active_sessions Currently active SSE sessions
+# TYPE active_sessions gauge
+active_sessions 7
+```
+
+Counters available: `tool_calls_total`, `auth_success_total`, `auth_failed_total`.
 
 ### getRateLimitMetrics
 
 ```typescript
-server.getRateLimitMetrics(): { keys: number, totalRequests: number } | null;
+server.getRateLimitMetrics(): { keys: number; totalRequests: number } | null;
 ```
 
 Returns `null` if rate limiting is not configured.
@@ -228,43 +348,52 @@ server.getToolCount(): number;
 server.getToolNames(): string[];
 ```
 
-### getResourceCount / getResourceUris
+### getResourceCount
 
 ```typescript
 server.getResourceCount(): number;
-server.getResourceUris(): string[];
 ```
 
-## SSE methods (HTTP transport only)
-
-### sendToSession
+### isStarted
 
 ```typescript
-server.sendToSession(sessionId: string, message: Record<string, unknown>): void;
+server.isStarted(): boolean;
 ```
 
-Push a message to a specific SSE session.
+Returns `true` after `start()` or `startHttp()` has been called.
 
-### broadcastNotification
+## Sampling bridge
+
+When `enableSampling: true` is set, the server can delegate LLM calls back through the client connection:
 
 ```typescript
-server.broadcastNotification(
-  method: string,
-  params?: Record<string, unknown>,
-): void;
+const server = new ConcurrentMCPServer({
+  name: "my-server",
+  version: "1.0.0",
+  enableSampling: true,
+});
+
+server.registerTool(
+  { name: "summarize", description: "Summarize text", inputSchema: { type: "object", properties: { text: { type: "string" } } } },
+  async ({ text }, { bridge }) => {
+    const result = await bridge.requestSampling({
+      messages: [{ role: "user", content: text }],
+      maxTokens: 500,
+      maxIterations: 3,
+    });
+    return result.content;
+  },
+);
 ```
 
-Push a notification to **all** connected SSE clients.
+## OpenTelemetry
 
-### getSSEClientCount
-
-```typescript
-server.getSSEClientCount(): number;
-```
+Set `OTEL_DENO=true` to enable OpenTelemetry tracing. Spans are emitted for tool calls and auth events.
 
 ## See Also
 
 - [Quick Start](/docs/getting-started/quickstart/) — Server setup with both transports
 - [Middleware Pipeline](/docs/guides/middleware/) — `use()` guide and pipeline order
 - [Authentication (OAuth2)](/docs/guides/auth/) — `auth` option and scope enforcement
+- [MCP Apps](/docs/guides/mcp-apps/) — `registerViewers()`, `registerAppOnlyTool()`, and UI resources
 - [Standalone Components](/docs/api/standalone-components/) — Use RateLimiter, RequestQueue independently

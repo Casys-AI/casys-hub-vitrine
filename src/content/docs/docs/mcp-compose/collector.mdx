@@ -1,0 +1,149 @@
+---
+title: "Collector"
+description: "createCollector(), collect(), extractUiMeta(), getResources(), clear() — the first stage of the pipeline."
+---
+
+## Overview
+
+The collector is the entry point of the pipeline. It scans MCP tool results for UI metadata, assigns stable slot indices, and accumulates a list of `CollectedUiResource` objects that the composer consumes.
+
+```typescript
+import { createCollector, extractUiMeta } from "@casys/mcp-compose/core";
+```
+
+## createCollector()
+
+Returns a stateful `UiCollector` object. Call `createCollector()` once per workflow; reuse the same instance across multiple `collect()` calls.
+
+```typescript
+const collector = createCollector();
+```
+
+### UiCollector interface
+
+```typescript
+interface UiCollector {
+  collect(toolName: string, result: unknown, context?: Record<string, unknown>): void;
+  getResources(): CollectedUiResource[];
+  clear(): void;
+}
+```
+
+## collect(toolName, result, context?)
+
+Inspects `result` for `_meta.ui.resourceUri`. If the field is present and non-empty:
+
+1. A `CollectedUiResource` is created and pushed to the internal list.
+2. The slot counter is incremented.
+
+If the field is absent or the result is an error object, `collect()` is a no-op — the slot counter does **not** increment. This keeps slot indices stable regardless of how many non-UI tool calls are interleaved.
+
+```typescript
+// result WITH UI metadata → assigned slot 0
+collector.collect("get_invoice", {
+  invoiceId: "INV-2024-001",
+  _meta: { ui: { resourceUri: "https://apps.example.com/invoice-viewer" } },
+}, { invoiceId: "INV-2024-001" });
+
+// result WITHOUT UI metadata → no slot created, counter stays at 1
+collector.collect("get_status", { status: "ok" });
+
+// result WITH UI metadata → assigned slot 1
+collector.collect("get_customer", {
+  customerId: "CUST-42",
+  _meta: { ui: { resourceUri: "https://apps.example.com/customer-card" } },
+});
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|---|---|---|
+| `toolName` | `string` | The MCP tool name, used as `source` on the collected resource |
+| `result` | `unknown` | The raw tool result; any shape is accepted |
+| `context` | `Record<string, unknown>?` | Optional key/value pairs forwarded into the resource and used for shared context extraction |
+
+## extractUiMeta(result)
+
+A standalone null-safe helper that reads `result._meta?.ui?.resourceUri`. Returns the URI string if present and non-empty, or `null` otherwise. No exceptions thrown.
+
+```typescript
+import { extractUiMeta } from "@casys/mcp-compose/core";
+
+extractUiMeta({ _meta: { ui: { resourceUri: "https://example.com/ui" } } });
+// → "https://example.com/ui"
+
+extractUiMeta({ status: "ok" });
+// → null
+
+extractUiMeta(null);
+// → null
+```
+
+The collector calls this internally. Export it directly when you need the URI without going through the full collector flow.
+
+## getResources()
+
+Returns the accumulated `CollectedUiResource[]`. Safe to call multiple times; returns the same list by reference.
+
+```typescript
+const resources = collector.getResources();
+```
+
+## clear()
+
+Resets the internal resource list and slot counter to zero. Useful when reusing a collector across multiple workflow invocations.
+
+```typescript
+collector.clear();
+collector.getResources(); // → []
+```
+
+## CollectedUiResource shape
+
+```typescript
+interface CollectedUiResource {
+  source: string;                        // toolName passed to collect()
+  resourceUri: string;                   // extracted from _meta.ui.resourceUri
+  context?: Record<string, unknown>;     // forwarded from the context argument
+  slot: number;                          // zero-based, only counts UI results
+}
+```
+
+Example for a two-tool workflow:
+
+```typescript
+[
+  {
+    source: "get_invoice",
+    resourceUri: "https://apps.example.com/invoice-viewer",
+    context: { invoiceId: "INV-2024-001" },
+    slot: 0,
+  },
+  {
+    source: "get_customer",
+    resourceUri: "https://apps.example.com/customer-card",
+    context: { customerId: "CUST-42" },
+    slot: 1,
+  },
+]
+```
+
+## How \_meta.ui.resourceUri extraction works
+
+The extraction chain is: `result?._meta?.ui?.resourceUri`. Every step is null-safe. The field must be a non-empty string; `undefined`, `null`, or `""` are all treated as absent.
+
+Tool authors expose the URI by spreading the `uiMeta()` SDK helper into their return value:
+
+```typescript
+import { uiMeta } from "@casys/mcp-compose/sdk";
+
+return {
+  invoiceId: "INV-2024-001",
+  total: 1500,
+  ...uiMeta({ resourceUri: "https://apps.example.com/invoice-viewer" }),
+};
+// Produces: { invoiceId, total, _meta: { ui: { resourceUri: "..." } } }
+```
+
+The collector picks up the `resourceUri` without any knowledge of the rest of the result shape.

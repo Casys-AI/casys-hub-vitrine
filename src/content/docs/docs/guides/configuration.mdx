@@ -13,7 +13,7 @@ When you ship your MCP server as a compiled binary, your users need to configure
 programmatic (code) > environment variables > YAML file > defaults (no auth)
 ```
 
-Higher priority wins. This means you can ship sane defaults in YAML and override specific values per environment with env vars.
+Higher priority wins. Ship sane defaults in YAML and override specific values per environment with env vars.
 
 ## YAML configuration
 
@@ -43,7 +43,7 @@ auth:
 
 ## Environment variables
 
-Every YAML field can be overridden with `MCP_AUTH_*` environment variables:
+Every YAML auth field can be overridden with `MCP_AUTH_*` environment variables:
 
 | Variable | YAML Field | Example |
 |----------|------------|---------|
@@ -77,7 +77,11 @@ const config = await loadAuthConfig();
 
 if (config) {
   const provider = createAuthProviderFromConfig(config);
-  // Pass to ConcurrentMCPServer options
+  const server = new ConcurrentMCPServer({
+    name: "my-server",
+    version: "1.0.0",
+    auth: { provider },
+  });
 }
 ```
 

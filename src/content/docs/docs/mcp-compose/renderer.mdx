@@ -1,0 +1,143 @@
+---
+title: "Renderer"
+description: "renderComposite() — HTML output structure, sandbox attributes, XSS protection, and theming."
+---
+
+## Overview
+
+The renderer is a pure function that serialises a `CompositeUiDescriptor` into a complete, self-contained HTML5 string. No DOM, no file system access, no side effects.
+
+```typescript
+import { renderComposite } from "@casys/mcp-compose/core";
+```
+
+## renderComposite(descriptor)
+
+```typescript
+function renderComposite(descriptor: CompositeUiDescriptor): string
+```
+
+Returns a full HTML5 document. The caller decides what to do with the string: write it to disk, serve it over HTTP, inject it into a `<webview>`, etc.
+
+```typescript
+import { buildCompositeUi, createCollector, renderComposite } from "@casys/mcp-compose/core";
+
+const collector = createCollector();
+collector.collect("get_invoice", {
+  _meta: { ui: { resourceUri: "https://apps.example.com/invoice-viewer" } },
+}, { invoiceId: "INV-2024-001" });
+
+const descriptor = buildCompositeUi(collector.getResources(), { layout: "split" });
+const html = renderComposite(descriptor);
+
+await Deno.writeTextFile("dashboard.html", html);
+```
+
+## Output structure
+
+The emitted document has this structure:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Composite UI</title>
+  <style>/* base CSS: theming custom properties */</style>
+  <style>/* layout CSS: mode-specific rules */</style>
+</head>
+<body>
+  <div class="compose-container compose-layout--split">
+    <iframe
+      src="https://apps.example.com/invoice-viewer"
+      data-slot="0"
+      data-source="get_invoice"
+      sandbox="allow-scripts allow-same-origin"
+      ...
+    ></iframe>
+    <!-- one <iframe> per CollectedUiResource, in slot order -->
+  </div>
+  <script>/* event bus */</script>
+</body>
+</html>
+```
+
+### Base CSS (theming)
+
+The base stylesheet defines CSS custom properties for light mode and overrides them for dark mode. All layout and component styles reference these properties so theming works by toggling a single attribute.
+
+```css
+:root {
+  --compose-bg: #ffffff;
+  --compose-surface: #f5f5f5;
+  --compose-border: #e0e0e0;
+  --compose-text: #1a1a1a;
+  --compose-tab-active: #1976d2;
+  /* ... */
+}
+
+[data-theme="dark"] {
+  --compose-bg: #121212;
+  --compose-surface: #1e1e1e;
+  --compose-border: #333333;
+  --compose-text: #e0e0e0;
+  --compose-tab-active: #90caf9;
+  /* ... */
+}
+```
+
+Apply dark mode by setting `data-theme="dark"` on the `<html>` element or any ancestor of `.compose-container`.
+
+### Layout CSS
+
+A second `<style>` block contains mode-specific rules. For example, `split` produces:
+
+```css
+.compose-layout--split {
+  display: flex;
+  gap: var(--compose-gap, 0);
+}
+.compose-layout--split iframe {
+  flex: 1;
+  min-width: 0;
+}
+```
+
+The `tabs` layout also injects an inline tab bar above the iframes; clicking a tab toggles `display: none` on the sibling iframes via an inline `<script>` block inside the layout CSS section.
+
+### Iframes
+
+Each `CollectedUiResource` becomes one `<iframe>`:
+
+```html
+<iframe
+  src="https://apps.example.com/invoice-viewer"
+  data-slot="0"
+  data-source="get_invoice"
+  sandbox="allow-scripts allow-same-origin"
+  style="width:100%;height:100%;border:none;"
+></iframe>
+```
+
+Attributes:
+
+| Attribute | Value | Purpose |
+|---|---|---|
+| `src` | `resourceUri` (escaped) | The micro-frontend URL |
+| `data-slot` | slot index as string | Identifies the frame in sync routing |
+| `data-source` | tool name (escaped) | Human-readable label in dev tools |
+| `sandbox` | `allow-scripts allow-same-origin` | Minimum permissions for `postMessage` |
+
+### Event bus
+
+The embedded `<script>` block at the end of `<body>` manages communication between iframes and the host page. See the [Sync Rules](/docs/mcp-compose/sync-rules) page for the full protocol.
+
+## XSS protection
+
+Two internal escaping functions are applied before any user-controlled value enters the HTML output:
+
+- `escapeHtml()` — applied to human-readable labels (tool names used in tab titles). Replaces `&`, `<`, `>`, `"`, `'` with their HTML entities.
+- `escapeAttr()` — applied to attribute values (`src`, `data-source`). Encodes the same characters plus backtick and forward slash.
+
+No `resourceUri` or tool name value is ever inserted as raw HTML.

@@ -1,13 +1,13 @@
 ---
 title: Introduction
-description: Production-grade MCP server framework for Deno. The "Hono for MCP".
+description: Production-grade MCP server framework for Deno. Composable middleware, OAuth2 auth, dual transport, and concurrency control.
 ---
 
 import { Card, CardGrid, LinkCard, Aside } from '@astrojs/starlight/components';
 
-The **"Hono for MCP"** — a production-grade framework for building MCP servers with composable middleware, OAuth2 auth, dual transport, and everything you need to go from prototype to production.
+`@casys/mcp-server` is a production-grade framework for building MCP servers with composable middleware, OAuth2 auth, dual transport (STDIO + HTTP/SSE), and concurrency control.
 
-Built on the official [@modelcontextprotocol/sdk](https://github.com/modelcontextprotocol/sdk). Published on [JSR](https://jsr.io/@casys/mcp-server).
+Built on the official [@modelcontextprotocol/sdk](https://github.com/modelcontextprotocol/sdk) (SDK 1.27). Published on [JSR](https://jsr.io/@casys/mcp-server). **Version 0.12.0 — 270 tests.**
 
 <img src="/diagrams/mcp-server/mcp-architecture.svg" alt="MCP Server Architecture" style="width: 100%; max-width: 600px; margin: 24px auto; display: block;" />
 
@@ -24,7 +24,7 @@ You need auth. Rate limiting. Input validation. Backpressure when 50 clients hit
 `@casys/mcp-server` gives you a batteries-included framework where all of this is handled out of the box — with a composable middleware pipeline inspired by [Hono](https://hono.dev) and [Koa](https://koajs.com).
 
 ```typescript
-// This is a production-ready MCP server. Really.
+// This is a production-ready MCP server.
 const server = new ConcurrentMCPServer({
   name: "my-api",
   version: "1.0.0",
@@ -68,13 +68,13 @@ await server.startHttp({ port: 3000 });
     Built-in RequestQueue with 3 backpressure strategies (sleep, queue, reject). No more overwhelmed servers.
   </Card>
   <Card title="Schema Validation" icon="approve-check-circle">
-    JSON Schema validation (ajv) compiled at registration time. Bad input is rejected before your handler ever runs.
+    JSON Schema validation (ajv 8 with allErrors + useDefaults) compiled at registration time. Bad input is rejected before your handler ever runs.
   </Card>
   <Card title="MCP Apps" icon="laptop">
-    Serve interactive HTML UIs alongside your tools using the `ui://` scheme (SEP-1865). Dashboards, forms, viewers — right in the client.
+    Serve interactive HTML UIs alongside your tools using the `text/html;profile=mcp-app` MIME type (SDK 1.27). Dashboards, forms, viewers — right in the client.
   </Card>
   <Card title="Sampling Bridge" icon="random">
-    Bidirectional LLM delegation (SEP-1577). Your server can call LLMs back through the client connection.
+    Bidirectional LLM delegation. Your server can call LLMs back through the client connection via `enableSampling: true`.
   </Card>
 </CardGrid>
 

@@ -1,53 +1,147 @@
 ---
 title: Architecture
-description: Deep dive into the 3-layer bridge architecture.
+description: The 3-layer bridge design — bridge.js, Resource Server, and Platform Adapters.
 ---
 
-import { Card, CardGrid } from '@astrojs/starlight/components';
+import { Card, CardGrid, Aside } from '@astrojs/starlight/components';
 
 ## Overview
 
-The bridge uses a 3-layer architecture that keeps your MCP App and MCP Server completely unmodified:
+```
+[MCP App (WebView)]
+  --postMessage--> [bridge.js IIFE]
+  --WebSocket-->   [Resource Server (Deno.serve)]
+  --JSON-RPC-->    [JsonRpcMcpBackend -> MCP Server]
+```
+
+The bridge sits between the messaging platform's WebView and your MCP Server. Neither your MCP App nor your MCP Server requires any changes.
+
+## Layer 1: bridge.js (IIFE)
+
+`bridge.js` is a self-executing script injected by the Resource Server into every HTML response via `injectBridgeScript()`.
+
+**What it does on load:**
+1. Monkey-patches `window.parent.postMessage` to intercept outgoing JSON-RPC messages
+2. Opens a WebSocket to `WS /bridge?session=<id>` (session ID is embedded during injection)
+3. Sends auth as the first WebSocket message (platform `initData` or token)
+4. Handles `ui/initialize` and `ui/open-link` locally — these never reach the server
+5. Forwards all other JSON-RPC messages to the Resource Server
+6. Dispatches incoming WebSocket messages back as `MessageEvent` on the app window
+
+**Reconnection:** exponential backoff, maximum 5 attempts. After 5 failures the bridge stops and logs an error.
+
+**Client-side exports used internally:**
+
+```typescript
+import {
+  BridgeClient,
+  BasePostMessageAdapter,
+  MessageRouter,
+  WebSocketTransport,
+} from "@casys/mcp-bridge";
+```
+
+## Layer 2: Resource Server
+
+The Resource Server is a `Deno.serve()` HTTP server started by `startResourceServer()`.
+
+### HTTP Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Returns `{ status: "ok" }`. Use for uptime checks. |
+| `/session` | POST | Creates a session. Validates platform auth (Telegram: HMAC-SHA256 `initData`). Returns session ID. HTTP 429 if session limit (10,000) reached. |
+| `/bridge.js` | GET | Serves the compiled bridge IIFE. Cached. |
+| `/bridge` | WS | WebSocket endpoint. Requires `?session=<id>`. Session must exist before connecting. Auth as first message. |
+| `/app/<server>/<path>` | GET | Serves static assets from `assetDirectories[server]`. Path traversal protected. |
+| `/ui` | GET | Resolves `?uri=ui://...`, serves HTML with `bridge.js` injected and CSP header applied. |
+
+### Session lifecycle
 
 ```
-[MCP App (iframe)] --postMessage--> [bridge.js] --WebSocket--> [Resource Server] --stdio/HTTP--> [MCP Server]
+POST /session  ->  session created, TTL 30 min
+WS /bridge     ->  session associated with WebSocket
+                   inactivity cleanup every 60s
+                   max 10,000 sessions (HTTP 429 beyond)
 ```
 
-## Layer 1: Bridge Client (browser-side)
+### Hooks
 
-The Bridge Client is an IIFE script (`bridge.js`) automatically injected into the HTML served by the Resource Server.
+```typescript
+startResourceServer({
+  // Called for every JSON-RPC message from a WebView
+  onMessage: async (session, message) => {
+    return backend.handleMessage(message); // or null to ignore
+  },
+  // Called for raw HTTP requests (before routing)
+  onHttpRequest: async (req) => {
+    return null; // return a Response to short-circuit
+  },
+});
+```
 
-**Key responsibilities:**
-- Monkey-patches `window.parent.postMessage` to intercept JSON-RPC messages
-- Establishes WebSocket connection to the Resource Server
-- Translates platform events (theme changes, viewport resize) into MCP notifications
-- Handles the `ui/initialize` handshake
+### CSP generation
 
-## Layer 2: Resource Server (HTTP + WebSocket)
+`buildCspHeader()` generates a `Content-Security-Policy` header with `default-src 'none'` as baseline. Configure via the `csp` option:
 
-The Resource Server is the central orchestrator:
+```typescript
+csp: {
+  scriptSources: ["https://cdn.example.com"],
+  connectSources: ["wss://your-domain.com"],
+  frameAncestors: ["https://web.telegram.org"],
+  allowInline: false,
+}
+```
 
-- **HTTP**: Serves `ui://` resources as regular web pages, injecting `bridge.js` into HTML responses
-- **WebSocket**: Maintains bidirectional communication with Bridge Clients
-- **Sessions**: Crypto-secure session management with platform-specific auth validation
-- **CSP**: Auto-generates Content-Security-Policy headers from resource metadata
-- **Forwarding**: Routes `tools/call` and `resources/read` requests to the MCP Server
+## Layer 3: Platform Adapters
 
-## Layer 3: MCP Server (unmodified)
+### TelegramPlatformAdapter (complete)
 
-Your existing MCP Server remains completely unchanged. The Resource Server connects to it as a standard MCP client, using either stdio or HTTP transport.
+Runs client-side inside the Telegram WebView. On `initialize()`:
+- Reads `window.Telegram.WebApp`
+- Maps `themeParams` entries to CSS custom properties (e.g. `--tg-theme-bg-color`)
+- Returns `HostContext` with `theme`, `backgroundColor`, `textColor`, `viewport`, `safeArea`
+- Registers Telegram lifecycle callbacks (activate/deactivate)
 
-## Message Flow
+### LineAdapter (partial)
 
-A typical tool call flows through:
+Extends `BasePostMessageAdapter`. Uses `liff.getAccessToken()` to retrieve the LINE OAuth token. No built-in server-side auth handler — implement your own `BridgeAuthHandler`.
 
-1. User interacts with UI in Telegram WebView
-2. MCP App calls `postMessage({ jsonrpc: "2.0", method: "tools/call", ... })`
-3. `bridge.js` intercepts, sends via WebSocket
-4. Resource Server validates session, forwards to MCP Server
-5. MCP Server executes tool, returns result
-6. Resource Server sends result via WebSocket
-7. `bridge.js` dispatches `MessageEvent` to the MCP App
-8. UI updates
+The `LiffSdk` interface expected by `createLineRuntime()`:
 
-**Total added latency**: ~1 WebSocket round-trip (negligible when co-located).
+```typescript
+interface LiffSdk {
+  init(config: { liffId: string }): Promise<void>;
+  isLoggedIn(): boolean;
+  getAccessToken(): string | null;
+  sendMessages(messages: object[]): Promise<void>;
+  closeWindow(): void;
+}
+```
+
+## Backend: JsonRpcMcpBackend
+
+`JsonRpcMcpBackend` is the built-in MCP client. It connects to your MCP Server and exposes a single method:
+
+```typescript
+const backend = new JsonRpcMcpBackend(config);
+const response = await backend.handleMessage(jsonRpcRequest);
+```
+
+Pass it to `startResourceServer({ backend })` or call it manually from `onMessage`.
+
+## Resource URI utilities
+
+```typescript
+import { parseResourceUri, resolveToHttp } from "@casys/mcp-bridge";
+
+const parsed = parseResourceUri("ui://my-app/dashboard/index.html");
+// { server: "my-app", path: "dashboard/index.html" }
+
+const url = resolveToHttp(parsed, "https://bridge.example.com");
+// "https://bridge.example.com/app/my-app/dashboard/index.html"
+```
+
+<Aside type="note">
+  `resolveToHttp` is used internally by bridge.js to convert `ui://` URIs in link-open requests into absolute HTTP URLs before calling `platform.openLink()`.
+</Aside>
