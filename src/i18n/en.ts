@@ -636,69 +636,71 @@ export const en = {
     ctaPrimary: "Get started",
     ctaGithub: "View on GitHub",
     navCards: [
-      { label: "Build", name: "@casys/mcp-server", desc: "Production server framework", href: "#server" },
-      { label: "Connect", name: "@casys/mcp-bridge", desc: "Messaging platform bridge", href: "#bridge" },
-      { label: "Compose", name: "@casys/mcp-compose", desc: "UI composition engine", href: "#compose" },
+      { label: "Build", name: "@casys/mcp-server", desc: "Production server framework", href: "#server", status: "v0.12" },
+      { label: "Connect", name: "@casys/mcp-bridge", desc: "Messaging platform bridge", href: "#bridge", status: "prototype" },
+      { label: "Compose", name: "@casys/mcp-compose", desc: "UI composition engine", href: "#compose", status: "alpha" },
     ],
     serverStep: "01",
     serverLabel: "BUILD",
     serverTitle: "@casys/mcp-server",
-    serverSubtitle: "The Hono for MCP — composable middleware, OAuth2, dual transport",
-    serverBody: "Drop-in middleware for auth, rate limiting and validation. Every request flows through a composable pipeline you control — no surprises at 3 AM.",
+    serverStatus: "v0.12.0",
+    serverSubtitle: "Composable middleware, OAuth2/OIDC, dual transport, Prometheus metrics",
+    serverBody: "Onion-model middleware pipeline with 4 auth presets (Google, GitHub, Auth0, generic OIDC), sliding-window rate limiting, ajv schema validation, and MCP SDK 1.27 support (structuredContent, outputSchema, annotations). 270 tests.",
     serverFeatures: [
-      { icon: "lock", name: "Bearer auth", desc: "Token-based authentication middleware out of the box." },
-      { icon: "speed", name: "Rate limiting", desc: "Per-client request throttling with configurable windows." },
-      { icon: "verified", name: "Zod validation", desc: "Input/output schemas validated at runtime with Zod." },
-      { icon: "bug_report", name: "Error handling", desc: "Structured error propagation with JSON-RPC codes." },
-      { icon: "bolt", name: "Streaming SSE", desc: "Full Server-Sent Events transport alongside stdio." },
-      { icon: "layers", name: "Middleware stack", desc: "Composable, ordered middleware chain on every request." },
-      { icon: "extension", name: "MCP primitives", desc: "Resources, prompts, tools — all MCP primitives covered." },
-      { icon: "description", name: "Typed schemas", desc: "TypeScript-first with strict inference throughout." },
-      { icon: "sync", name: "Lifecycle hooks", desc: "onStart / onStop hooks for graceful resource management." },
-      { icon: "monitor_heart", name: "Health endpoint", desc: "Built-in /health route for load-balancer probes." },
-      { icon: "monitoring", name: "Prometheus metrics", desc: "/metrics endpoint, request duration, error rates." },
-      { icon: "terminal", name: "CLI scaffold", desc: "deno run scaffold to bootstrap a new server instantly." },
+      { icon: "layers", name: "Middleware pipeline", desc: "Onion model: auth → rate limit → your code → validation → handler." },
+      { icon: "shield", name: "OAuth2 / OIDC", desc: "4 presets (Google, GitHub, Auth0, OIDC). JWKS JWT validation with in-memory cache." },
+      { icon: "speed", name: "Rate limiting", desc: "Sliding window per-key. Tool-call level + HTTP-level (per IP)." },
+      { icon: "swap_horiz", name: "Dual transport", desc: "Streamable HTTP + SSE for production, stdio for local MCP clients." },
+      { icon: "monitoring", name: "Prometheus", desc: "/metrics endpoint. Counters, histograms (duration), gauges (sessions, queue)." },
+      { icon: "widgets", name: "MCP Apps SDK 1.27", desc: "structuredContent, outputSchema, annotations, tool visibility, registerViewers." },
+      { icon: "verified", name: "Schema validation", desc: "ajv 8 input validation with allErrors and useDefaults." },
+      { icon: "psychology", name: "Sampling bridge", desc: "Bidirectional LLM delegation — server tools can call back to the client LLM." },
+      { icon: "monitor_heart", name: "Health + sessions", desc: "/health endpoint. 30-min TTL sessions, max 10k, per-IP rate limit on init." },
+      { icon: "key", name: "Client OAuth", desc: "prepareOAuthProvider for MCP clients connecting to protected servers." },
+      { icon: "bug_report", name: "toolErrorMapper", desc: "Map thrown errors to business errors vs JSON-RPC errors." },
+      { icon: "troubleshoot", name: "Inspector", desc: "launchInspector() spawns MCP Inspector for interactive debugging." },
     ],
     serverPipelineTitle: "Middleware pipeline",
     bridgeStep: "02",
     bridgeLabel: "CONNECT",
     bridgeTitle: "@casys/mcp-bridge",
-    bridgeSubtitle: "Turn MCP tools into Telegram Mini Apps and LINE LIFF",
-    bridgeBody: "A protocol transformation layer that connects your MCP server to messaging platforms. OAuth client, HMAC-SHA256 auth, WebSocket transport — all handled.",
+    bridgeStatus: "prototype",
+    bridgeSubtitle: "MCP Apps in Telegram Mini Apps — LINE LIFF partial",
+    bridgeBody: "Three-layer architecture: bridge.js (injected IIFE) + Resource Server (Deno.serve) + Platform Adapters. Telegram fully working with HMAC-SHA256 initData validation. LINE adapter exists but needs custom auth handler. 120 tests.",
     bridgeSource: "MCP Server",
     bridgeCenter: "mcp-bridge",
     bridgePipelineLabel: "Protocol Transformation Layer",
     bridgeFeatures: [
-      { icon: "key", name: "OAuth client" },
-      { icon: "fingerprint", name: "HMAC-SHA256 auth" },
-      { icon: "cable", name: "WebSocket transport" },
-      { icon: "security", name: "CSP headers" },
-      { icon: "extension", name: "Platform adapters" },
-      { icon: "autorenew", name: "Auto-reconnect" },
+      { icon: "fingerprint", name: "Telegram HMAC auth" },
+      { icon: "cable", name: "WebSocket + auto-reconnect" },
+      { icon: "security", name: "CSP + path traversal guard" },
+      { icon: "html", name: "bridge.js auto-injection" },
+      { icon: "sync", name: "Tool result push pattern" },
+      { icon: "chat_bubble", name: "LINE partial support" },
     ],
     composeStep: "03",
     composeLabel: "COMPOSE",
     composeTitle: "@casys/mcp-compose",
-    composeSubtitle: "Collect, compose, and synchronize multiple MCP Apps UIs",
+    composeStatus: "alpha",
+    composeSubtitle: "Pure functions, zero dependencies, deterministic outputs",
     composeSteps: [
-      { step: "1", title: "Collect", desc: "Agent calls N tools → Collector extracts _meta.ui resource URIs from each result" },
-      { step: "2", title: "Compose", desc: "Define layout (split/tabs/grid) + sync rules → Composer validates and builds descriptor" },
-      { step: "3", title: "Render", desc: "Renderer outputs self-contained HTML with JSON-RPC event bus for cross-UI sync" },
+      { step: "1", title: "Collect", desc: "createCollector() extracts _meta.ui.resourceUri from each MCP tool result. Null-safe chain." },
+      { step: "2", title: "Compose", desc: "buildCompositeUi() resolves sync rules (tool names → slots), extracts shared context, generates workflow UUID." },
+      { step: "3", title: "Render", desc: "renderComposite() outputs HTML with CSS theming, sandboxed iframes, and JSON-RPC event bus." },
     ],
     composeCodeTitle: "compose.ts",
-    composeCode: `import { createCollector, buildCompositeUi, renderComposite } from "@casys/mcp-compose/core";
+    composeCode: `import { createCollector, buildCompositeUi, renderComposite } from "@casys/mcp-compose";
 
 // 1. Collect UI resources from tool results
 const collector = createCollector();
-collector.add(invoiceResult);  // has _meta.ui
-collector.add(statusResult);   // has _meta.ui
+collector.collect("postgres:query", pgResult);   // has _meta.ui
+collector.collect("viz:render", vizResult);       // has _meta.ui
 
 // 2. Compose with layout + sync rules
-const descriptor = buildCompositeUi({
-  resources: collector.resources(),
+const descriptor = buildCompositeUi(collector.getResources(), {
   layout: "split",
   sync: [
-    { from: "invoice-viewer", event: "status-change", to: "status-timeline", action: "refresh" },
+    { from: "postgres:query", event: "filter", to: "viz:render", action: "update" },
   ],
 });
 

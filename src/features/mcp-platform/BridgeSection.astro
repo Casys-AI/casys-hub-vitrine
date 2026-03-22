@@ -12,7 +12,10 @@ const t = useTranslations(locale).mcpPlatform;
     </div>
 
     <div class="section-head">
-      <h2>{t.bridgeTitle}</h2>
+      <div class="title-row">
+        <h2>{t.bridgeTitle}</h2>
+        <span class="status-badge status-proto">{t.bridgeStatus}</span>
+      </div>
       <p class="section-subtitle"><em>{t.bridgeSubtitle}</em></p>
       <p class="section-body">{t.bridgeBody}</p>
       <a href="/docs/mcp-bridge/introduction" class="docs-link">
@@ -105,6 +108,26 @@ const t = useTranslations(locale).mcpPlatform;
   .section-head {
     max-width: 640px;
     margin-bottom: 48px;
+  }
+
+  .title-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .status-badge {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 6px;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+
+  .status-proto {
+    background: rgba(255, 152, 0, 0.1);
+    color: #e68a00;
   }
 
   h2 {
@@ -282,6 +305,7 @@ const t = useTranslations(locale).mcpPlatform;
   html[data-theme="dark"] #bridge h2 { color: var(--casys-warm-text-primary); }
   html[data-theme="dark"] #bridge .section-subtitle { color: var(--casys-warm-accent); }
   html[data-theme="dark"] #bridge .section-body { color: var(--casys-warm-text-secondary); }
+  html[data-theme="dark"] #bridge .status-proto { background: rgba(255,184,111,0.1); color: var(--casys-warm-accent); }
   html[data-theme="dark"] #bridge .docs-link { color: var(--casys-warm-accent); }
 
   html[data-theme="dark"] #bridge .arch-diagram { background: var(--casys-warm-surface); }

@@ -12,8 +12,16 @@ const t = useTranslations(locale).mcpPlatform;
     </div>
 
     <div class="section-head">
-      <h2>{t.composeTitle}</h2>
+      <div class="title-row">
+        <h2>{t.composeTitle}</h2>
+        <span class="status-badge status-alpha">{t.composeStatus}</span>
+      </div>
       <p class="section-subtitle"><em>{t.composeSubtitle}</em></p>
+      <a href="/docs/mcp-compose/introduction" class="docs-link">
+        <span class="material-symbols-rounded">description</span>
+        <span>Read the docs</span>
+        <span class="material-symbols-rounded docs-arrow">arrow_forward</span>
+      </a>
     </div>
 
     <div class="steps-grid">
@@ -87,6 +95,42 @@ const t = useTranslations(locale).mcpPlatform;
     max-width: 640px;
     margin-bottom: 40px;
   }
+
+  .title-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .status-badge {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 6px;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+
+  .status-alpha {
+    background: rgba(156, 39, 176, 0.1);
+    color: #9c27b0;
+  }
+
+  .docs-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--md-sys-color-primary);
+    text-decoration: none;
+    transition: gap 0.2s ease;
+  }
+
+  .docs-link:hover { gap: 12px; }
+  .docs-link .material-symbols-rounded { font-size: 18px; }
+  .docs-arrow { font-size: 16px; opacity: 0.6; }
 
   h2 {
     font-family: 'Fraunces', Georgia, serif;
@@ -207,6 +251,8 @@ const t = useTranslations(locale).mcpPlatform;
   html[data-theme="dark"] #compose .step-label { color: var(--casys-warm-accent); }
   html[data-theme="dark"] #compose h2 { color: var(--casys-warm-text-primary); }
   html[data-theme="dark"] #compose .section-subtitle { color: var(--casys-warm-accent); }
+  html[data-theme="dark"] #compose .status-alpha { background: rgba(255,184,111,0.1); color: var(--casys-warm-accent); }
+  html[data-theme="dark"] #compose .docs-link { color: var(--casys-warm-accent); }
 
   html[data-theme="dark"] #compose .step-card {
     background: var(--casys-warm-surface);
