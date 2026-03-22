@@ -133,6 +133,11 @@ const faqJsonLd = {
     color: var(--md-sys-color-primary);
   }
 
+  .category-btn:focus-visible {
+    outline: 2px solid var(--md-sys-color-primary);
+    outline-offset: 3px;
+  }
+
   .category-btn.active {
     background: var(--md-sys-color-primary);
     color: var(--md-sys-color-on-primary);
@@ -173,6 +178,12 @@ const faqJsonLd = {
 
   .faq-question::-webkit-details-marker {
     display: none;
+  }
+
+  .faq-question:focus-visible {
+    outline: 2px solid var(--md-sys-color-primary);
+    outline-offset: 3px;
+    border-radius: 4px;
   }
 
   .question-content {
@@ -300,6 +311,11 @@ const faqJsonLd = {
   html[data-theme="dark"] #faq .category-btn:hover {
     background: rgba(255, 184, 111, 0.08);
     color: var(--casys-warm-accent);
+  }
+
+  html[data-theme="dark"] #faq .category-btn:focus-visible,
+  html[data-theme="dark"] #faq .faq-question:focus-visible {
+    outline-color: var(--casys-warm-accent);
   }
 
   html[data-theme="dark"] #faq .category-btn.active {

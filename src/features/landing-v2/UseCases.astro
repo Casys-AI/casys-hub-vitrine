@@ -333,6 +333,12 @@ const readLabel =
     transform: translateX(4px);
   }
 
+  .featured-link:focus-visible {
+    outline: 2px solid var(--md-sys-color-primary);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
   /* ---- SECONDARY GRID ---- */
   .uc-grid {
     padding: var(--section-gap) 0;
@@ -365,6 +371,11 @@ const readLabel =
     box-shadow:
       0 2px 8px rgba(0, 0, 0, 0.04),
       0 12px 32px rgba(0, 0, 0, 0.07);
+  }
+
+  .sec-card:focus-visible {
+    outline: 2px solid var(--md-sys-color-primary);
+    outline-offset: 3px;
   }
 
   .sec-title {
@@ -482,6 +493,11 @@ const readLabel =
     transform: translateY(-2px);
   }
 
+  .cta-btn:focus-visible {
+    outline: 2px solid var(--md-sys-color-primary);
+    outline-offset: 3px;
+  }
+
   .cta-btn.primary {
     background: var(--md-sys-color-primary);
     color: var(--md-sys-color-on-primary);
@@ -581,6 +597,12 @@ const readLabel =
 
   :global(html[data-theme="dark"]) .read-link {
     color: var(--casys-warm-accent);
+  }
+
+  :global(html[data-theme="dark"]) .featured-link:focus-visible,
+  :global(html[data-theme="dark"]) .sec-card:focus-visible,
+  :global(html[data-theme="dark"]) .cta-btn:focus-visible {
+    outline-color: var(--casys-warm-accent);
   }
 
   /* Grid */

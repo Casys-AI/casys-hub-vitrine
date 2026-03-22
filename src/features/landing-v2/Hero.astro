@@ -168,6 +168,11 @@ const calLink = getCasysCalLink(locale);
 
   .cta-primary:active { transform: scale(0.97); }
 
+  .cta-primary:focus-visible {
+    outline: 2px solid var(--md-sys-color-primary);
+    outline-offset: 3px;
+  }
+
   .cta-primary .material-symbols-rounded { font-size: 20px; }
 
   .cta-secondary {
@@ -194,6 +199,11 @@ const calLink = getCasysCalLink(locale);
     background: var(--md-sys-color-surface-container-lowest);
   }
 
+  .cta-secondary:focus-visible {
+    outline: 2px solid var(--md-sys-color-primary);
+    outline-offset: 3px;
+  }
+
   .cta-secondary .material-symbols-rounded { font-size: 18px; }
 
   /* ===== PROOF PILLS (Stitch-inspired) ===== */
@@ -209,8 +219,7 @@ const calLink = getCasysCalLink(locale);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.2em;
-    color: var(--md-sys-color-on-surface-variant);
-    opacity: 0.6;
+    color: var(--md-sys-color-outline);
   }
 
   .proof-row {
@@ -371,6 +380,11 @@ const calLink = getCasysCalLink(locale);
   html[data-theme="dark"] #hero .cta-primary:hover {
     background: var(--casys-warm-accent-hover);
     box-shadow: 0 4px 20px rgba(255, 184, 111, 0.25);
+  }
+
+  html[data-theme="dark"] #hero .cta-primary:focus-visible,
+  html[data-theme="dark"] #hero .cta-secondary:focus-visible {
+    outline-color: var(--casys-warm-accent);
   }
 
   html[data-theme="dark"] #hero .cta-secondary {

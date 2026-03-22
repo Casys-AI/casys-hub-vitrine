@@ -12,16 +12,17 @@ import { getOgLocale } from '../lib/locale-utils';
 export interface Props {
   title: string;
   description?: string;
+  ogImage?: string;
 }
 
-const { title, description } = Astro.props;
+const { title, description, ogImage } = Astro.props;
 const locale = (Astro as any).currentLocale ?? 'en';
 const pathname = Astro.url.pathname;
 const siteUrl = (import.meta.env.PUBLIC_SITE_URL as string | undefined)?.trim();
 const rootSiteUrl = (siteUrl || DEFAULT_SITE_URL).replace(/\/+$/, '');
 const publicUrl = resolvePublicUrl(pathname, siteUrl);
 const canonicalUrl = publicUrl.canonicalUrl;
-const ogImageUrl = new URL('/og/home.png', publicUrl.origin).toString();
+const ogImageUrl = new URL(ogImage ?? '/og/home.png', publicUrl.origin).toString();
 const ogLocale = getOgLocale(locale);
 
 // Meta tags based on business positioning
