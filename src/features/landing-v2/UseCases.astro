@@ -2,9 +2,7 @@
 /**
  * Our Work — Portfolio / case studies index page
  *
- * Premium consulting portfolio layout inspired by McKinsey Digital
- * and Thoughtworks case study pages. Editorial feel with strong
- * visual hierarchy, generous whitespace, and polished interactions.
+ * Stitch-inspired editorial layout: full-width featured case + 2×2 secondary grid.
  */
 import { useTranslations } from '../../i18n';
 import { useCases } from '../../content/use-cases';
@@ -13,12 +11,27 @@ const locale = (Astro as any).currentLocale ?? 'en';
 const t = useTranslations(locale).useCases;
 const localePath = locale === 'en' ? '' : `/${locale}`;
 const ogSuffix = locale === 'en' ? '' : `-${locale}`;
+
+const featured = useCases.find(uc => uc.id === 'mcp-einvoice')!;
+const secondaryCases = useCases.filter(uc => uc.id !== 'mcp-einvoice');
+
+const statsData = [
+  { value: '27', label: locale === 'fr' ? 'Outils' : 'Tools' },
+  { value: '3',  label: 'Formats' },
+  { value: 'PA', label: locale === 'fr' ? 'Agnostique' : 'Agnostic' },
+];
+
+const readLabel =
+  locale === 'fr' ? 'Lire le cas' :
+  locale === 'zh' ? '阅读案例' :
+  locale === 'zh-TW' ? '閱讀案例' :
+  'Read case study';
 ---
 
 <section id="use-cases">
-  <!-- Hero -->
+
+  <!-- 1. Hero -->
   <div class="uc-hero">
-    <div class="hero-accent-line" aria-hidden="true"></div>
     <div class="container">
       <div class="hero-inner">
         <div class="hero-label">
@@ -29,61 +42,77 @@ const ogSuffix = locale === 'en' ? '' : `-${locale}`;
         <p class="hero-subtitle">{t.heroSubtitle}</p>
       </div>
     </div>
-    <div class="hero-fade" aria-hidden="true"></div>
   </div>
 
-  <!-- Case Study Cards -->
-  <div class="uc-listing">
+  <!-- 2. Featured Case — MCP E-Invoice -->
+  <div class="uc-featured">
     <div class="container">
-      <div class="cases-grid">
-        {useCases.map((uc) => (
-          <a href={`${localePath}/use-cases/${uc.id}`} class="case-card">
-            <img
-              src={`/og/use-case/${uc.id}${ogSuffix}.png`}
-              alt={uc.title[locale] || uc.title.en}
-              loading="lazy"
-              class="case-image og-thumbnail"
-            />
-            <h3 class="sr-only">{uc.title[locale] || uc.title.en}</h3>
-            <span class="case-overlay">
-              <span class="read-link">
-                {locale === 'fr' ? 'Lire le cas' : locale === 'zh' ? '阅读案例' : locale === 'zh-TW' ? '閱讀案例' : 'Read case study'}
-                <span class="material-symbols-rounded arrow-icon">arrow_forward</span>
-              </span>
-            </span>
-          </a>
-        ))}
+      <div class="featured-card">
+        <!-- Left: screenshot -->
+        <div class="featured-visual">
+          <img
+            src="/images/use-cases/mcp-einvoice-demo-light.png"
+            alt={featured.title[locale] || featured.title.en}
+            loading="lazy"
+            class="featured-img featured-img-light"
+          />
+          <img
+            src="/images/use-cases/mcp-einvoice-demo-dark.png"
+            alt={featured.title[locale] || featured.title.en}
+            loading="lazy"
+            class="featured-img featured-img-dark"
+          />
+        </div>
 
-        {/* Placeholder for upcoming case studies */}
-        <div class="case-card placeholder-card">
-          <div class="card-body">
-            <div class="card-number" aria-hidden="true">
-              {String(useCases.length + 1).padStart(2, '0')}
-            </div>
-            <div class="card-content">
-            <div class="card-header">
-              <span class="case-tag placeholder-tag">
-                <span class="material-symbols-rounded tag-icon">schedule</span>
-                {locale === 'fr' ? 'Bientot' : locale === 'zh' ? '即将推出' : locale === 'zh-TW' ? '即將推出' : 'Coming Soon'}
-              </span>
-            </div>
-            <h3>
-              {locale === 'fr' ? "D'autres cas a venir" : locale === 'zh' ? '更多案例即将推出' : locale === 'zh-TW' ? '更多案例即將推出' : 'More cases coming'}
-            </h3>
-            <p class="card-excerpt">
-              {locale === 'fr' ? 'Nous documentons activement nos missions et nos projets internes. Revenez bientot.' : locale === 'zh' ? '我们正在积极记录项目。请稍后回来查看。' : locale === 'zh-TW' ? '我們正在積極記錄專案。請稍後回來查看。' : 'We\'re actively documenting our engagements and internal projects. Check back soon.'}
-            </p>
-            <div class="placeholder-pattern" aria-hidden="true">
-              <span class="material-symbols-rounded pattern-icon">auto_awesome</span>
-            </div>
-            </div>
+        <!-- Right: content -->
+        <div class="featured-content">
+          <span class="rail-tag">{featured.tag}</span>
+          <h2 class="featured-title">{featured.title[locale] || featured.title.en}</h2>
+          <p class="featured-punchline">{featured.punchline[locale] || featured.punchline.en}</p>
+
+          <div class="featured-stats">
+            {statsData.map(stat => (
+              <div class="stat-item">
+                <span class="stat-value">{stat.value}</span>
+                <span class="stat-label">{stat.label}</span>
+              </div>
+            ))}
           </div>
+
+          <a href={`${localePath}/use-cases/mcp-einvoice`} class="read-link featured-link">
+            {readLabel}
+            <span class="arrow" aria-hidden="true">→</span>
+          </a>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- CTA -->
+  <!-- 3. Secondary Grid — 2×2 -->
+  <div class="uc-grid">
+    <div class="container">
+      <div class="secondary-grid">
+        {secondaryCases.map(uc => (
+          <a href={`${localePath}/use-cases/${uc.id}`} class="sec-card">
+            <span class="rail-tag">{uc.tag}</span>
+            <h3 class="sec-title">{uc.title[locale] || uc.title.en}</h3>
+            <p class="sec-punchline">{uc.punchline[locale] || uc.punchline.en}</p>
+            <div class="stack-chips">
+              {uc.stack.slice(0, 2).map(chip => (
+                <span class="chip">{chip}</span>
+              ))}
+            </div>
+            <span class="read-link">
+              {readLabel}
+              <span class="arrow" aria-hidden="true">→</span>
+            </span>
+          </a>
+        ))}
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. CTA -->
   <div class="uc-cta">
     <div class="container">
       <div class="cta-card">
@@ -105,62 +134,30 @@ const ogSuffix = locale === 'en' ? '' : `-${locale}`;
       </div>
     </div>
   </div>
+
 </section>
 
 <style>
   /* ================================================================
-   * USE CASES INDEX — Premium consulting portfolio
+   * USE CASES INDEX — Stitch-inspired editorial layout
    * ================================================================ */
 
   section {
-    --section-gap: 96px;
+    --section-gap: 80px;
     --card-radius: 20px;
-    --accent: var(--md-sys-color-primary);
-    --transition-smooth: 360ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    --transition: 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
   }
 
   .container {
-    max-width: 1040px;
+    max-width: 1100px;
     margin: 0 auto;
     padding: 0 28px;
   }
 
   /* ---- HERO ---- */
   .uc-hero {
-    position: relative;
-    padding: 100px 0 72px;
+    padding: 100px 0 64px;
     background: var(--md-sys-color-surface);
-    overflow: hidden;
-  }
-
-  .hero-accent-line {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(
-      90deg,
-      transparent 0%,
-      var(--md-sys-color-primary) 30%,
-      var(--md-sys-color-primary) 70%,
-      transparent 100%
-    );
-    opacity: 0.5;
-  }
-
-  .hero-fade {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 80px;
-    background: linear-gradient(
-      to bottom,
-      transparent,
-      var(--md-sys-color-surface-container-low)
-    );
-    pointer-events: none;
   }
 
   .hero-inner {
@@ -208,136 +205,202 @@ const ogSuffix = locale === 'en' ? '' : `-${locale}`;
     max-width: 560px;
   }
 
-  /* ---- LISTING ---- */
-  .uc-listing {
+  /* ---- FEATURED ---- */
+  .uc-featured {
     padding: var(--section-gap) 0;
     background: var(--md-sys-color-surface-container-low);
   }
 
-  .cases-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 28px;
-  }
-
-  /* ---- CARD ---- */
-  .case-card {
-    position: relative;
-    display: block;
-    background: var(--md-sys-color-surface-container-lowest);
-    border: 1px solid var(--md-sys-color-outline-variant);
-    border-radius: var(--card-radius);
-    overflow: hidden;
-    text-decoration: none;
-    color: inherit;
-    transition:
-      border-color var(--transition-smooth),
-      box-shadow var(--transition-smooth),
-      transform 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  }
-
-  .case-image {
-    width: 100%;
-    display: block;
-    aspect-ratio: 1200 / 630;
-    object-fit: cover;
-  }
-
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-  }
-
-  .case-overlay {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 16px 22px;
-    background: linear-gradient(to top, rgba(250, 249, 246, 0.95) 0%, transparent 100%);
+  .featured-card {
     display: flex;
-    justify-content: flex-end;
-  }
-
-  .case-card:hover:not(.placeholder-card) {
-    border-color: var(--md-sys-color-primary);
-    transform: translateY(-4px);
+    flex-direction: row;
+    border-radius: var(--card-radius);
+    background: var(--md-sys-color-surface);
+    overflow: hidden;
     box-shadow:
-      0 4px 12px rgba(0, 0, 0, 0.03),
-      0 20px 48px rgba(0, 0, 0, 0.08);
+      0 1px 3px rgba(0, 0, 0, 0.04),
+      0 8px 32px rgba(0, 0, 0, 0.06);
   }
 
-  .case-card:hover:not(.placeholder-card) .arrow-icon {
-    transform: translateX(4px);
+  /* Visual — 60% */
+  .featured-visual {
+    flex: 0 0 60%;
+    position: relative;
+    background: var(--md-sys-color-surface-container-lowest);
+    overflow: hidden;
+    min-height: 320px;
   }
 
+  .featured-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .featured-img-dark {
+    display: none;
+  }
+
+  /* Content — 40% */
+  .featured-content {
+    flex: 0 0 40%;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 48px 40px;
+    justify-content: center;
+  }
+
+  /* ---- RAIL TAG ---- */
+  .rail-tag {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--md-sys-color-primary);
+    background: var(--md-sys-color-primary-container);
+    padding: 4px 10px;
+    border-radius: 100px;
+    margin-bottom: 16px;
+    width: fit-content;
+  }
+
+  .featured-title {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: clamp(1.4rem, 2.5vw, 2rem);
+    font-weight: 600;
+    color: var(--md-sys-color-on-surface);
+    margin: 0 0 14px;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+  }
+
+  .featured-punchline {
+    font-size: 1rem;
+    color: var(--md-sys-color-on-surface-variant);
+    margin: 0 0 28px;
+    line-height: 1.65;
+  }
+
+  /* Mini stats */
+  .featured-stats {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 32px;
+  }
+
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .stat-value {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--md-sys-color-primary);
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  /* ---- READ LINK ---- */
   .read-link {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-size: 0.85rem;
+    font-size: 0.875rem;
     font-weight: 600;
     color: var(--md-sys-color-primary);
+    text-decoration: none;
   }
 
-  .arrow-icon {
-    font-size: 18px;
-    transition: transform 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  .read-link .arrow {
+    transition: transform var(--transition);
   }
 
-  /* ---- PLACEHOLDER CARD ---- */
-  .placeholder-card {
-    cursor: default;
-    border-style: dashed;
-    border-color: var(--md-sys-color-outline-variant);
+  .featured-link:hover .arrow,
+  .sec-card:hover .read-link .arrow {
+    transform: translateX(4px);
   }
 
-  .placeholder-card .card-content {
-    position: relative;
+  /* ---- SECONDARY GRID ---- */
+  .uc-grid {
+    padding: var(--section-gap) 0;
+    background: var(--md-sys-color-surface-container-low);
   }
 
-  .placeholder-card h3 {
-    color: var(--md-sys-color-outline);
+  .secondary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
   }
 
-  .placeholder-card .card-excerpt {
-    color: var(--md-sys-color-outline);
-    max-width: 420px;
-  }
-
-  .placeholder-card .card-number {
-    color: var(--md-sys-color-outline);
-    opacity: 0.4;
-  }
-
-  .placeholder-tag {
-    background: var(--md-sys-color-surface-container);
-    color: var(--md-sys-color-outline);
-  }
-
-  .placeholder-pattern {
-    position: absolute;
-    right: 0;
-    bottom: 0;
-    width: 120px;
-    height: 120px;
+  .sec-card {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0.06;
-    pointer-events: none;
+    flex-direction: column;
+    padding: 36px 32px;
+    border-radius: var(--card-radius);
+    background: var(--md-sys-color-surface-container-low);
+    text-decoration: none;
+    color: inherit;
+    transition:
+      background var(--transition),
+      box-shadow var(--transition),
+      transform var(--transition);
   }
 
-  .pattern-icon {
-    font-size: 80px;
+  .sec-card:hover {
+    background: var(--md-sys-color-surface-container);
+    transform: translateY(-3px);
+    box-shadow:
+      0 2px 8px rgba(0, 0, 0, 0.04),
+      0 12px 32px rgba(0, 0, 0, 0.07);
+  }
+
+  .sec-title {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.2rem;
+    font-weight: 600;
     color: var(--md-sys-color-on-surface);
+    margin: 0 0 10px;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+  }
+
+  .sec-punchline {
+    font-size: 0.9rem;
+    color: var(--md-sys-color-on-surface-variant);
+    margin: 0 0 20px;
+    line-height: 1.65;
+    flex: 1;
+  }
+
+  /* Stack chips */
+  .stack-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 20px;
+  }
+
+  .chip {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--md-sys-color-on-surface-variant);
+    background: var(--md-sys-color-surface-container-high);
+    padding: 3px 9px;
+    border-radius: 100px;
+    letter-spacing: 0.02em;
   }
 
   /* ---- CTA ---- */
@@ -350,8 +413,10 @@ const ogSuffix = locale === 'en' ? '' : `-${locale}`;
     position: relative;
     overflow: hidden;
     border-radius: var(--card-radius);
-    border: 1px solid var(--md-sys-color-outline-variant);
     background: var(--md-sys-color-surface-container);
+    box-shadow:
+      0 1px 3px rgba(0, 0, 0, 0.04),
+      0 4px 16px rgba(0, 0, 0, 0.05);
   }
 
   .cta-accent {
@@ -407,10 +472,10 @@ const ogSuffix = locale === 'en' ? '' : `-${locale}`;
     font-weight: 600;
     text-decoration: none;
     transition:
-      background 200ms,
-      border-color 200ms,
-      transform 200ms,
-      box-shadow 200ms;
+      background var(--transition),
+      border-color var(--transition),
+      transform var(--transition),
+      box-shadow var(--transition);
   }
 
   .cta-btn:hover {
@@ -453,25 +518,6 @@ const ogSuffix = locale === 'en' ? '' : `-${locale}`;
     background: var(--casys-warm-background);
   }
 
-  :global(html[data-theme="dark"]) .hero-accent-line {
-    background: linear-gradient(
-      90deg,
-      transparent 0%,
-      var(--casys-warm-accent) 30%,
-      var(--casys-warm-accent) 70%,
-      transparent 100%
-    );
-    opacity: 0.4;
-  }
-
-  :global(html[data-theme="dark"]) .hero-fade {
-    background: linear-gradient(
-      to bottom,
-      transparent,
-      var(--casys-warm-surface)
-    );
-  }
-
   :global(html[data-theme="dark"]) .label-dot {
     background: var(--casys-warm-accent);
   }
@@ -488,68 +534,95 @@ const ogSuffix = locale === 'en' ? '' : `-${locale}`;
     color: var(--casys-warm-text-secondary);
   }
 
-  /* Listing */
-  :global(html[data-theme="dark"]) .uc-listing {
+  /* Featured */
+  :global(html[data-theme="dark"]) .uc-featured {
     background: var(--casys-warm-surface);
   }
 
-  /* Cards */
-  :global(html[data-theme="dark"]) .case-card {
+  :global(html[data-theme="dark"]) .featured-card {
     background: var(--casys-warm-background);
-    border-color: var(--casys-warm-border-accent);
-  }
-
-  :global(html[data-theme="dark"]) .og-thumbnail {
-    filter: invert(1) hue-rotate(180deg);
-    opacity: 0.9;
-  }
-
-  :global(html[data-theme="dark"]) .case-overlay {
-    background: linear-gradient(to top, rgba(10, 9, 8, 0.95) 0%, transparent 100%);
-  }
-
-  :global(html[data-theme="dark"]) .case-card:hover:not(.placeholder-card) {
-    border-color: var(--casys-warm-accent);
     box-shadow:
-      0 4px 12px rgba(0, 0, 0, 0.15),
-      0 20px 48px rgba(0, 0, 0, 0.35),
-      0 0 0 1px rgba(255, 184, 111, 0.1);
+      0 1px 3px rgba(0, 0, 0, 0.2),
+      0 8px 32px rgba(0, 0, 0, 0.35);
+  }
+
+  :global(html[data-theme="dark"]) .featured-visual {
+    background: var(--casys-warm-surface);
+  }
+
+  :global(html[data-theme="dark"]) .featured-img-light {
+    display: none;
+  }
+
+  :global(html[data-theme="dark"]) .featured-img-dark {
+    display: block;
+  }
+
+  :global(html[data-theme="dark"]) .rail-tag {
+    background: rgba(255, 184, 111, 0.12);
+    color: var(--casys-warm-accent);
+  }
+
+  :global(html[data-theme="dark"]) .featured-title {
+    color: var(--casys-warm-text-primary);
+  }
+
+  :global(html[data-theme="dark"]) .featured-punchline {
+    color: var(--casys-warm-text-secondary);
+  }
+
+  :global(html[data-theme="dark"]) .stat-value {
+    color: var(--casys-warm-accent);
+  }
+
+  :global(html[data-theme="dark"]) .stat-label {
+    color: var(--casys-warm-text-secondary);
   }
 
   :global(html[data-theme="dark"]) .read-link {
     color: var(--casys-warm-accent);
   }
 
-  /* Placeholder dark */
-  :global(html[data-theme="dark"]) .placeholder-card {
-    border-color: var(--casys-warm-border-dim);
+  /* Grid */
+  :global(html[data-theme="dark"]) .uc-grid {
+    background: var(--casys-warm-surface);
   }
 
-  :global(html[data-theme="dark"]) .placeholder-card h3 {
-    color: var(--casys-warm-text-dim);
+  :global(html[data-theme="dark"]) .sec-card {
+    background: var(--casys-warm-background);
   }
 
-  :global(html[data-theme="dark"]) .placeholder-card .card-excerpt {
-    color: var(--casys-warm-text-dim);
+  :global(html[data-theme="dark"]) .sec-card:hover {
+    background: color-mix(in srgb, var(--casys-warm-background) 80%, var(--casys-warm-surface) 20%);
+    box-shadow:
+      0 2px 8px rgba(0, 0, 0, 0.2),
+      0 12px 32px rgba(0, 0, 0, 0.35),
+      0 0 0 1px rgba(255, 184, 111, 0.08);
   }
 
-  :global(html[data-theme="dark"]) .placeholder-tag {
-    background: rgba(255, 255, 255, 0.04);
-    color: var(--casys-warm-text-dim);
-  }
-
-  :global(html[data-theme="dark"]) .pattern-icon {
+  :global(html[data-theme="dark"]) .sec-title {
     color: var(--casys-warm-text-primary);
   }
 
-  /* CTA dark */
+  :global(html[data-theme="dark"]) .sec-punchline {
+    color: var(--casys-warm-text-secondary);
+  }
+
+  :global(html[data-theme="dark"]) .chip {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--casys-warm-text-secondary);
+  }
+
+  /* CTA */
   :global(html[data-theme="dark"]) .uc-cta {
     background: var(--casys-warm-background);
   }
 
   :global(html[data-theme="dark"]) .cta-card {
     background: var(--casys-warm-surface);
-    border-color: var(--casys-warm-border-accent);
+    box-shadow:
+      0 1px 3px rgba(0, 0, 0, 0.2),
+      0 4px 16px rgba(0, 0, 0, 0.3);
   }
 
   :global(html[data-theme="dark"]) .cta-accent {
@@ -593,12 +666,6 @@ const ogSuffix = locale === 'en' ? '' : `-${locale}`;
    * RESPONSIVE
    * ================================================================ */
 
-  @media (min-width: 769px) {
-    .cases-grid {
-      grid-template-columns: repeat(2, 1fr);
-    }
-  }
-
   @media (max-width: 768px) {
     section {
       --section-gap: 56px;
@@ -610,6 +677,34 @@ const ogSuffix = locale === 'en' ? '' : `-${locale}`;
 
     .hero-label {
       margin-bottom: 16px;
+    }
+
+    /* Featured stacks vertically */
+    .featured-card {
+      flex-direction: column;
+    }
+
+    .featured-visual {
+      flex: none;
+      min-height: 220px;
+    }
+
+    .featured-content {
+      flex: none;
+      padding: 32px 28px;
+    }
+
+    .featured-stats {
+      gap: 16px;
+    }
+
+    /* Grid single column */
+    .secondary-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .sec-card {
+      padding: 28px 24px;
     }
 
     .cta-inner {
