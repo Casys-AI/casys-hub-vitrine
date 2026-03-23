@@ -1,0 +1,355 @@
+---
+title: "在 Claude Code 中使用 ACPX：多智能体编排实战"
+description: "ACPX 如何用结构化协议通信替代 PTY 抓取，实现 AI 编码智能体间的高效协作。Claude Code、cmux 与 Agent Client Protocol 实操指南。"
+author: "Erwan Lee Pesle"
+date: 2026-03-23
+tags:
+  - acpx
+  - acp
+  - cmux
+  - claude-code
+  - 智能体
+  - 多智能体
+  - 开发工具
+category: "产品"
+language: zh
+snippet: "ACPX 将 PTY 抓取转变为结构化的智能体通信。以下是在 Claude Code 和 cmux 中的实际应用。"
+featured: true
+draft: false
+---
+import ExcalidrawDiagram from '../../../components/ExcalidrawDiagram.astro';
+
+## 问题：智能体通过钥匙孔交流
+
+当 Claude Code 需要调用另一个编码智能体——Codex CLI、Gemini CLI 或其他工具——默认机制是 **PTY 抓取**。编排器启动一个子进程，连接到其伪终端，读取原始字符流。每个转义序列、每个加载动画帧、每个颜色代码都被倾倒到缓冲区。
+
+这等同于两个开发者通过屏幕共享逐字符阅读对方的终端输出。
+
+丢失的内容：
+
+- **结构化元数据**：工具调用名称、参数、返回类型——全部被压平为文本
+- **思考步骤**：智能体的推理链，消失了
+- **差异和文件变更**：淹没在 ANSI 代码流中
+- **错误语义**：崩溃和格式化的错误消息看起来一样
+
+最糟糕的失败模式：**智能体挂起会阻塞一切**。当一个智能体调用慢速 API（Azure、大模型推理）并停滞 90 秒时，整个编排器循环冻结。没有超时。没有降级方案。PTY 读取就一直等着。
+
+这不是理论问题。任何使用过 Claude Code 的 Agent 工具来调用其他 CLI 的人都遇到过这种情况。智能体完成了，但输出被截断、损坏，或完全缺少所需的结构化数据。
+
+<ExcalidrawDiagram src="acpx-multi-agent/pty-vs-acp" alt="PTY 抓取 vs ACP 协议：原始字符流对比结构化 JSON-RPC 通信" />
+
+---
+
+## ACP 到底是什么
+
+**Agent Client Protocol**（ACP）由 [Zed Industries](https://zed.dev/acp) 于 2025 年 9 月创建，最初源于与 Google 合作将 Gemini CLI 集成到 Zed 编辑器中。规范托管在 [agentclientprotocol.com](https://agentclientprotocol.com)，采用 Apache 许可。
+
+ACP 解决了 LSP 为语言工具解决的同一问题：**M×N 集成问题**。没有 LSP，每个编辑器需要为每种语言定制集成。没有 ACP，每个编排器需要为每个智能体定制适配器。
+
+| | 无标准 | 有标准 |
+|---|---|---|
+| **语言工具** | M 编辑器 × N 语言 = M×N 插件 | M + N（LSP）|
+| **智能体编排** | M 编排器 × N 智能体 = M×N 适配器 | M + N（ACP）|
+
+ACP 使用 JSON-RPC 2 over stdio（HTTP 传输正在开发中）。一个典型会话：
+
+1. 客户端发送 `initialize` 及其能力
+2. 服务器回复其能力
+3. 客户端通过 `session/message` 发送提示
+4. 服务器流式返回事件：文本块、工具调用、权限请求、差异
+5. 任一方可以取消或关闭会话
+
+关键洞察：ACP 不会取代 MCP。MCP 将智能体连接到**工具和数据源**。ACP 将**客户端连接到智能体**。它们是正交协议，自然组合——ACP 智能体可以在内部使用 MCP 服务器。
+
+<ExcalidrawDiagram src="acpx-multi-agent/lsp-acp-analogy" alt="LSP 和 ACP 解决相同的 M×N 集成问题——一个用于语言工具，一个用于智能体编排" />
+
+---
+
+## ACPX：无头 ACP 客户端
+
+[ACPX](https://github.com/openclaw/acpx)（`openclaw/acpx`，约 1,500 stars，MIT）是一个无头、可脚本化的 ACP CLI 客户端。可以把它想象成智能体会话的 `curl`——没有 UI，没有编辑器，只有结构化的协议通信。
+
+```bash
+# 安装
+npm install -g acpx@latest
+
+# 通过 ACP 向 Claude Code 发送提示
+acpx claude "重构 auth 中间件以使用 JWT"
+
+# 向 Codex CLI 发送提示
+acpx codex "修复失败的集成测试"
+
+# 命名的并行会话
+acpx claude -s backend "为 API 添加限流"
+acpx codex -s frontend "将仪表板迁移到 React 19"
+```
+
+**前提条件**：Node.js >= 22.12.0，pnpm >= 10.23.0。状态：alpha（CLI 接口可能变更）。
+
+### ACPX 提供什么
+
+**持久化会话**，作用域为仓库 + 智能体 + 可选名称。会话在进程重启后存活。如果你 `Ctrl+C` 后回来，`acpx` 会重新连接到运行中的智能体。
+
+**提示队列**。发送多个提示——它们在会话内顺序执行。没有竞态条件，没有交错。
+
+**崩溃重连**。如果子智能体进程崩溃，`acpx` 检测到并可以自动重启。
+
+**即发即忘模式**（`--no-wait`）。发送提示后立即返回。稍后通过 `acpx sessions read` 查看结果。
+
+**结构化输出**。三种模式：人类可读文本（默认）、NDJSON（用于管道传输）和安静模式（仅退出码）。
+
+**原生支持 15+ 智能体**：
+
+| 智能体 | 命令 |
+|---|---|
+| Claude Code | `acpx claude` |
+| Codex CLI | `acpx codex` |
+| Gemini CLI | `acpx gemini` |
+| Cursor | `acpx cursor` |
+| GitHub Copilot CLI | `acpx copilot` |
+| Kiro CLI | `acpx kiro` |
+| OpenCode | `acpx opencode` |
+| Qwen Code | `acpx qwen` |
+| Pi | `acpx pi` |
+| Factory Droid | `acpx factory` |
+
+也支持通过 `--agent` 标志使用自定义 ACP 服务器。
+
+---
+
+## 为什么不直接用子智能体？
+
+Claude Code 有三种原生编排机制。每种解决不同的问题。
+
+| 机制 | 范围 | 通信方式 | 最适合 |
+|---|---|---|---|
+| **子智能体**（`.claude/agents/`）| 会话内 | 向父级返回结果 | 单个 Claude 会话内的专项任务 |
+| **Agent Teams** | 多会话 | 点对点消息 | 同一仓库上的并行 Claude Code 实例 |
+| **ACPX** | 跨厂商 | 结构化 ACP 协议 | 调用非 Claude 智能体（Codex、Gemini 等）|
+
+**子智能体**是 Claude Code 内的自定义角色。它们共享同一模型提供商、同一计费、同一上下文窗口限制。子智能体不能是 Codex 实例或 Gemini CLI 会话。它始终是 Claude。
+
+**Agent Teams** 允许多个 Claude Code 会话协调。强大，但仍然只是 Claude。
+
+**ACPX** 打破了厂商边界。Claude Code 可以编排 Codex 编写 Python 测试，同时 Gemini CLI 审查 Go 后端——通过标准化协议，而不是终端抓取。编排器收到结构化的工具调用报告，而不是原始字符流。
+
+实际差异：当子智能体返回结果时，你得到一个文本块。当 ACPX 会话返回结果时，你得到结构化事件——调用了哪个工具、修改了哪些文件、智能体的推理是什么。
+
+<ExcalidrawDiagram src="acpx-multi-agent/acpx-hub-architecture" alt="ACPX 枢纽架构：Claude Code 通过命名 ACP 会话编排多个编码智能体" />
+
+---
+
+## 我的配置：ACPX + cmux + Claude Code
+
+### cmux 是什么？
+
+[cmux](https://cmux.com/)（`manaflow-ai/cmux`）是一款原生 macOS 终端，专为同时运行多个 AI 智能体而构建。它不是 tmux。它是一个独立的 Swift/AppKit 应用，使用 libghostty（Ghostty 终端引擎）进行 GPU 加速渲染。
+
+相比普通终端的优势：
+
+- **分屏窗格**，每个窗格有独立的智能体状态和通知
+- **彩色注意力环**，当智能体需要输入或完成时亮起
+- **macOS 桌面通知**，与智能体生命周期事件联动
+- **内嵌 WebKit 浏览器**，可以内联预览开发服务器
+- **完全可脚本化的 API**，通过 Unix 套接字和 `cmux` CLI
+
+```bash
+# 安装
+brew tap manaflow-ai/cmux
+brew install --cask cmux
+```
+
+需要 macOS 14.0+（Sonoma 或更高版本）。
+
+### 日常工作流
+
+以下是我每天使用这些工具的方式：
+
+**1. 在 cmux 中为项目打开工作区**
+
+三个窗格：一个用于 Claude Code（编排器），一个用于辅助智能体（Codex 或 Gemini），一个用于开发服务器或测试运行器。
+
+**2. Claude Code 通过 ACPX 进行编排**
+
+从 Claude Code 窗格中，使用 `acpx` 技能分派工作：
+
+```bash
+# Claude Code 向 Codex 发送结构化工作
+acpx codex -s tests "为新的 auth 中间件编写集成测试"
+
+# Codex 处理测试时，Claude Code 继续实现
+# 不阻塞。不抓取 PTY。结构化结果。
+```
+
+**3. 为并行工作流使用命名会话**
+
+```bash
+# 后端工作通过 Claude
+acpx claude -s backend "为查询层添加 Redis 缓存"
+
+# 前端工作通过 Codex
+acpx codex -s frontend "将仪表板组件迁移到新设计系统"
+
+# 检查所有会话状态
+acpx sessions list
+```
+
+**4. 完成时 cmux 通知**
+
+当 ACPX 会话结束时，cmux 用彩色环点亮窗格并发送桌面通知。无需盯着终端。
+
+<ExcalidrawDiagram src="acpx-multi-agent/cmux-setup" alt="cmux 工作区：Claude Code 编排器、浏览器预览和 Codex 测试输出在分屏窗格中" />
+
+### 项目级配置
+
+ACPX 支持项目根目录下的 `.acpxrc.json`：
+
+```json
+{
+  "defaultAgent": "claude",
+  "sessions": {
+    "timeout": 300,
+    "autoReconnect": true
+  },
+  "agents": {
+    "claude": {
+      "command": "claude",
+      "args": ["--dangerously-skip-permissions"]
+    },
+    "codex": {
+      "command": "codex",
+      "args": ["--model", "o3"]
+    }
+  }
+}
+```
+
+ACPX 仓库中的 `skills/acpx` 目录还提供了一个 Claude Code 技能文件（`SKILL.md`），教 Claude 如何原生使用 ACPX——会话管理、并行分派、结果解析。
+
+---
+
+## 房间里的 Anthropic 大象
+
+Anthropic 以 **NOT_PLANNED** 关闭了 Claude Code 原生 ACP 支持的功能请求（[issue #6686](https://github.com/anthropics/claude-code/issues/6686)）——有 439 个点赞，没有公开解释。
+
+这意味着 Claude Code 不暴露 `acp serve` 命令。它无法开箱即用地充当原生 ACP 服务器。
+
+社区有变通方案：
+
+- [`@zed-industries/claude-code-acp`](https://github.com/zed-industries/claude-agent-acp)——Zed 官方适配器（已知 bug）
+- [`acp-claude-code`](https://github.com/nicepkg/acp-claude-code)——Xuanwo 开发
+- [`claude-code-acp`](https://github.com/nicepkg/claude-code-acp)——szhongren 开发
+
+ACPX 本身包含一个内置的 Claude 适配器，将 Claude Code 的 CLI 接口包装成 ACP 兼容会话。它能工作。它不是官方的。适配器通过将 Claude Code 的 stdio 输出翻译为 ACP 事件来弥合差距。
+
+实际意义：你可以用 ACPX **向** Claude Code **发送工作**（作为客户端），Claude Code 也可以用 ACPX **向**其他智能体**发送工作**（作为编排器）。协议层处理翻译。
+
+---
+
+## 固定版本的陷阱
+
+在 OpenClaw 中使用 ACPX 暴露了一个反复出现的集成 bug，体现了这个生态系统的成熟度。
+
+在 `extensions/acpx/src/config.ts` 中，一个常量被硬编码：
+
+```typescript
+export const ACPX_PINNED_VERSION = "0.1.16";
+```
+
+但 `extensions/acpx/package.json` 已经声明 `"acpx": "0.3.0"` 为捆绑依赖。在 gateway 启动时，版本检查逻辑将已安装的 `acpx` 二进制版本与 `ACPX_PINNED_VERSION` 进行比较，并将 ACP 运行时标记为**不可用**：
+
+```
+runtimeDoctor: error (acpx version mismatch: found 0.3.0, expected 0.1.16)
+runtimeDoctorCode: ACP_BACKEND_UNAVAILABLE
+```
+
+Gateway 健康检查失败。ACPX 会话拒绝启动。修复只需一行版本更新——但**每次发布**都会出问题，因为常量不是从 `package.json` 派生的。
+
+我们提交了 [PR #50149](https://github.com/openclaw/openclaw/pull/50149) 来将 `ACPX_PINNED_VERSION` 与实际捆绑版本对齐。两个竞争 PR（[#43998](https://github.com/openclaw/openclaw/pull/43998)、[#49089](https://github.com/openclaw/openclaw/pull/49089)）目标是 `0.2.0`——在审查时已经过时。
+
+更深层的问题：将版本作为字符串字面量固定在源代码中，与依赖声明脱节，这是一个必然导致漂移的模式。PR #49089 提议在运行时从 `package.json` 读取版本——更稳健的方法，可以完全消除这类 bug。
+
+**临时解决方案**（如果在修复合并前遇到这个问题）：
+
+```bash
+openclaw config set plugins.entries.acpx.config.expectedVersion any
+openclaw gateway restart
+```
+
+这就是 alpha 阶段工具带来的摩擦。协议可以工作。集成管道还在追赶。
+
+---
+
+## 实战演练：跨智能体代码审查
+
+一个具体例子。你正在开发一个 TypeScript API。你想让 Claude Code 实现功能，然后 Codex 编写测试，然后 Gemini 审查整体。
+
+```bash
+# 步骤 1：Claude 实现功能
+acpx claude -s impl "实现带分页和过滤的 /api/v2/users 端点"
+
+# 步骤 2：完成后，Codex 编写测试
+acpx codex -s tests "为 src/routes/users.ts 编写全面测试——单元测试和集成测试"
+
+# 步骤 3：Gemini 审查整体
+acpx gemini -s review "审查 src/routes/users.ts 和 tests/routes/users.test.ts 的安全问题和边界情况"
+```
+
+每个命令创建一个**命名会话**，会持久化。你可以随时查看任何会话的输出：
+
+```bash
+# 读取审查结果
+acpx sessions read -s review
+
+# 查看所有活跃会话
+acpx sessions list
+```
+
+结构化输出意味着你可以管道传输结果：
+
+```bash
+# 获取 Gemini 的审查结果为 NDJSON 并提取问题
+acpx gemini -s review --format ndjson | jq '.events[] | select(.type == "tool_call")'
+```
+
+没有终端抓取。没有 ANSI 代码解析。没有丢失的元数据。
+
+---
+
+## 何时使用什么
+
+| 场景 | 工具 |
+|---|---|
+| 当前会话内的专项 Claude 任务 | **子智能体** |
+| 同一仓库上的多个 Claude 实例 | **Agent Teams** |
+| 跨厂商智能体委派（Claude → Codex）| **ACPX** |
+| 可视化多智能体监控 | **cmux** |
+| 单个智能体，简单任务 | **以上都不需要**——直接使用 Claude Code |
+
+一般规则：如果你留在 Claude 生态系统内，子智能体和 teams 更简单。一旦你需要非 Claude 智能体，或需要结构化协议通信，ACPX 是正确的工具。
+
+---
+
+## 我的收获
+
+**PTY 抓取从来不是为集成层设计的。** 它是权宜之计。ACP 和 ACPX 将智能体间通信从一个 hack 变成了一个协议。
+
+**跨厂商编排是现实的。** 不同模型有不同优势。Claude 擅长架构和重构。Codex 快速做定向编辑。Gemini 擅长处理大上下文窗口。通过标准协议将它们一起使用比强制所有事情通过一个模型更有效。
+
+**对于多智能体工作流，cmux 不是可选的。** 在三个终端标签页中运行三个智能体就是混乱。cmux 的通知系统和分屏窗格让这变得可管理。
+
+**Anthropic 对 ACP 的立场是一个缺口。** issue #6686 上的 439 个点赞不是噪音。开发者想要互操作性。社区变通方案可以工作，但官方支持会消除摩擦。
+
+---
+
+*延伸阅读：[MCP：AI 工具的 USB-C](/zh/blog/why-mcp-protocol) · [生产环境中的 MCP 服务器](/zh/blog/graphrag-vs-vectorrag) · [多智能体沙箱](/zh/blog/multi-agent-sandbox)*
+
+来源：
+- [ACPX GitHub — openclaw/acpx](https://github.com/openclaw/acpx)
+- [Agent Client Protocol 规范](https://agentclientprotocol.com)
+- [Zed — Agent Client Protocol](https://zed.dev/acp)
+- [cmux — 为多任务而生的终端](https://cmux.com/)
+- [cmux GitHub — manaflow-ai/cmux](https://github.com/manaflow-ai/cmux)
+- [ACP 功能请求 — anthropics/claude-code#6686](https://github.com/anthropics/claude-code/issues/6686)
+- [使用 ACP 和 OpenClaw 防止智能体挂起 — Big Hat Group](https://www.bighatgroup.com/blog/using-acp-with-openclaw-to-prevent-agent-hangs/)
+- [ACP 开发者入门 — Calum Murray](https://www.calummurray.ca/blog/intro-to-acp)

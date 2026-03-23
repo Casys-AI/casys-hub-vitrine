@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 280" width="520" height="280">
+  <!-- svg-source:excalidraw — pty-vs-acp -->
+  <defs>
+    <marker id="ah-666" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#666666"/></marker>
+    <marker id="ah-red" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#ef4444"/></marker>
+    <marker id="ah-green" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#4ade80"/></marker>
+  </defs>
+
+  <rect x="0" y="0" width="520" height="280" fill="#08080a"/>
+
+  <!-- Title -->
+  <text x="260" y="22" font-family='"Inter", system-ui, sans-serif' font-size="11" font-weight="bold" fill="#f0ede8" text-anchor="middle">PTY Scraping vs ACP Protocol</text>
+
+  <!-- BEFORE: PTY Scraping (top half) -->
+  <text x="20" y="50" font-family='"Inter", system-ui, sans-serif' font-size="9" font-weight="bold" fill="#ef4444">BEFORE — PTY Scraping</text>
+
+  <!-- Orchestrator box -->
+  <rect x="20" y="60" width="110" height="50" rx="8" fill="#1f1f23" stroke="#ef4444" stroke-width="2"/>
+  <text x="75" y="80" font-family='"Inter", system-ui, sans-serif' font-size="9" fill="#ef4444" text-anchor="middle">Orchestrator</text>
+  <text x="75" y="95" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#666666" text-anchor="middle">(Claude Code)</text>
+
+  <!-- PTY pipe -->
+  <rect x="160" y="65" width="190" height="40" rx="6" fill="#2d2d35" stroke="#ef4444" stroke-width="1" stroke-dasharray="4,3"/>
+  <text x="255" y="80" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#ef4444" text-anchor="middle">PTY (pseudo-terminal)</text>
+  <text x="255" y="95" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#666666" text-anchor="middle" font-style="italic">raw chars + ANSI escapes</text>
+
+  <!-- Agent box -->
+  <rect x="380" y="60" width="120" height="50" rx="8" fill="#1f1f23" stroke="#ef4444" stroke-width="2"/>
+  <text x="440" y="80" font-family='"Inter", system-ui, sans-serif' font-size="9" fill="#ef4444" text-anchor="middle">Coding Agent</text>
+  <text x="440" y="95" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#666666" text-anchor="middle">(Codex / Gemini)</text>
+
+  <!-- Arrows PTY -->
+  <path d="M133 80 L155 80" fill="none" stroke="#ef4444" stroke-width="1.5" marker-end="url(#ah-red)"/>
+  <path d="M355 90 L375 90" fill="none" stroke="#ef4444" stroke-width="1.5" marker-end="url(#ah-red)"/>
+
+  <!-- Lost data labels -->
+  <text x="175" y="120" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#666666">Lost: tool calls, diffs, thinking, error types</text>
+
+  <!-- Separator -->
+  <line x1="20" y1="140" x2="500" y2="140" stroke="#666666" stroke-width="0.5" stroke-dasharray="3,3"/>
+
+  <!-- AFTER: ACP Protocol (bottom half) -->
+  <text x="20" y="162" font-family='"Inter", system-ui, sans-serif' font-size="9" font-weight="bold" fill="#4ade80">AFTER — ACP Protocol</text>
+
+  <!-- Orchestrator box -->
+  <rect x="20" y="172" width="110" height="50" rx="8" fill="#1f1f23" stroke="#4ade80" stroke-width="2"/>
+  <text x="75" y="192" font-family='"Inter", system-ui, sans-serif' font-size="9" fill="#4ade80" text-anchor="middle">Orchestrator</text>
+  <text x="75" y="207" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#666666" text-anchor="middle">(Claude Code)</text>
+
+  <!-- ACP pipe -->
+  <rect x="160" y="172" width="190" height="50" rx="6" fill="#2d2d35" stroke="#4ade80" stroke-width="1.5"/>
+  <text x="255" y="187" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#4ade80" text-anchor="middle">ACP (JSON-RPC 2 / stdio)</text>
+  <text x="255" y="200" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#f0ede8" text-anchor="middle">sessions | tool calls | diffs</text>
+  <text x="255" y="213" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#f0ede8" text-anchor="middle">permissions | cancellation</text>
+
+  <!-- Agent box -->
+  <rect x="380" y="172" width="120" height="50" rx="8" fill="#1f1f23" stroke="#4ade80" stroke-width="2"/>
+  <text x="440" y="192" font-family='"Inter", system-ui, sans-serif' font-size="9" fill="#4ade80" text-anchor="middle">Coding Agent</text>
+  <text x="440" y="207" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#666666" text-anchor="middle">(Codex / Gemini)</text>
+
+  <!-- Arrows ACP -->
+  <path d="M133 192 L155 192" fill="none" stroke="#4ade80" stroke-width="1.5" marker-end="url(#ah-green)"/>
+  <path d="M355 197 L375 197" fill="none" stroke="#4ade80" stroke-width="1.5" marker-end="url(#ah-green)"/>
+
+  <!-- Retained data labels -->
+  <text x="175" y="240" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#4ade80">Retained: structured events, metadata, file changes, reasoning</text>
+
+  <!-- Bottom comparison -->
+  <rect x="100" y="255" width="140" height="18" rx="4" fill="#2d2d35"/>
+  <text x="170" y="267" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#ef4444" text-anchor="middle">Fragile, lossy, blocking</text>
+  <rect x="280" y="255" width="140" height="18" rx="4" fill="#2d2d35"/>
+  <text x="350" y="267" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#4ade80" text-anchor="middle">Structured, reliable, async</text>
+</svg>

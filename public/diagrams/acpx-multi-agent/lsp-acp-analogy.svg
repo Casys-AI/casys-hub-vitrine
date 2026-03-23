@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 240" width="520" height="240">
+  <!-- svg-source:excalidraw — lsp-acp-analogy -->
+  <defs>
+    <marker id="a-muted" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#666666"/></marker>
+    <marker id="a-blue" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#60a5fa"/></marker>
+    <marker id="a-yellow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#fbbf24"/></marker>
+  </defs>
+
+  <rect x="0" y="0" width="520" height="240" fill="#08080a"/>
+
+  <!-- Left: M×N problem -->
+  <text x="130" y="20" font-family='"Inter", system-ui, sans-serif' font-size="10" font-weight="bold" fill="#ef4444" text-anchor="middle">Without standard (M x N)</text>
+
+  <!-- Editors/Orchestrators column -->
+  <rect x="20" y="35" width="70" height="22" rx="4" fill="#1f1f23" stroke="#60a5fa" stroke-width="1.5"/>
+  <text x="55" y="49" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#60a5fa" text-anchor="middle">VS Code</text>
+  <rect x="20" y="65" width="70" height="22" rx="4" fill="#1f1f23" stroke="#60a5fa" stroke-width="1.5"/>
+  <text x="55" y="79" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#60a5fa" text-anchor="middle">Zed</text>
+  <rect x="20" y="95" width="70" height="22" rx="4" fill="#1f1f23" stroke="#60a5fa" stroke-width="1.5"/>
+  <text x="55" y="109" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#60a5fa" text-anchor="middle">Claude Code</text>
+
+  <!-- Languages/Agents column -->
+  <rect x="170" y="35" width="70" height="22" rx="4" fill="#1f1f23" stroke="#fbbf24" stroke-width="1.5"/>
+  <text x="205" y="49" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#fbbf24" text-anchor="middle">Claude</text>
+  <rect x="170" y="65" width="70" height="22" rx="4" fill="#1f1f23" stroke="#fbbf24" stroke-width="1.5"/>
+  <text x="205" y="79" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#fbbf24" text-anchor="middle">Codex</text>
+  <rect x="170" y="95" width="70" height="22" rx="4" fill="#1f1f23" stroke="#fbbf24" stroke-width="1.5"/>
+  <text x="205" y="109" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#fbbf24" text-anchor="middle">Gemini</text>
+
+  <!-- M×N lines (messy) -->
+  <path d="M93 46 L167 46" fill="none" stroke="#666666" stroke-width="0.8" opacity="0.5"/>
+  <path d="M93 46 L167 76" fill="none" stroke="#666666" stroke-width="0.8" opacity="0.5"/>
+  <path d="M93 46 L167 106" fill="none" stroke="#666666" stroke-width="0.8" opacity="0.5"/>
+  <path d="M93 76 L167 46" fill="none" stroke="#666666" stroke-width="0.8" opacity="0.5"/>
+  <path d="M93 76 L167 76" fill="none" stroke="#666666" stroke-width="0.8" opacity="0.5"/>
+  <path d="M93 76 L167 106" fill="none" stroke="#666666" stroke-width="0.8" opacity="0.5"/>
+  <path d="M93 106 L167 46" fill="none" stroke="#666666" stroke-width="0.8" opacity="0.5"/>
+  <path d="M93 106 L167 76" fill="none" stroke="#666666" stroke-width="0.8" opacity="0.5"/>
+  <path d="M93 106 L167 106" fill="none" stroke="#666666" stroke-width="0.8" opacity="0.5"/>
+
+  <!-- 9 adapters label -->
+  <text x="130" y="135" font-family='"Inter", system-ui, sans-serif' font-size="8" fill="#ef4444" text-anchor="middle">9 custom adapters</text>
+
+  <!-- Right: M+N with protocol -->
+  <text x="390" y="20" font-family='"Inter", system-ui, sans-serif' font-size="10" font-weight="bold" fill="#4ade80" text-anchor="middle">With ACP (M + N)</text>
+
+  <!-- Clients column -->
+  <rect x="280" y="35" width="70" height="22" rx="4" fill="#1f1f23" stroke="#60a5fa" stroke-width="1.5"/>
+  <text x="315" y="49" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#60a5fa" text-anchor="middle">VS Code</text>
+  <rect x="280" y="65" width="70" height="22" rx="4" fill="#1f1f23" stroke="#60a5fa" stroke-width="1.5"/>
+  <text x="315" y="79" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#60a5fa" text-anchor="middle">Zed</text>
+  <rect x="280" y="95" width="70" height="22" rx="4" fill="#1f1f23" stroke="#60a5fa" stroke-width="1.5"/>
+  <text x="315" y="109" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#60a5fa" text-anchor="middle">Claude Code</text>
+
+  <!-- ACP protocol box -->
+  <rect x="370" y="40" width="40" height="72" rx="6" fill="#2d2d35" stroke="#4ade80" stroke-width="2"/>
+  <text x="390" y="72" font-family='"Inter", system-ui, sans-serif' font-size="8" font-weight="bold" fill="#4ade80" text-anchor="middle" transform="rotate(-90 390 76)">ACP</text>
+
+  <!-- Agents column -->
+  <rect x="430" y="35" width="70" height="22" rx="4" fill="#1f1f23" stroke="#fbbf24" stroke-width="1.5"/>
+  <text x="465" y="49" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#fbbf24" text-anchor="middle">Claude</text>
+  <rect x="430" y="65" width="70" height="22" rx="4" fill="#1f1f23" stroke="#fbbf24" stroke-width="1.5"/>
+  <text x="465" y="79" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#fbbf24" text-anchor="middle">Codex</text>
+  <rect x="430" y="95" width="70" height="22" rx="4" fill="#1f1f23" stroke="#fbbf24" stroke-width="1.5"/>
+  <text x="465" y="109" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#fbbf24" text-anchor="middle">Gemini</text>
+
+  <!-- Clean lines to ACP -->
+  <path d="M353 46 L368 56" fill="none" stroke="#60a5fa" stroke-width="1.2"/>
+  <path d="M353 76 L368 76" fill="none" stroke="#60a5fa" stroke-width="1.2"/>
+  <path d="M353 106 L368 96" fill="none" stroke="#60a5fa" stroke-width="1.2"/>
+  <path d="M412 56 L427 46" fill="none" stroke="#fbbf24" stroke-width="1.2"/>
+  <path d="M412 76 L427 76" fill="none" stroke="#fbbf24" stroke-width="1.2"/>
+  <path d="M412 96 L427 106" fill="none" stroke="#fbbf24" stroke-width="1.2"/>
+
+  <!-- 6 integrations label -->
+  <text x="390" y="135" font-family='"Inter", system-ui, sans-serif' font-size="8" fill="#4ade80" text-anchor="middle">3 + 3 = 6 integrations</text>
+
+  <!-- Bottom: LSP comparison -->
+  <rect x="20" y="155" width="480" height="75" rx="8" fill="#1f1f23" stroke="#666666" stroke-width="0.5"/>
+  <text x="260" y="175" font-family='"Inter", system-ui, sans-serif' font-size="9" font-weight="bold" fill="#f0ede8" text-anchor="middle">Same pattern as LSP</text>
+
+  <rect x="40" y="188" width="200" height="30" rx="4" fill="#2d2d35"/>
+  <text x="140" y="200" font-family='"Inter", system-ui, sans-serif' font-size="8" fill="#60a5fa" text-anchor="middle">LSP (2016)</text>
+  <text x="140" y="212" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#666666" text-anchor="middle">Editors ↔ Language Servers</text>
+
+  <rect x="280" y="188" width="200" height="30" rx="4" fill="#2d2d35"/>
+  <text x="380" y="200" font-family='"Inter", system-ui, sans-serif' font-size="8" fill="#fbbf24" text-anchor="middle">ACP (2025)</text>
+  <text x="380" y="212" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#666666" text-anchor="middle">Clients ↔ Coding Agents</text>
+</svg>

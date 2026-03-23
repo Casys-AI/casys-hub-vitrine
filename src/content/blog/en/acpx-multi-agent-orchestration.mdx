@@ -1,0 +1,355 @@
+---
+title: "ACPX Inside Claude Code: Practical Multi-Agent Orchestration"
+description: "How ACPX replaces PTY scraping with structured protocol-based communication between AI coding agents. A hands-on guide with Claude Code, cmux, and the Agent Client Protocol."
+author: "Erwan Lee Pesle"
+date: 2026-03-23
+tags:
+  - acpx
+  - acp
+  - cmux
+  - claude-code
+  - agents
+  - multi-agent
+  - devtools
+category: "Product"
+language: en
+snippet: "ACPX turns PTY scraping into structured agent communication. Here is what that means in practice with Claude Code and cmux."
+featured: true
+draft: false
+---
+import ExcalidrawDiagram from '../../../components/ExcalidrawDiagram.astro';
+
+## The Problem: Agents Talking Through a Keyhole
+
+When Claude Code needs to invoke another coding agent -- Codex CLI, Gemini CLI, or any other tool -- the default mechanism is **PTY scraping**. The orchestrator spawns a child process, attaches to its pseudo-terminal, and reads the raw character stream. Every escape sequence, every spinner frame, every color code gets dumped into the buffer.
+
+This is the equivalent of two developers communicating by screen-sharing and reading each other's terminal output character by character.
+
+What gets lost:
+
+- **Structured metadata**: tool call names, parameters, return types -- flattened into text
+- **Thinking steps**: the agent's reasoning chain, gone
+- **Diffs and file changes**: embedded in a stream of ANSI codes
+- **Error semantics**: a crash and a formatted error message look the same
+
+And the worst failure mode: **agent hangs block everything**. When an agent calls a slow API (Azure, a large model inference) and stalls for 90 seconds, the entire orchestrator loop freezes. No timeout. No fallback. The PTY read just waits.
+
+This is not a theoretical concern. Anyone who has used Claude Code's Agent tool to shell out to another CLI has encountered this. The agent finishes, but the output is mangled, truncated, or simply missing the structured data you needed.
+
+<ExcalidrawDiagram src="acpx-multi-agent/pty-vs-acp" alt="PTY scraping vs ACP protocol: raw character streams versus structured JSON-RPC communication" />
+
+---
+
+## What ACP Actually Is
+
+The **Agent Client Protocol** (ACP) was created by [Zed Industries](https://zed.dev/acp) in September 2025, initially from a collaboration with Google to integrate Gemini CLI into the Zed editor. The spec lives at [agentclientprotocol.com](https://agentclientprotocol.com) and is Apache-licensed.
+
+ACP solves the same problem that LSP solved for language tooling: the **M×N integration problem**. Without LSP, every editor needed a custom integration for every language. Without ACP, every orchestrator needs a custom adapter for every agent.
+
+| | Without standard | With standard |
+|---|---|---|
+| **Language tooling** | M editors × N languages = M×N plugins | M + N (LSP) |
+| **Agent orchestration** | M orchestrators × N agents = M×N adapters | M + N (ACP) |
+
+ACP is JSON-RPC 2 over stdio (HTTP transport is in development). A session looks like this:
+
+1. Client sends `initialize` with capabilities
+2. Server responds with its capabilities
+3. Client sends prompts via `session/message`
+4. Server streams back events: text chunks, tool calls, permission requests, file diffs
+5. Either side can cancel or close the session
+
+The key insight: ACP does not replace MCP. MCP connects agents to **tools and data sources**. ACP connects **clients to agents**. They are orthogonal protocols that compose naturally -- an ACP agent can use MCP servers internally.
+
+<ExcalidrawDiagram src="acpx-multi-agent/lsp-acp-analogy" alt="LSP and ACP solve the same M×N integration problem — one for language tooling, one for agent orchestration" />
+
+---
+
+## ACPX: The Headless ACP Client
+
+[ACPX](https://github.com/openclaw/acpx) (`openclaw/acpx`, ~1,500 stars, MIT) is a headless, scriptable CLI client for ACP. Think of it as `curl` for agent sessions -- no UI, no editor, just structured protocol communication.
+
+```bash
+# Install
+npm install -g acpx@latest
+
+# Send a prompt to Claude Code via ACP
+acpx claude "refactor the auth middleware to use JWT"
+
+# Send a prompt to Codex CLI
+acpx codex "fix the failing integration tests"
+
+# Named parallel sessions
+acpx claude -s backend "add rate limiting to the API"
+acpx codex -s frontend "migrate the dashboard to React 19"
+```
+
+**Requirements**: Node.js >= 22.12.0, pnpm >= 10.23.0. Status: alpha (CLI interfaces may change).
+
+### What ACPX gives you
+
+**Persistent sessions** scoped to repository + agent + optional name. Sessions survive process restarts. If you `Ctrl+C` and come back, `acpx` reconnects to the running agent.
+
+**Prompt queueing**. Send multiple prompts -- they execute sequentially within the session. No race conditions, no interleaving.
+
+**Crash reconnect**. If the child agent process dies, `acpx` detects it and can restart automatically.
+
+**Fire-and-forget mode** (`--no-wait`). Send a prompt and return immediately. Check results later with `acpx sessions read`.
+
+**Structured output**. Three modes: human-readable text (default), NDJSON (for piping into other tools), and quiet (exit code only).
+
+**15+ supported agents** out of the box:
+
+| Agent | Command |
+|---|---|
+| Claude Code | `acpx claude` |
+| Codex CLI | `acpx codex` |
+| Gemini CLI | `acpx gemini` |
+| Cursor | `acpx cursor` |
+| GitHub Copilot CLI | `acpx copilot` |
+| Kiro CLI | `acpx kiro` |
+| OpenCode | `acpx opencode` |
+| Qwen Code | `acpx qwen` |
+| Pi | `acpx pi` |
+| Factory Droid | `acpx factory` |
+
+Custom ACP servers are also supported via the `--agent` flag.
+
+---
+
+## Why Not Just Use Subagents?
+
+Claude Code has three native orchestration mechanisms. Each solves a different problem.
+
+| Mechanism | Scope | Communication | Best for |
+|---|---|---|---|
+| **Subagents** (`.claude/agents/`) | Intra-session | Return result to parent | Specialized tasks within one Claude session |
+| **Agent Teams** | Multi-session | Peer-to-peer messaging | Parallel Claude Code instances on one repo |
+| **ACPX** | Cross-vendor | Structured ACP protocol | Invoking non-Claude agents (Codex, Gemini, etc.) |
+
+**Subagents** are custom personas within Claude Code. They share the same model provider, the same billing, the same context window constraints. A subagent cannot be a Codex instance or a Gemini CLI session. It is always Claude.
+
+**Agent Teams** let multiple Claude Code sessions coordinate. Powerful, but still Claude-only.
+
+**ACPX** breaks the vendor boundary. Claude Code can orchestrate Codex to write Python tests while Gemini CLI reviews the Go backend -- through a standardized protocol, not terminal scraping. The orchestrator gets structured tool call reports, not raw character streams.
+
+The practical difference: when a subagent returns a result, you get a text blob. When an ACPX session returns a result, you get structured events -- which tool was called, what files were modified, what the agent's reasoning was.
+
+<ExcalidrawDiagram src="acpx-multi-agent/acpx-hub-architecture" alt="ACPX hub architecture: Claude Code orchestrates multiple coding agents through named ACP sessions" />
+
+---
+
+## My Setup: ACPX + cmux + Claude Code
+
+### What is cmux?
+
+[cmux](https://cmux.com/) (`manaflow-ai/cmux`) is a native macOS terminal built for running multiple AI agents simultaneously. It is not tmux. It is a standalone Swift/AppKit application using libghostty (the Ghostty terminal engine) for GPU-accelerated rendering.
+
+What it provides over a regular terminal:
+
+- **Split panes** with per-pane agent status and notifications
+- **Colored attention rings** when an agent needs input or finishes
+- **macOS desktop notifications** wired to agent lifecycle events
+- **Embedded WebKit browser** for previewing dev servers inline
+- **Full scriptable API** via Unix socket and `cmux` CLI
+
+```bash
+# Install
+brew tap manaflow-ai/cmux
+brew install --cask cmux
+```
+
+Requires macOS 14.0+ (Sonoma or later).
+
+### The workflow
+
+Here is how I use these tools together daily:
+
+**1. Open cmux with a workspace for the project**
+
+Three panes: one for Claude Code (orchestrator), one for a secondary agent (Codex or Gemini), one for the dev server or test runner.
+
+**2. Claude Code orchestrates via ACPX**
+
+From the Claude Code pane, I use the `acpx` skill to delegate work:
+
+```bash
+# Claude Code sends structured work to Codex
+acpx codex -s tests "write integration tests for the new auth middleware"
+
+# While Codex works on tests, Claude Code continues on the implementation
+# No blocking. No PTY scraping. Structured results.
+```
+
+**3. Named sessions for parallel workstreams**
+
+```bash
+# Backend work via Claude
+acpx claude -s backend "add Redis caching to the query layer"
+
+# Frontend work via Codex
+acpx codex -s frontend "migrate the dashboard components to the new design system"
+
+# Check status of all sessions
+acpx sessions list
+```
+
+**4. cmux notifications on completion**
+
+When an ACPX session finishes, cmux lights up the pane with a colored ring and fires a desktop notification. No need to watch the terminal.
+
+<ExcalidrawDiagram src="acpx-multi-agent/cmux-setup" alt="cmux workspace with Claude Code orchestrator, browser preview, and Codex test output in split panes" />
+
+### Project-level configuration
+
+ACPX supports a `.acpxrc.json` at the project root:
+
+```json
+{
+  "defaultAgent": "claude",
+  "sessions": {
+    "timeout": 300,
+    "autoReconnect": true
+  },
+  "agents": {
+    "claude": {
+      "command": "claude",
+      "args": ["--dangerously-skip-permissions"]
+    },
+    "codex": {
+      "command": "codex",
+      "args": ["--model", "o3"]
+    }
+  }
+}
+```
+
+The `skills/acpx` directory in the ACPX repo also provides a Claude Code skill file (`SKILL.md`) that teaches Claude how to use ACPX natively -- session management, parallel delegation, result parsing.
+
+---
+
+## The Anthropic Elephant in the Room
+
+Anthropic closed the feature request for native ACP support in Claude Code ([issue #6686](https://github.com/anthropics/claude-code/issues/6686)) as **NOT_PLANNED** -- with 439 thumbs-up reactions and no public explanation.
+
+This means Claude Code does not expose an `acp serve` command. It cannot act as a native ACP server out of the box.
+
+Community workarounds exist:
+
+- [`@zed-industries/claude-code-acp`](https://github.com/zed-industries/claude-agent-acp) -- official Zed adapter (known bugs)
+- [`acp-claude-code`](https://github.com/nicepkg/acp-claude-code) by Xuanwo
+- [`claude-code-acp`](https://github.com/nicepkg/claude-code-acp) by szhongren
+
+ACPX itself includes a built-in Claude adapter that wraps Claude Code's CLI interface into an ACP-compatible session. It works. It is not official. The adapter bridges the gap by translating Claude Code's stdio output into ACP events.
+
+What this means in practice: you can use ACPX to **send work to** Claude Code (as a client), and Claude Code can use ACPX to **send work to** other agents (as an orchestrator). The protocol layer handles the translation.
+
+---
+
+## The Pinned Version Trap
+
+Using ACPX inside OpenClaw exposed a recurring integration bug that illustrates the maturity of this ecosystem.
+
+In `extensions/acpx/src/config.ts`, a constant is hardcoded:
+
+```typescript
+export const ACPX_PINNED_VERSION = "0.1.16";
+```
+
+But `extensions/acpx/package.json` already declares `"acpx": "0.3.0"` as the bundled dependency. At gateway startup, the version-check logic compares the installed `acpx` binary version against `ACPX_PINNED_VERSION` and marks the ACP runtime as **unavailable**:
+
+```
+runtimeDoctor: error (acpx version mismatch: found 0.3.0, expected 0.1.16)
+runtimeDoctorCode: ACP_BACKEND_UNAVAILABLE
+```
+
+The gateway health check fails. ACPX sessions refuse to start. The fix is a one-line bump -- but it breaks on **every release** because the constant is not derived from `package.json`.
+
+We submitted [PR #50149](https://github.com/openclaw/openclaw/pull/50149) to align `ACPX_PINNED_VERSION` with the actual bundled version. Two competing PRs ([#43998](https://github.com/openclaw/openclaw/pull/43998), [#49089](https://github.com/openclaw/openclaw/pull/49089)) targeted `0.2.0` -- already stale by the time they were reviewed.
+
+The deeper issue: a version pinned as a string literal in source code, disconnected from the dependency declaration, is a pattern that guarantees drift. PR #49089 proposes reading the version from `package.json` at runtime -- a more robust approach that would eliminate this class of bug entirely.
+
+**Workaround** if you hit this before a fix lands:
+
+```bash
+openclaw config set plugins.entries.acpx.config.expectedVersion any
+openclaw gateway restart
+```
+
+This is the kind of friction that comes with alpha-stage tooling. The protocol works. The integration plumbing is still catching up.
+
+---
+
+## Practical Walkthrough: Cross-Agent Code Review
+
+Here is a concrete example. You are working on a TypeScript API. You want Claude Code to implement a feature, then have Codex write the tests, then have Gemini review the whole thing.
+
+```bash
+# Step 1: Claude implements the feature
+acpx claude -s impl "implement the /api/v2/users endpoint with pagination and filtering"
+
+# Step 2: Once done, Codex writes tests
+acpx codex -s tests "write comprehensive tests for src/routes/users.ts -- unit and integration"
+
+# Step 3: Gemini reviews both
+acpx gemini -s review "review the changes in src/routes/users.ts and tests/routes/users.test.ts for security issues and edge cases"
+```
+
+Each command creates a **named session** that persists. You can check any session's output later:
+
+```bash
+# Read the review results
+acpx sessions read -s review
+
+# See all active sessions
+acpx sessions list
+```
+
+The structured output means you can pipe results:
+
+```bash
+# Get Gemini's review as NDJSON and extract issues
+acpx gemini -s review --format ndjson | jq '.events[] | select(.type == "tool_call")'
+```
+
+No terminal scraping. No ANSI code parsing. No lost metadata.
+
+---
+
+## When to Use What
+
+| Scenario | Tool |
+|---|---|
+| Specialized Claude task within current session | **Subagent** |
+| Multiple Claude instances on same repo | **Agent Teams** |
+| Cross-vendor agent delegation (Claude → Codex) | **ACPX** |
+| Visual multi-agent monitoring | **cmux** |
+| Single agent, simple task | **None of the above** -- just use Claude Code directly |
+
+The general rule: if you are staying within Claude's ecosystem, subagents and teams are simpler. The moment you need a non-Claude agent, or you need structured protocol communication, ACPX is the right tool.
+
+---
+
+## What I Learned
+
+**PTY scraping was never meant to be an integration layer.** It was a stopgap. ACP and ACPX turn agent-to-agent communication from a hack into a protocol.
+
+**Cross-vendor orchestration is real.** Different models have different strengths. Claude is strong at architecture and refactoring. Codex is fast at targeted edits. Gemini handles large context windows well. Using them together through a standard protocol is more effective than forcing everything through one model.
+
+**cmux is not optional for multi-agent workflows.** Running three agents in three terminal tabs is chaos. cmux's notification system and split panes turn it into something manageable.
+
+**Anthropic's ACP stance is a gap.** The 439 thumbs-up on issue #6686 are not noise. Developers want interoperability. The community workarounds work, but official support would remove friction.
+
+---
+
+*Further reading: [MCP: The USB-C of AI Tools](/blog/why-mcp-protocol) · [Building MCP Servers in Production](/blog/mcp-server-guide) · [Multi-Agent Sandbox](/blog/multi-agent-sandbox)*
+
+Sources:
+- [ACPX GitHub — openclaw/acpx](https://github.com/openclaw/acpx)
+- [Agent Client Protocol specification](https://agentclientprotocol.com)
+- [Zed — Agent Client Protocol](https://zed.dev/acp)
+- [cmux — The terminal built for multitasking](https://cmux.com/)
+- [cmux GitHub — manaflow-ai/cmux](https://github.com/manaflow-ai/cmux)
+- [ACP feature request — anthropics/claude-code#6686](https://github.com/anthropics/claude-code/issues/6686)
+- [Using ACP with OpenClaw to Prevent Agent Hangs — Big Hat Group](https://www.bighatgroup.com/blog/using-acp-with-openclaw-to-prevent-agent-hangs/)
+- [A Developer's Intro to ACP — Calum Murray](https://www.calummurray.ca/blog/intro-to-acp)

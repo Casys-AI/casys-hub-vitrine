@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 300" width="520" height="300">
+  <!-- svg-source:excalidraw — acpx-hub-architecture -->
+  <defs>
+    <marker id="ah-m" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#666666"/></marker>
+  </defs>
+
+  <rect x="0" y="0" width="520" height="300" fill="#08080a"/>
+
+  <!-- Title -->
+  <text x="260" y="22" font-family='"Inter", system-ui, sans-serif' font-size="11" font-weight="bold" fill="#f0ede8" text-anchor="middle">ACPX Hub Architecture</text>
+
+  <!-- Central ACPX hub -->
+  <rect x="190" y="100" width="140" height="80" rx="12" fill="#1f1f23" stroke="#a78bfa" stroke-width="2.5"/>
+  <text x="260" y="125" font-family='"Inter", system-ui, sans-serif' font-size="12" font-weight="bold" fill="#a78bfa" text-anchor="middle">ACPX</text>
+  <text x="260" y="142" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#f0ede8" text-anchor="middle">Sessions | Queues | Reconnect</text>
+  <rect x="205" y="150" width="110" height="20" rx="4" fill="#2d2d35" stroke="#a78bfa" stroke-width="1"/>
+  <text x="260" y="163" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#a78bfa" text-anchor="middle">ACP (JSON-RPC 2)</text>
+
+  <!-- Orchestrator (left) -->
+  <rect x="20" y="115" width="120" height="55" rx="8" fill="#1f1f23" stroke="#60a5fa" stroke-width="2"/>
+  <text x="80" y="137" font-family='"Inter", system-ui, sans-serif' font-size="9" fill="#60a5fa" text-anchor="middle">Claude Code</text>
+  <text x="80" y="153" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#666666" text-anchor="middle">Orchestrator</text>
+
+  <!-- Arrow orchestrator → ACPX -->
+  <path d="M143 140 L185 140" fill="none" stroke="#666666" stroke-width="1.5" marker-end="url(#ah-m)"/>
+
+  <!-- Agent 1: Claude (top right) -->
+  <rect x="390" y="40" width="110" height="45" rx="8" fill="#1f1f23" stroke="#60a5fa" stroke-width="1.5"/>
+  <text x="445" y="58" font-family='"Inter", system-ui, sans-serif' font-size="8" fill="#60a5fa" text-anchor="middle">Claude Code</text>
+  <rect x="400" y="65" width="90" height="14" rx="3" fill="#2d2d35"/>
+  <text x="445" y="75" font-family='"Inter", system-ui, sans-serif' font-size="6" fill="#666666" text-anchor="middle">-s backend</text>
+
+  <!-- Agent 2: Codex (middle right) -->
+  <rect x="390" y="110" width="110" height="45" rx="8" fill="#1f1f23" stroke="#4ade80" stroke-width="1.5"/>
+  <text x="445" y="128" font-family='"Inter", system-ui, sans-serif' font-size="8" fill="#4ade80" text-anchor="middle">Codex CLI</text>
+  <rect x="400" y="135" width="90" height="14" rx="3" fill="#2d2d35"/>
+  <text x="445" y="145" font-family='"Inter", system-ui, sans-serif' font-size="6" fill="#666666" text-anchor="middle">-s tests</text>
+
+  <!-- Agent 3: Gemini (bottom right) -->
+  <rect x="390" y="180" width="110" height="45" rx="8" fill="#1f1f23" stroke="#fbbf24" stroke-width="1.5"/>
+  <text x="445" y="198" font-family='"Inter", system-ui, sans-serif' font-size="8" fill="#fbbf24" text-anchor="middle">Gemini CLI</text>
+  <rect x="400" y="205" width="90" height="14" rx="3" fill="#2d2d35"/>
+  <text x="445" y="215" font-family='"Inter", system-ui, sans-serif' font-size="6" fill="#666666" text-anchor="middle">-s review</text>
+
+  <!-- Agent 4: Kiro (far bottom right) -->
+  <rect x="390" y="250" width="110" height="35" rx="8" fill="#1f1f23" stroke="#f472b6" stroke-width="1.5"/>
+  <text x="445" y="272" font-family='"Inter", system-ui, sans-serif' font-size="8" fill="#f472b6" text-anchor="middle">Kiro CLI</text>
+
+  <!-- Arrows ACPX → agents -->
+  <path d="M333 120 L387 67" fill="none" stroke="#60a5fa" stroke-width="1.2" marker-end="url(#ah-m)"/>
+  <path d="M333 140 L387 135" fill="none" stroke="#4ade80" stroke-width="1.2" marker-end="url(#ah-m)"/>
+  <path d="M333 160 L387 197" fill="none" stroke="#fbbf24" stroke-width="1.2" marker-end="url(#ah-m)"/>
+  <path d="M333 172 L387 262" fill="none" stroke="#f472b6" stroke-width="1.2" marker-end="url(#ah-m)"/>
+
+  <!-- Session labels -->
+  <rect x="70" y="200" width="380" height="30" rx="6" fill="#2d2d35" stroke="#666666" stroke-width="0.5"/>
+  <text x="260" y="213" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#f0ede8" text-anchor="middle">Each agent runs in its own supervised process — one stalled agent does not block others</text>
+  <text x="260" y="225" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#a78bfa" text-anchor="middle">Named sessions persist across restarts | Prompt queue ensures sequential execution</text>
+
+  <!-- MCP note bottom -->
+  <rect x="20" y="260" width="200" height="28" rx="4" fill="#1a1a1e" stroke="#666666" stroke-width="0.5"/>
+  <text x="120" y="273" font-family='"Inter", system-ui, sans-serif' font-size="7" fill="#666666" text-anchor="middle">Agents use MCP internally for tools</text>
+  <text x="120" y="283" font-family='"Inter", system-ui, sans-serif' font-size="6" fill="#666666" text-anchor="middle">ACP = client ↔ agent | MCP = agent ↔ tools</text>
+</svg>

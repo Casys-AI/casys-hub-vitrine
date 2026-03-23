@@ -133,3 +133,28 @@ gru:
   label: GRU
   permalink: /gru
   description: Gated Recurrent Unit for sequence prediction
+
+acp:
+  label: ACP
+  permalink: /acp
+  description: Agent Client Protocol — open standard for agent-to-client communication
+
+acpx:
+  label: ACPX
+  permalink: /acpx
+  description: Headless CLI client for the Agent Client Protocol
+
+cmux:
+  label: cmux
+  permalink: /cmux
+  description: Native macOS terminal for multi-agent workflows
+
+claude-code:
+  label: Claude Code
+  permalink: /claude-code
+  description: Anthropic CLI for AI-assisted development
+
+devtools:
+  label: DevTools
+  permalink: /devtools
+  description: Developer tools and workflow automation
