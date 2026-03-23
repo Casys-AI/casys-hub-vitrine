@@ -42,7 +42,9 @@ import ExcalidrawDiagram from '../../../components/ExcalidrawDiagram.astro';
 
 ## ACP 到底是什么
 
-**Agent Client Protocol**（ACP）由 [Zed Industries](https://zed.dev/acp) 创建。它于 2025 年 8 月 27 日发布，Gemini CLI 是其首个集成。Claude Code 于 2025 年 9 月 3 日通过 ACP 接入。规范托管在 [agentclientprotocol.com](https://agentclientprotocol.com)，采用 Apache 许可。
+**Agent Client Protocol**（ACP）由 [Zed Industries](https://zed.dev/acp) 创建。它于 2025 年 8 月 27 日发布，Gemini CLI 是其首个集成。Claude Code 于 2025 年 9 月 3 日通过 ACP 接入。2026 年 2 月，[JetBrains 加入成为联合首席维护者](https://agentclientprotocol.com)，与 Zed 并肩——将 Junie（JetBrains 的 AI 智能体）带入 ACP 生态系统。规范采用 Apache 许可。
+
+请勿与 **Agent Communication Protocol**（相同缩写，不同项目）混淆——这是由 Linux Foundation 下的 [BeeAI 项目](https://agentcommunicationprotocol.dev)创建的 agent-to-agent 协议，有时与 IBM 相关联。该协议已被弃用并合并到 A2A 中。我们这里讨论的 ACP 严格来说是 client-to-agent。
 
 ACP 解决了 LSP 为语言工具解决的同一问题：**M×N 集成问题**。没有 LSP，每个编辑器需要为每种语言定制集成。没有 ACP，每个编排器需要为每个智能体定制适配器。
 

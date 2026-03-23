@@ -42,7 +42,9 @@ This is not a theoretical concern. Anyone who has used Claude Code's Agent tool 
 
 ## What ACP Actually Is
 
-The **Agent Client Protocol** (ACP) was created by [Zed Industries](https://zed.dev/acp). It launched on August 27, 2025, with Gemini CLI as its first integration. Claude Code followed via ACP on September 3, 2025. The spec lives at [agentclientprotocol.com](https://agentclientprotocol.com) and is Apache-licensed.
+The **Agent Client Protocol** (ACP) was created by [Zed Industries](https://zed.dev/acp). It launched on August 27, 2025, with Gemini CLI as its first integration. Claude Code followed via ACP on September 3, 2025. In February 2026, [JetBrains joined as co-lead maintainer](https://agentclientprotocol.com) alongside Zed -- bringing Junie (JetBrains' AI agent) into the ACP ecosystem. The spec is Apache-licensed.
+
+Do not confuse this with the **Agent Communication Protocol** (same acronym, different project) -- an agent-to-agent protocol created by the [BeeAI project](https://agentcommunicationprotocol.dev) under the Linux Foundation, sometimes associated with IBM. That protocol has since been deprecated and merged into A2A. The ACP we are talking about here is strictly client-to-agent.
 
 ACP solves the same problem that LSP solved for language tooling: the **M×N integration problem**. Without LSP, every editor needed a custom integration for every language. Without ACP, every orchestrator needs a custom adapter for every agent.
 
