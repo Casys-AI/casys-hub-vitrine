@@ -14,26 +14,7 @@ export interface Props {
 }
 
 const { siteUrl } = Astro.props;
-const BLOG_SLUG_GROUPS: Array<Record<Locale, string>> = [
-  {
-    en: 'mcp-gateway-guide',
-    fr: 'guide-mcp-gateway',
-    zh: 'mcp-gateway-guide',
-    'zh-TW': 'mcp-gateway-guide',
-  },
-  {
-    en: 'mcp-server-guide',
-    fr: 'serveur-mcp-production-guide',
-    zh: 'mcp-server-guide',
-    'zh-TW': 'mcp-server-guide',
-  },
-  {
-    en: 'acpx-multi-agent-orchestration',
-    fr: 'acpx-orchestration-multi-agent',
-    zh: 'acpx-multi-agent-orchestration',
-    'zh-TW': 'acpx-multi-agent-orchestration',
-  },
-];
+const BLOG_SLUG_GROUPS: Array<Record<Locale, string>> = [];
 
 const pathname = Astro.url.pathname;
 
