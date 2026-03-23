@@ -319,6 +319,7 @@ function getPostSlug(post: typeof allPosts[0]) {
     color: var(--md-sys-color-on-surface, #1c1b1f);
     max-width: 72ch;
     margin-bottom: 4rem;
+    overflow-x: hidden;
   }
 
   /* --- Related Articles Section --- */
@@ -609,6 +610,9 @@ function getPostSlug(post: typeof allPosts[0]) {
     border-collapse: collapse;
     margin: 2em 0;
     font-size: 0.9375rem;
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .prose th {

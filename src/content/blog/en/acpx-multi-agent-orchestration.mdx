@@ -42,7 +42,7 @@ This is not a theoretical concern. Anyone who has used Claude Code's Agent tool 
 
 ## What ACP Actually Is
 
-The **Agent Client Protocol** (ACP) was created by [Zed Industries](https://zed.dev/acp) in September 2025, initially from a collaboration with Google to integrate Gemini CLI into the Zed editor. The spec lives at [agentclientprotocol.com](https://agentclientprotocol.com) and is Apache-licensed.
+The **Agent Client Protocol** (ACP) was created by [Zed Industries](https://zed.dev/acp). It launched on August 27, 2025, with Gemini CLI as its first integration. Claude Code followed via ACP on September 3, 2025. The spec lives at [agentclientprotocol.com](https://agentclientprotocol.com) and is Apache-licensed.
 
 ACP solves the same problem that LSP solved for language tooling: the **M×N integration problem**. Without LSP, every editor needed a custom integration for every language. Without ACP, every orchestrator needs a custom adapter for every agent.
 
@@ -67,7 +67,7 @@ The key insight: ACP does not replace MCP. MCP connects agents to **tools and da
 
 ## ACPX: The Headless ACP Client
 
-[ACPX](https://github.com/openclaw/acpx) (`openclaw/acpx`, ~1,500 stars, MIT) is a headless, scriptable CLI client for ACP. Think of it as `curl` for agent sessions -- no UI, no editor, just structured protocol communication.
+[ACPX](https://github.com/openclaw/acpx) (`openclaw/acpx`, MIT) is a headless, scriptable CLI client for ACP. Think of it as `curl` for agent sessions -- no UI, no editor, just structured protocol communication.
 
 ```bash
 # Install
@@ -230,15 +230,11 @@ The `skills/acpx` directory in the ACPX repo also provides a Claude Code skill f
 
 ## The Anthropic Elephant in the Room
 
-Anthropic closed the feature request for native ACP support in Claude Code ([issue #6686](https://github.com/anthropics/claude-code/issues/6686)) as **NOT_PLANNED** -- with 439 thumbs-up reactions and no public explanation.
+Anthropic closed the feature request for native ACP support in Claude Code ([issue #6686](https://github.com/anthropics/claude-code/issues/6686)) as **NOT_PLANNED** -- with 439 thumbs-up reactions. The 37-comment thread contains no technical rationale for the decision.
 
 This means Claude Code does not expose an `acp serve` command. It cannot act as a native ACP server out of the box.
 
-Community workarounds exist:
-
-- [`@zed-industries/claude-code-acp`](https://github.com/zed-industries/claude-agent-acp) -- official Zed adapter (known bugs)
-- [`acp-claude-code`](https://github.com/nicepkg/acp-claude-code) by Xuanwo
-- [`claude-code-acp`](https://github.com/nicepkg/claude-code-acp) by szhongren
+The main community workaround is [`@zed-industries/claude-agent-acp`](https://github.com/zed-industries/claude-agent-acp) -- a Zed-maintained adapter that uses the Anthropic Claude Agent SDK (not Claude Code's CLI directly) to expose an ACP-compatible interface.
 
 ACPX itself includes a built-in Claude adapter that wraps Claude Code's CLI interface into an ACP-compatible session. It works. It is not official. The adapter bridges the gap by translating Claude Code's stdio output into ACP events.
 
