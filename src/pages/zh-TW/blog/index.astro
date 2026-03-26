@@ -37,7 +37,7 @@ const postsByCategory = sortedPosts.reduce((acc, post) => {
 const featuredPosts = sortedPosts.filter(post => post.data.featured);
 
 function getPostSlug(post: typeof sortedPosts[0]) {
-  return post.slug.replace(`${locale}/`, '');
+  return post.slug.replace(/^zh-tw\//i, '');
 }
 ---
 

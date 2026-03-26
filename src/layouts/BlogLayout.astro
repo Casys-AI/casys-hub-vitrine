@@ -133,7 +133,7 @@ const currentPath = Astro.url.pathname;
 
 // Helper to get slug without locale prefix
 function getPostSlug(post: typeof sortedPosts[0]) {
-  return post.slug.replace(`${locale}/`, '');
+  return post.slug.replace(new RegExp(`^${locale}/`, 'i'), '');
 }
 ---
 
