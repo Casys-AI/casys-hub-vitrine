@@ -1,53 +1,627 @@
 ---
 import LandingLayout from '../../layouts/LandingLayout.astro';
-import CatalogPageIsland from '../../islands/catalog/CatalogPageIsland';
 import catalogData from '../../data/mcp-std-catalog.json';
 
 const locale = (Astro as any).currentLocale ?? 'en';
 const pageTitle = locale === 'fr'
-  ? 'Catalog - @casys/mcp-std'
-  : locale === 'zh'
-    ? '目录 - @casys/mcp-std'
-    : 'Catalog - @casys/mcp-std';
+  ? 'Catalogue — @casys/mcp-std'
+  : 'Catalog — @casys/mcp-std';
+
+// ── Tool categories ─────────────────────────────────────────
+const TOOL_CATEGORIES: Record<string, { label: string; icon: string; prefixes: string[] }> = {
+  docker:     { label: 'Docker',        icon: '🐳', prefixes: ['docker'] },
+  git:        { label: 'Git',           icon: '📦', prefixes: ['git'] },
+  database:   { label: 'Database',      icon: '🐘', prefixes: ['psql', 'pglite', 'mongo', 'mysql', 'redis'] },
+  network:    { label: 'Network',       icon: '🌐', prefixes: ['http', 'ssh', 'dns', 'ip', 'cidr', 'mac', 'ping', 'netstat', 'netcat', 'nslookup', 'dig', 'port'] },
+  kubernetes: { label: 'Kubernetes',    icon: '☸️', prefixes: ['k8s', 'kubectl'] },
+  browser:    { label: 'Browser',       icon: '🌍', prefixes: ['browser'] },
+  color:      { label: 'Colors',        icon: '🎨', prefixes: ['color'] },
+  geo:        { label: 'Geolocation',   icon: '📍', prefixes: ['geo'] },
+  faker:      { label: 'Mock Data',     icon: '🎲', prefixes: ['faker', 'data'] },
+  array:      { label: 'Collections',   icon: '📚', prefixes: ['array'] },
+  diff:       { label: 'Diff & Compare',icon: '↔️', prefixes: ['diff', 'compare'] },
+  encode:     { label: 'Encoding',      icon: '🔣', prefixes: ['encode', 'base'] },
+  text:       { label: 'Text & Format', icon: '📝', prefixes: ['text', 'json', 'format', 'transform', 'string'] },
+  file:       { label: 'Files',         icon: '📄', prefixes: ['read', 'write', 'edit', 'list', 'move', 'directory', 'chmod', 'chown'] },
+  process:    { label: 'Process',       icon: '⚙️', prefixes: ['process', 'ps', 'kill', 'free', 'df', 'du', 'lsof', 'memory'] },
+  utils:      { label: 'Utilities',     icon: '🔧', prefixes: ['datetime', 'crypto', 'math', 'path', 'algo', 'cron', 'duration', 'hash', 'password', 'random', 'regex', 'roman'] },
+  resilience: { label: 'Resilience',    icon: '🛡️', prefixes: ['resilience'] },
+  barcode:    { label: 'Barcodes & QR', icon: '📱', prefixes: ['barcode', 'qr'] },
+  agent:      { label: 'AI Agents',     icon: '🤖', prefixes: ['agent'] },
+  cloud:      { label: 'Cloud CLI',     icon: '☁️', prefixes: ['aws', 'gcloud', 'az'] },
+  python:     { label: 'Python',        icon: '🐍', prefixes: ['python', 'pip'] },
+  media:      { label: 'Media',         icon: '🎬', prefixes: ['media', 'image', 'ffmpeg', 'ffprobe', 'imagemagick'] },
+  archive:    { label: 'Archive',       icon: '📦', prefixes: ['archive', 'vfs', 'rsync'] },
+  devtools:   { label: 'DevTools',      icon: '🔧', prefixes: ['click', 'fill', 'hover', 'drag', 'navigate', 'emulate', 'evaluate', 'press', 'take', 'new', 'close', 'select', 'resize', 'wait', 'handle', 'performance', 'get'] },
+  validation: { label: 'Validation',    icon: '✓',  prefixes: ['validation', 'schema'] },
+  env:        { label: 'Environment',   icon: '🔐', prefixes: ['env'] },
+  jwt:        { label: 'JWT & Auth',    icon: '🔑', prefixes: ['jwt'] },
+};
+
+function getToolCategory(name: string): string {
+  const prefix = name.split('_')[0]?.toLowerCase() ?? '';
+  for (const [catId, cat] of Object.entries(TOOL_CATEGORIES)) {
+    if (cat.prefixes.includes(prefix)) return catId;
+  }
+  return 'other';
+}
+
+const tools = catalogData.filter((e: any) => e.recordType === 'mcp-tool');
+const toolsByCategory = new Map<string, typeof tools>();
+for (const tool of tools) {
+  const catId = getToolCategory(tool.name);
+  if (!toolsByCategory.has(catId)) toolsByCategory.set(catId, []);
+  toolsByCategory.get(catId)!.push(tool);
+}
+
+const toolCategories = Object.entries(TOOL_CATEGORIES)
+  .map(([id, cat]) => ({
+    id,
+    ...cat,
+    items: (toolsByCategory.get(id) || []).sort((a: any, b: any) => a.name.localeCompare(b.name)),
+  }))
+  .filter(cat => cat.items.length > 0);
+
+const otherTools = (toolsByCategory.get('other') || []).sort((a: any, b: any) => a.name.localeCompare(b.name));
+
+const totalTools = tools.length;
+const toolsWithUi = tools.filter((t: any) => t.hasUi).length;
 ---
 
-<LandingLayout title={pageTitle} description="Browse the full catalog of 508 MCP tools.">
-  <script is:inline src="https://cdn.tailwindcss.com"></script>
-  <script is:inline>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            'pml-accent': '#FFB86F',
-            'pml-bg': '#0a0908',
-            'pml-text': '#f5f0ea',
-            'pml-text-dim': '#78716c',
-          }
-        }
-      }
-    }
-  </script>
-  <CatalogPageIsland client:only="preact" entries={catalogData} />
+<LandingLayout title={pageTitle} description={`Browse ${totalTools} MCP tools.`}>
+  <div class="catalog-page">
+    <header class="catalog-header">
+      <div class="container">
+        <div class="catalog-header-inner">
+          <div>
+            <h1>{locale === 'fr' ? 'Catalogue' : 'Catalog'} <span class="accent-text">@casys/mcp-std</span></h1>
+            <p class="catalog-subtitle">
+              {locale === 'fr'
+                ? `${totalTools} outils MCP dont ${toolsWithUi} avec viewer UI`
+                : `${totalTools} MCP tools, ${toolsWithUi} with UI viewer`}
+            </p>
+          </div>
+          <input
+            type="search"
+            id="catalog-search"
+            placeholder={locale === 'fr' ? 'Rechercher...' : 'Search...'}
+            autocomplete="off"
+          />
+        </div>
+      </div>
+    </header>
+
+    <section class="catalog-content">
+      <div class="container">
+        {toolCategories.map((cat) => (
+          <div class="category-block" data-category={cat.id}>
+            <h2 class="category-title">
+              <span class="category-icon" aria-hidden="true">{cat.icon}</span>
+              {cat.label}
+              <span class="category-count">{cat.items.length}</span>
+            </h2>
+            <div class="tools-chips">
+              {cat.items.map((tool: any) => (
+                <button
+                  type="button"
+                  class="tool-chip"
+                  data-name={tool.name.toLowerCase()}
+                  data-desc={(tool.description || '').toLowerCase()}
+                  data-tool-name={tool.name}
+                  data-tool-desc={tool.description || ''}
+                  data-tool-routing={tool.routing || 'local'}
+                  data-tool-ui={tool.hasUi ? 'true' : 'false'}
+                >
+                  {tool.name}
+                  {tool.hasUi && <span class="chip-ui-dot" title="Has MCP App viewer">◉</span>}
+                </button>
+              ))}
+            </div>
+            <div class="tool-detail-slot"></div>
+          </div>
+        ))}
+        {otherTools.length > 0 && (
+          <div class="category-block" data-category="other">
+            <h2 class="category-title">
+              <span class="category-icon" aria-hidden="true">🔨</span>
+              Other
+              <span class="category-count">{otherTools.length}</span>
+            </h2>
+            <div class="tools-chips">
+              {otherTools.map((tool: any) => (
+                <button
+                  type="button"
+                  class="tool-chip"
+                  data-name={tool.name.toLowerCase()}
+                  data-desc={(tool.description || '').toLowerCase()}
+                  data-tool-name={tool.name}
+                  data-tool-desc={tool.description || ''}
+                  data-tool-routing={tool.routing || 'local'}
+                  data-tool-ui={tool.hasUi ? 'true' : 'false'}
+                >
+                  {tool.name}
+                  {tool.hasUi && <span class="chip-ui-dot" title="Has MCP App viewer">◉</span>}
+                </button>
+              ))}
+            </div>
+            <div class="tool-detail-slot"></div>
+          </div>
+        )}
+      </div>
+    </section>
+
+    <div id="catalog-empty" class="catalog-empty" hidden>
+      <span class="material-symbols-rounded" aria-hidden="true">search_off</span>
+      <p>{locale === 'fr' ? 'Aucun resultat' : 'No results'}</p>
+      <button type="button" id="catalog-reset">
+        {locale === 'fr' ? 'Reinitialiser' : 'Reset'}
+      </button>
+    </div>
+  </div>
 </LandingLayout>
 
-<style is:global>
-  /* Catalog scrollbar */
-  *::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+<script>
+  const search = document.getElementById('catalog-search') as HTMLInputElement;
+  const empty = document.getElementById('catalog-empty') as HTMLElement;
+  const reset = document.getElementById('catalog-reset') as HTMLButtonElement;
+
+  // Search filtering
+  let debounce: ReturnType<typeof setTimeout>;
+  search?.addEventListener('input', () => {
+    clearTimeout(debounce);
+    debounce = setTimeout(filter, 150);
+  });
+
+  reset?.addEventListener('click', () => {
+    if (search) search.value = '';
+    filter();
+  });
+
+  function filter() {
+    const q = search?.value.trim().toLowerCase() || '';
+    const chips = document.querySelectorAll<HTMLElement>('.tool-chip');
+    const blocks = document.querySelectorAll<HTMLElement>('.category-block');
+    let visible = 0;
+
+    chips.forEach(el => {
+      const name = el.dataset.name || '';
+      const desc = el.dataset.desc || '';
+      const match = !q || name.includes(q) || desc.includes(q);
+      el.style.display = match ? '' : 'none';
+      if (match) visible++;
+    });
+
+    blocks.forEach(block => {
+      const items = block.querySelectorAll<HTMLElement>('.tool-chip');
+      const hasVisible = Array.from(items).some(el => el.style.display !== 'none');
+      block.style.display = hasVisible ? '' : 'none';
+    });
+
+    empty.hidden = visible > 0 || !q;
   }
-  *::-webkit-scrollbar-track {
+
+  // Tool detail panel
+  let activeChip: HTMLElement | null = null;
+
+  document.addEventListener('click', (e) => {
+    const chip = (e.target as HTMLElement).closest('.tool-chip') as HTMLElement | null;
+    if (!chip) {
+      closeDetail();
+      return;
+    }
+
+    const block = chip.closest('.category-block');
+    const slot = block?.querySelector('.tool-detail-slot') as HTMLElement | null;
+    if (!slot) return;
+
+    if (activeChip === chip) {
+      closeDetail();
+      return;
+    }
+
+    closeDetail();
+    activeChip = chip;
+    chip.classList.add('active');
+
+    const name = chip.dataset.toolName || '';
+    const desc = chip.dataset.toolDesc || '';
+    const routing = chip.dataset.toolRouting || 'local';
+    const hasUi = chip.dataset.toolUi === 'true';
+
+    slot.innerHTML = `
+      <div class="tool-detail" role="region" aria-label="Tool details">
+        <div class="tool-detail-header">
+          <span class="tool-detail-name">${name}</span>
+          <div class="tool-detail-badges">
+            <span class="tool-detail-badge routing">${routing}</span>
+            ${hasUi ? '<span class="tool-detail-badge ui">MCP App</span>' : ''}
+          </div>
+          <button type="button" class="tool-detail-close" aria-label="Close">&times;</button>
+        </div>
+        <p class="tool-detail-desc">${desc}</p>
+      </div>
+    `;
+    slot.querySelector('.tool-detail-close')?.addEventListener('click', closeDetail);
+  });
+
+  function closeDetail() {
+    if (activeChip) {
+      activeChip.classList.remove('active');
+      activeChip = null;
+    }
+    document.querySelectorAll('.tool-detail-slot').forEach(s => s.innerHTML = '');
+  }
+</script>
+
+<style>
+  .catalog-page {
+    padding-top: 60px;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 48px;
+  }
+
+  [hidden] {
+    display: none !important;
+  }
+
+  /* ── Header ─────────────────────────────────────── */
+
+  .catalog-header {
+    padding: 40px 0 32px;
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
+  }
+
+  .catalog-header-inner {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+  }
+
+  .catalog-header h1 {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    font-weight: 600;
+    color: var(--md-sys-color-on-surface);
+    margin: 0 0 4px;
+    letter-spacing: -0.02em;
+  }
+
+  .catalog-subtitle {
+    font-size: 0.9375rem;
+    color: var(--md-sys-color-on-surface-variant);
+    margin: 0;
+  }
+
+  #catalog-search {
+    width: 260px;
+    flex-shrink: 0;
+    padding: 10px 16px;
+    font-size: 0.875rem;
+    font-family: 'DM Mono', monospace;
+    color: var(--md-sys-color-on-surface);
+    background: var(--md-sys-color-surface-container-lowest);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 150ms;
+  }
+
+  #catalog-search:focus {
+    border-color: var(--md-sys-color-primary);
+  }
+
+  #catalog-search::placeholder {
+    color: var(--md-sys-color-on-surface-variant);
+    opacity: 0.6;
+  }
+
+  /* ── Content ────────────────────────────────────── */
+
+  .catalog-content {
+    padding: 32px 0 48px;
+  }
+
+  .category-block {
+    margin-bottom: 32px;
+  }
+
+  .category-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--md-sys-color-on-surface);
+    margin: 0 0 16px;
+  }
+
+  .category-icon {
+    font-size: 1.125rem;
+    line-height: 1;
+  }
+
+  .category-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6875rem;
+    font-weight: 400;
+    color: var(--md-sys-color-on-surface-variant);
+    background: var(--md-sys-color-surface-container);
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-left: 4px;
+  }
+
+  /* ── Tool Chips ─────────────────────────────────── */
+
+  .tools-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .tool-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6875rem;
+    color: var(--md-sys-color-on-surface-variant);
+    background: var(--md-sys-color-surface-container-lowest);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 100ms, border-color 100ms, color 100ms;
+  }
+
+  .tool-chip:hover {
+    background: var(--md-sys-color-surface-container);
+    border-color: var(--md-sys-color-outline);
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .chip-ui-dot {
+    font-size: 0.5rem;
+    color: var(--md-sys-color-tertiary, #4ECDC4);
+    opacity: 0.7;
+  }
+
+  /* ── Empty state ────────────────────────────────── */
+
+  .catalog-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 64px 20px;
+    text-align: center;
+  }
+
+  .catalog-empty .material-symbols-rounded {
+    font-size: 48px;
+    color: var(--md-sys-color-on-surface-variant);
+    opacity: 0.4;
+    margin-bottom: 12px;
+  }
+
+  .catalog-empty p {
+    font-size: 0.875rem;
+    color: var(--md-sys-color-on-surface-variant);
+    margin: 0 0 16px;
+  }
+
+  .catalog-empty button {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8125rem;
+    color: var(--md-sys-color-primary);
     background: transparent;
+    border: 1px solid var(--md-sys-color-outline-variant);
+    padding: 8px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 150ms, border-color 150ms;
   }
-  *::-webkit-scrollbar-thumb {
+
+  .catalog-empty button:hover {
+    background: var(--md-sys-color-surface-container);
+    border-color: var(--md-sys-color-primary);
+  }
+
+  /* ── Responsive ─────────────────────────────────── */
+
+  @media (max-width: 1024px) {
+    .container { padding: 0 32px; }
+  }
+
+  @media (max-width: 768px) {
+    .container { padding: 0 20px; }
+    .catalog-header-inner {
+      flex-direction: column;
+      gap: 16px;
+    }
+    #catalog-search { width: 100%; }
+  }
+
+  @media (max-width: 380px) {
+    .container { padding: 0 14px; }
+  }
+</style>
+
+<style is:global>
+  /* ── Tool Detail Panel (global for dynamic innerHTML) ── */
+
+  .tool-chip.active {
+    background: color-mix(in srgb, var(--md-sys-color-primary) 12%, transparent);
+    border-color: var(--md-sys-color-primary);
+    color: var(--md-sys-color-primary);
+  }
+
+  .tool-detail-slot { min-height: 0; }
+
+  .tool-detail {
+    margin-top: 12px;
+    padding: 16px 20px;
+    background: var(--md-sys-color-surface-container-lowest);
+    border: 1px solid var(--md-sys-color-outline-variant);
+    border-radius: 10px;
+    animation: detailIn 0.15s ease-out;
+  }
+
+  @keyframes detailIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .tool-detail-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .tool-detail-name {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .tool-detail-badges { display: flex; gap: 6px; }
+
+  .tool-detail-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.625rem;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .tool-detail-badge.routing {
+    color: var(--md-sys-color-on-surface-variant);
+    background: var(--md-sys-color-surface-container);
+    border: 1px solid var(--md-sys-color-outline-variant);
+  }
+
+  .tool-detail-badge.ui {
+    color: var(--md-sys-color-tertiary, #4ECDC4);
+    background: color-mix(in srgb, var(--md-sys-color-tertiary, #4ECDC4) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--md-sys-color-tertiary, #4ECDC4) 20%, transparent);
+  }
+
+  .tool-detail-close {
+    margin-left: auto;
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    color: var(--md-sys-color-on-surface-variant);
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+    opacity: 0.6;
+    transition: opacity 150ms;
+  }
+
+  .tool-detail-close:hover { opacity: 1; }
+
+  .tool-detail-desc {
+    font-size: 0.8125rem;
+    color: var(--md-sys-color-on-surface-variant);
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  /* ── Dark mode ─────────────────────────────────── */
+
+  html[data-theme="dark"] .catalog-header {
+    border-bottom-color: rgba(255, 184, 111, 0.08);
+  }
+
+  html[data-theme="dark"] .catalog-header h1 { color: #f5f0ea; }
+  html[data-theme="dark"] .catalog-subtitle { color: #a89a8c; }
+
+  html[data-theme="dark"] #catalog-search {
+    background: #141210;
+    border-color: rgba(255, 184, 111, 0.1);
+    color: #f5f0ea;
+  }
+
+  html[data-theme="dark"] #catalog-search:focus {
+    border-color: #FFB86F;
+  }
+
+  html[data-theme="dark"] .category-title {
+    color: #f5f0ea;
+  }
+
+  html[data-theme="dark"] .category-count {
+    color: #a89a8c;
+    background: rgba(255, 184, 111, 0.06);
+  }
+
+  html[data-theme="dark"] .tool-chip {
+    background: #0d0c0a;
+    border-color: rgba(255, 184, 111, 0.06);
+    color: #a89a8c;
+  }
+
+  html[data-theme="dark"] .tool-chip:hover {
+    background: #1a1815;
+    border-color: rgba(255, 184, 111, 0.15);
+    color: #f5f0ea;
+  }
+
+  html[data-theme="dark"] .chip-ui-dot {
+    color: #4ECDC4;
+  }
+
+  html[data-theme="dark"] .tool-chip.active {
     background: rgba(255, 184, 111, 0.15);
-    border-radius: 3px;
+    border-color: rgba(255, 184, 111, 0.4);
+    color: #FFB86F;
   }
-  *::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 184, 111, 0.3);
+
+  html[data-theme="dark"] .tool-detail {
+    background: #141210;
+    border-color: rgba(255, 184, 111, 0.1);
   }
-  * {
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 184, 111, 0.15) transparent;
+
+  html[data-theme="dark"] .tool-detail-name { color: #f5f0ea; }
+  html[data-theme="dark"] .tool-detail-desc { color: #a89a8c; }
+  html[data-theme="dark"] .tool-detail-close { color: #a89a8c; }
+
+  html[data-theme="dark"] .tool-detail-badge.routing {
+    color: #a89a8c;
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 184, 111, 0.08);
+  }
+
+  html[data-theme="dark"] .tool-detail-badge.ui {
+    color: #4ECDC4;
+    background: rgba(78, 205, 196, 0.1);
+    border-color: rgba(78, 205, 196, 0.2);
+  }
+
+  html[data-theme="dark"] .catalog-empty .material-symbols-rounded {
+    color: #a89a8c;
+  }
+
+  html[data-theme="dark"] .catalog-empty p { color: #a89a8c; }
+
+  html[data-theme="dark"] .catalog-empty button {
+    color: #FFB86F;
+    border-color: rgba(255, 184, 111, 0.12);
+  }
+
+  html[data-theme="dark"] .catalog-empty button:hover {
+    background: rgba(255, 184, 111, 0.08);
+    border-color: rgba(255, 184, 111, 0.3);
   }
 </style>
