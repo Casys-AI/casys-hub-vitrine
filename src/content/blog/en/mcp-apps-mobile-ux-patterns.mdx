@@ -1,0 +1,365 @@
+---
+title: "MCP Apps on Mobile: The iframe Scroll Problem Nobody Talks About"
+description: "I spent three days trying to fix horizontal scroll inside a third-party WebView iframe. You can't. Here's the pattern that replaces it: compact cards, requestDisplayMode, and a master-detail flow with zero round-trips."
+author: "Erwan Lee Pesle"
+date: 2026-04-12
+tags:
+  - mcp
+  - mcp-apps
+  - mobile
+  - ux
+  - claude-code
+  - agents
+category: "Product"
+language: en
+snippet: "claude.ai on mobile loads your MCP App in a WebView iframe. The iframe has its own laws of physics. Most of what you know about responsive design does not apply."
+featured: true
+draft: false
+---
+
+import ExcalidrawDiagram from '../../../components/ExcalidrawDiagram.astro';
+
+# MCP Apps on Mobile
+
+> You built a gorgeous MCP App. Two columns, a table, drill-down modals, dark mode. Desktop Claude loves it. Then you open it on your phone and everything folds in half. You reach for `@media (max-width: 420px)`. Nothing happens. Welcome to the iframe.
+
+---
+
+## Why You're Here
+
+If you're shipping an MCP server with a UI, you're using [MCP Apps](https://modelcontextprotocol.io) — the part of the spec where tools return `ui://` resources that hosts like claude.ai can render as interactive viewers. It's the right way to attach real interfaces to MCP tools instead of dumping JSON blobs into a chat.
+
+On desktop, it works. Your viewer gets a decent chunk of the chat panel, your components breathe, and everything looks like the mockup.
+
+On mobile, it does not. The viewer is crammed into a narrow WebView iframe, your table overflows, users try to scroll sideways, and nothing happens. You open DevTools expecting the usual `overflow-x`, `touch-action`, `viewport meta` dance. You try all of them. None of them work.
+
+I spent three days in that loop building the viewers for [mcp-einvoice](https://github.com/casysai/mcp-einvoice). This article is what I wish someone had told me on day one.
+
+It applies to **every MCP App you ship for mobile Claude** — invoice viewers, kanbans, dashboards, whatever. The constraint is the same: your UI is an iframe inside a WebView controlled by someone else's app, and most of what you know about responsive design stops at the iframe border.
+
+---
+
+## Three Viewports, One Iframe
+
+Let's be precise about what "mobile" means here, because it's not what you'd guess.
+
+<ExcalidrawDiagram src="mcp-apps-mobile/viewport-modes" alt="Three viewport modes for MCP Apps: Large (~700px+), Desktop Claude (~400–500px), Mobile Claude (~300–360px)" />
+
+There are three widths you'll encounter:
+
+| Mode              | Width        | Context                              |
+| ----------------- | ------------ | ------------------------------------ |
+| **Large**         | ~700px+      | MCP Inspector, full browser          |
+| **Desktop Claude** | ~400–500px  | Claude Desktop chat sidebar — **primary use case** |
+| **Mobile Claude**  | ~300–360px  | Claude Android/iOS app               |
+
+Notice what's not on that list: **device screen size**. The iframe width is dictated by Claude's chat panel, not by the physical device. A 6.7" phone in portrait mode renders your viewer into ~340px. A 13" laptop with the chat panel half-collapsed renders it into the same 340px. The iframe doesn't know and doesn't care what's outside.
+
+This is the first mental shift. Stop thinking "mobile device." Start thinking "narrow iframe." Everything else follows from that.
+
+---
+
+## The Trap: `@media` Lies Inside an Iframe
+
+The first thing every frontend developer reaches for is a media query.
+
+```css
+@media (max-width: 420px) {
+  .doclist { display: grid; }
+  .table    { display: none; }
+}
+```
+
+On claude.ai desktop this sort of works, because the outer `window` matches the chat panel width. On **mobile claude.ai**, it silently breaks. Your viewer falls back to the wide layout even though the iframe is 320px wide.
+
+Why? `@media` queries against `window.innerWidth`, and `window.innerWidth` reports the **outer WebView**, not the iframe your code is running inside. Your CSS is asking the wrong question. You care about the container. The browser is telling you about the host.
+
+You can twist yourself into knots trying to hack around this — `document.documentElement.clientWidth`, `visualViewport`, postMessage handshakes with the host. Don't. There's a one-liner that does the right thing, and I'll get to it.
+
+---
+
+## The Three Days I'd Like Back
+
+Before I found the pattern, here's what I tried. Save yourself the time.
+
+**Attempt 1 — `overflow-x: auto` on the table.**
+On desktop Safari, it gives you a scrollable region. Inside the claude.ai mobile WebView, the gesture is captured by the outer scroll container before it reaches the iframe. You swipe left, the WebView shrugs, the table doesn't move. From inside the iframe there's no event to listen to, no way to claim the gesture, no escape hatch.
+
+**Attempt 2 — `touch-action: pan-x` on the scroll container.**
+Valid CSS, correct intent, zero effect. `touch-action` tells the browser which gestures your element *wants*. It can't override a WebView host that's already decided the swipe belongs to it. You can't declare yourself the winner of a gesture you never saw.
+
+**Attempt 3 — `<meta name="viewport" content="width=device-width">` in the iframe.**
+Already set by the harness, and irrelevant anyway. The viewport meta tag controls the *layout viewport* of the document. Your document is rendering correctly. The problem is that the iframe is narrower than your content, and the iframe itself doesn't scroll — it's the host that decided so.
+
+**Attempt 4 — `position: fixed` drawer from the bottom.**
+Works for half a second, then the host animates its own modal behaviour and fights you for the screen. Every fullscreen hack I tried got intercepted by the WebView's own gesture handling. You're not the foreground app. You're a component inside one.
+
+**Attempt 5 — "Just tell users to rotate their phone."**
+No.
+
+<ExcalidrawDiagram src="mcp-apps-mobile/scroll-problem" alt="The iframe scroll wall: a table wider than the iframe. The user swipes to scroll, the WebView captures the gesture, the iframe never receives it." />
+
+After three days of this, I stopped trying to fix the scroll and sat with the problem. Here's what I should have asked on day one: **if horizontal scroll doesn't work inside this iframe, why am I using a layout that needs it?**
+
+> **SDK note (v1.3.2):** On top of the WebView gesture capture, there was a [separate SDK bug](https://github.com/modelcontextprotocol/ext-apps/pull/567) where `setupSizeChangedNotifications()` temporarily set `documentElement.style.width = 'fit-content'` for measurement, which clamped `scrollLeft` to 0 on every resize. So even when you *did* manage to scroll inside a container, viewport transitions (inline ↔ fullscreen) would reset your scroll position. Fixed in 1.3.2. If you're on an older SDK version, update before debugging scroll issues — you might be fighting two bugs at once.
+
+---
+
+## The Pivot: Change the Layout, Not the Gesture
+
+You can't fix horizontal scroll inside a third-party iframe. That's the constraint. So the right move is not to need horizontal scroll in the first place.
+
+This is not a workaround. This is what mobile native apps have been doing since 2013. **Tables don't belong on small screens.** Cards do. That's why Gmail, Notion, Linear, and every half-decent mobile app renders lists as cards, not as tables with a horizontal scrollbar. I just had to relearn the lesson the hard way because I was stuck in a "fix the bug" mindset when the bug wasn't a bug — it was a design decision by the iframe host.
+
+So the rule, engraved in the team's memory:
+
+> **Never put a horizontal scroll table in a mobile MCP App. Use card layouts.**
+
+That's it. Every other problem in this article collapses once you accept that rule.
+
+But cards alone aren't enough, because detail views still need real estate. A card list is fine for *browsing*. The moment you tap one, you need a full invoice — parties, line items, tax lines, actions. That doesn't fit in the chat sidebar. So you need a second move.
+
+---
+
+## The Second Move: `requestDisplayMode("fullscreen")`
+
+Here's the part almost nobody mentions in MCP Apps tutorials: the host can give your viewer **the whole screen** if you ask nicely.
+
+The API is in the MCP Apps SDK:
+
+```typescript
+// at app construction (pip is optional — see "The Third Move" below)
+const app = new App({
+  availableDisplayModes: ["inline", "fullscreen", "pip"],
+});
+
+// at component mount
+if (host.supportsDisplayMode?.("fullscreen")) {
+  await app.requestDisplayMode("fullscreen");
+}
+```
+
+When the host honours the request (claude.ai does), your iframe is temporarily promoted from "chat-sidebar panel" to "takes over the entire viewport." The back button is yours. The gestures are yours. And — critically — you can finally render a real two-column invoice layout, because you've got 360 usable pixels instead of 300.
+
+This is the key unlock. Mobile Claude is not "Claude with less screen." It's "Claude with **two** modes of screen": inline while you browse, fullscreen while you dig in. Use both.
+
+---
+
+## The Third Move: `pip` Mode
+
+Since [v1.0.0 of the MCP Apps SDK](https://github.com/modelcontextprotocol/ext-apps), the spec defines three display modes — not two:
+
+```typescript
+type McpUiDisplayMode = "inline" | "fullscreen" | "pip";
+```
+
+`pip` is picture-in-picture: a floating overlay that stays visible while the user continues the conversation. Your app declares which modes it supports at init, and the host exposes what it actually offers:
+
+```typescript
+const app = new App({
+  availableDisplayModes: ["inline", "fullscreen", "pip"],
+});
+
+const ctx = app.getHostContext();
+if (ctx?.availableDisplayModes?.includes("pip")) {
+  await app.requestDisplayMode({ mode: "pip" });
+}
+```
+
+When does `pip` make sense on mobile? When fullscreen is too aggressive. A fullscreen invoice viewer takes over the entire UI — you lose the conversation context. But a dashboard that should stay visible in a corner while you type the next prompt? That's `pip`.
+
+Think of it as the difference between opening a YouTube video fullscreen vs letting it float in the corner. For MCP Apps, the use cases are:
+
+- **Live dashboards** — revenue counters, monitoring panels that update in real-time while the user asks follow-up questions
+- **Media players** — if your tool returns a video or audio stream, pip lets the user keep watching while they chat
+- **Reference panels** — a document preview the user wants to glance at while composing a message
+
+The pattern for using it alongside `useCompactMode` is the same as fullscreen: check `availableDisplayModes`, request the mode, handle the host declining gracefully. The host notifies your app of display mode changes via `ui/notifications/host-context-changed`, so you can adapt your layout when the user drags the pip window or the host resizes it.
+
+**Caveat:** not every host supports `pip` yet. Check `availableDisplayModes` before requesting it — the host returns the *actual* mode set, which may differ from what you asked for. Always code defensively:
+
+```typescript
+const result = await app.requestDisplayMode({ mode: "pip" });
+if (result.mode !== "pip") {
+  // host doesn't support pip — fall back to inline or fullscreen
+}
+```
+
+---
+
+## The Pattern: Master-Detail Without the Round-Trip
+
+Put those two moves together — cards for lists, fullscreen for details — and you get the mobile pattern I now use for every MCP App we ship.
+
+<ExcalidrawDiagram src="mcp-apps-mobile/master-detail-flow" alt="Master-detail flow: list of cards → tap → inline detail panel with light preview → tap 'Full details' → fullscreen viewer rendered from already-loaded drill-down data" />
+
+Three states, one iframe:
+
+1. **List (inline)** — `DoclistViewer` shows cards: direction icon, title, counterpart, amount, status bar. No horizontal scroll. No hidden columns. Just the information a human can triage in one glance. Each card has a tap target.
+
+2. **Inline detail (still inline)** — tapping a card expands an `InlineDetailPanel` below the list (or replaces it, depending on your component). It shows a light preview — parties, totals, dates — using the drill-down data your tool already returned. **No `sendMessage` round-trip to the server.** No "please wait while Claude thinks." The data's in memory, you just render it.
+
+3. **Fullscreen (detail)** — if the user wants the full invoice, they tap "Full details." On desktop, that fires a `sendMessage` and a new viewer opens in the chat. **On mobile**, the same button does something different: it calls `requestDisplayMode("fullscreen")` and renders the full `InvoiceDetail` component in place, using the same drill-down data already loaded in state. Exiting fullscreen ("← Back") drops you back to the doclist with zero reload.
+
+The punchline: **mobile users go from list to full invoice without ever asking Claude for anything.** The network latency between the user and the model — which on mobile connections can be a painful 2-3 seconds — disappears from the critical path. Because the information was already there.
+
+This matters more than it sounds. A `sendMessage` round-trip on mobile looks like: user taps, model spins up, model decides to call a tool, tool returns data, UI renders. That's at least one model turn. On a phone with spotty 4G, it's a guaranteed 3-second pause where the user stares at a loading state wondering if they did something wrong. Fullscreen drill-down with pre-loaded data turns that into 16 milliseconds.
+
+---
+
+## The Hook: `useCompactMode` (and Why `@media` Is Useless)
+
+To do any of this, you need to know whether the current iframe width counts as "compact." I already explained why `@media` lies. Here's what replaces it.
+
+<ExcalidrawDiagram src="mcp-apps-mobile/useCompactMode" alt="@media vs useCompactMode: @media queries window.innerWidth which reports the outer WebView; useCompactMode uses a ResizeObserver on the container element, which correctly tracks the iframe width" />
+
+The hook is ~30 lines of React:
+
+```typescript
+// shared/useCompactMode.ts
+import { useEffect, useRef, useState } from "react";
+
+export function useCompactMode(breakpoint = 420) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [compact, setCompact] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      setCompact(entry.contentRect.width < breakpoint);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [breakpoint]);
+
+  return [compact, ref] as const;
+}
+```
+
+Usage:
+
+```tsx
+function DoclistViewer({ rows }: Props) {
+  const [compact, ref] = useCompactMode(420);
+  return (
+    <div ref={ref}>
+      {compact ? <CardList rows={rows} /> : <Table rows={rows} />}
+    </div>
+  );
+}
+```
+
+The trick is that `ResizeObserver` watches the **element**, not the window. When the iframe is 320px wide, the element inside it is also ~320px wide, and the observer fires with the correct value. When the host resizes the iframe (which it does — try splitting your chat panel on desktop), the observer fires again and the component re-renders into the right layout. No media queries, no viewport guessing, no postMessage.
+
+Pair it with `useDisplayMode` — a sibling hook that wraps `requestDisplayMode` + the `onhostcontextchanged` event — and you have everything you need:
+
+```tsx
+function InvoiceViewer({ invoice }: Props) {
+  const [compact, ref] = useCompactMode(420);
+  const display = useDisplayMode(app);
+
+  useEffect(() => {
+    if (compact && display.supports("fullscreen") && display.current === "inline") {
+      display.request("fullscreen");
+    }
+  }, [compact, display]);
+
+  return <div ref={ref}>{/* ... */}</div>;
+}
+```
+
+**Detail viewers auto-request fullscreen on mount when the iframe is compact and the host supports it.** List viewers stay inline, because fullscreen browsing makes no sense. One rule, applied once per component family.
+
+---
+
+## The CSS Footgun That Costs You a Day
+
+While we're here, one CSS rule that took me embarrassingly long to find.
+
+If you do this:
+
+```css
+html { overflow: hidden; }
+body { overflow: auto; }
+```
+
+It looks right. It even works on desktop. On mobile Claude, the vertical scroll of your viewer silently dies. Swiping up and down inside the iframe does nothing. The host still scrolls the chat, but your fullscreen detail view becomes a locked billboard.
+
+Why? Because `overflow: hidden` on `html` propagates to the viewport propagation rules the WebView uses to decide whose scroll wins. The fix is trivial:
+
+```css
+html { border-radius: 12px; } /* for the iframe corners */
+#app  { overflow: hidden; }   /* was on html */
+body  { overflow: auto; }     /* vertical scroll lives here */
+```
+
+Move `overflow: hidden` from `html` to `#app`. That's it. Same visual result, vertical scroll works again. No amount of `touch-action` or `overscroll-behavior` would have found this for me — I only saw it when a colleague asked "wait, why is it on `html`?"
+
+**Rule:** `overflow: hidden` on `#app`, never on `html`. Vertical scroll belongs to `body`.
+
+---
+
+## What You Don't Do: A List of Temptations
+
+Having taught this pattern to two other engineers, here are the detours they all tried first. Skip them.
+
+**"I'll render the table with a smaller font on mobile."**
+You're still in the table mindset. The table is the problem, not its size. Card layout.
+
+**"I'll hide columns below 420px."**
+Now you have two table layouts to maintain and users who complain that the column they need is the one you hid. Card layout.
+
+**"I'll use `@container` queries."**
+[Container queries](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_containment/Container_queries) are great, but they solve a different problem — *layout* adaptation based on container size. You still need to know whether to render a `<table>` or a `<div role="list">`, and that's a TypeScript decision, not a CSS decision, because the two subtrees share very little. `useCompactMode` gives you the boolean. Use `@container` for fine-tuning inside each branch.
+
+**"I'll build my own resize detection with `window.resize` + `getBoundingClientRect`."**
+You're rebuilding ResizeObserver badly. Use the platform.
+
+**"I'll bail out and render as a text message with a link to a web page."**
+This is what most MCP servers do today. It's why MCP Apps feel like a missed opportunity on mobile. The tooling is there. The pattern is there. The only thing missing is someone doing the three-day pivot so you don't have to.
+
+---
+
+## What "Support Mobile" Actually Means for MCP Apps
+
+If you're shipping an MCP server with UI components, here's the minimum checklist to claim you support mobile:
+
+1. **No horizontal scroll tables.** Anywhere. Not even "just one." Cards.
+2. **`useCompactMode` on every viewer that has more than one layout.** Not media queries.
+3. **`availableDisplayModes: ["inline", "fullscreen"]`** in your `App` constructor.
+4. **Auto-request fullscreen** on detail viewers when compact + supported.
+5. **Drill-down data pre-loaded** in list → detail flows, so fullscreen doesn't round-trip.
+6. **`overflow: hidden` on `#app`, not `html`**. Trust me.
+7. **Test it in Claude mobile.** Not in Chrome DevTools "mobile simulation." Not in MCP Inspector with a narrow window. The actual Claude mobile app, on an actual phone. The WebView gesture behaviour is impossible to reproduce anywhere else, and that's the thing that will break you.
+
+Steps 1 through 6 take about an afternoon once you know the pattern. Step 7 is the one that catches people — MCP Inspector is the default dev loop, and it doesn't behave like the production WebView. Develop in Inspector, ship through Inspector, but **always verify in the actual mobile app** before you call it done.
+
+---
+
+## The Bigger Lesson
+
+The thing that took me three days wasn't a CSS bug. It was a framing bug. I kept thinking of the viewer as "my web app, just narrower." It isn't. It's **a component inside someone else's app**, running with a partial subset of the web platform's features, where gestures and viewports and even basic scroll behaviour are negotiated at runtime with a host you don't control.
+
+Once you accept that framing, the solutions stop looking like workarounds and start looking like good design:
+
+- **Cards over tables** because tables assume horizontal scroll, and you don't own horizontal scroll.
+- **Fullscreen drill-down** because the host can give you the whole screen if you ask, and mobile users need it.
+- **Pre-loaded data** because the network is slow and you already paid for the data once.
+- **ResizeObserver over `@media`** because your container is not the window, even if it lies and says it is.
+
+None of these are specific to MCP. They're the same lessons web components and iframe widgets have been relearning for twenty years. What's new is that MCP Apps have finally made "embeddable interactive UI" a first-class concept in the AI tooling world, which means a whole new generation of developers is about to hit the same walls.
+
+Hopefully now you hit them on day zero instead of day three.
+
+---
+
+## Links
+
+- [MCP spec — UI resources](https://modelcontextprotocol.io)
+- [mcp-einvoice](https://github.com/casysai/mcp-einvoice) — the viewers where this pattern was born
+- [ResizeObserver MDN](https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver)
+- [The Localhost Trap](/blog/the-localhost-trap) — the other "you can't fix it from the inside" article
+- [Authenticating an MCP Server on claude.ai](/blog/mcp-authentication-claude-ai-oauth2) — companion piece on OAuth2 for MCP
+
+If you're building MCP Apps and hit weird mobile issues, find me — I've probably hit the same ones.

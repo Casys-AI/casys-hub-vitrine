@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 440" width="860" height="440">
+  <!-- mcp-apps-mobile — scroll-problem -->
+  <defs>
+    <marker id="ah-red2" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#ef4444"/></marker>
+  </defs>
+  <rect x="0" y="0" width="860" height="440" fill="#08080a"/>
+  <text x="430" y="40" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="22" fill="#f0ede8" text-anchor="middle">The iframe Scroll Wall</text>
+  <text x="430" y="62" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="13" fill="#666666" text-anchor="middle">You can't fix from the inside what isn't broken on the outside</text>
+
+  <!-- WebView -->
+  <rect x="40" y="100" width="780" height="310" rx="10" fill="#1a2744" stroke="#60a5fa" stroke-width="2"/>
+  <text x="60" y="126" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="14" fill="#60a5fa">HOST: Claude Mobile WebView (360px wide)</text>
+
+  <!-- iframe -->
+  <rect x="70" y="150" width="720" height="240" rx="8" fill="#2d2044" stroke="#a78bfa" stroke-width="2"/>
+  <text x="90" y="176" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="13" fill="#a78bfa">IFRAME: mcp-apps viewer (your code)</text>
+
+  <!-- Table that overflows -->
+  <rect x="100" y="196" width="900" height="110" rx="4" fill="#3a2a0a" stroke="#fbbf24" stroke-width="1.5"/>
+  <text x="120" y="222" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="12" fill="#fbbf24">Table: 6 columns × 900px — wider than the iframe</text>
+  <line x1="120" y1="240" x2="770" y2="240" stroke="#fbbf24" stroke-width="1" stroke-dasharray="4 3"/>
+  <line x1="120" y1="262" x2="770" y2="262" stroke="#fbbf24" stroke-width="1" stroke-dasharray="4 3"/>
+  <line x1="120" y1="284" x2="770" y2="284" stroke="#fbbf24" stroke-width="1" stroke-dasharray="4 3"/>
+
+  <!-- Clip mask -->
+  <rect x="790" y="185" width="30" height="220" fill="#08080a"/>
+  <text x="805" y="300" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="11" fill="#666666" text-anchor="middle" transform="rotate(-90 805 300)">clipped</text>
+
+  <!-- User finger trying to scroll -->
+  <path d="M780 335 L720 335" fill="none" stroke="#ef4444" stroke-width="2" stroke-dasharray="6 3" marker-end="url(#ah-red2)"/>
+  <text x="620" y="360" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="12" fill="#ef4444" text-anchor="middle">swipe left → WebView captures the gesture</text>
+  <text x="620" y="378" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="12" fill="#ef4444" text-anchor="middle">→ the iframe never receives it</text>
+</svg>

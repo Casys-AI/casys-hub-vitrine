@@ -32,14 +32,16 @@ if (svgContent) {
     }
   );
 
-  // Replace the background rect fill (#08080a or #0d1117) with a CSS class
+  // Replace background-style fills (#08080a, #0d1117) with the bg class.
+  // Apply globally so nested terminal/code boxes that reuse the dark bg color
+  // also theme-adapt in light mode (otherwise they stay dark with dark text).
   svgContent = svgContent.replace(
-    /(<rect x="0" y="0"[^>]*?)fill="#08080a"/,
-    '$1class="excali-bg" fill="#08080a"'
+    /fill="#08080a"/g,
+    'class="excali-bg" fill="#08080a"'
   );
   svgContent = svgContent.replace(
-    /(<rect x="0" y="0"[^>]*?)fill="#0d1117"/,
-    '$1class="excali-bg" fill="#0d1117"'
+    /fill="#0d1117"/g,
+    'class="excali-bg" fill="#0d1117"'
   );
 
   // Replace dark card fills with classes
@@ -183,6 +185,27 @@ if (svgContent) {
   svgContent = svgContent.replace(/stroke="#475569"/g, 'class="excali-arch-slate-stroke" stroke="#475569"');
   svgContent = svgContent.replace(/fill="rgba\(30,41,59,0\.8\)"/g, 'class="excali-arch-footer-bg" fill="rgba(30,41,59,0.8)"');
   svgContent = svgContent.replace(/fill="rgba\(20,20,23,0\.8\)"/g, 'class="excali-ma-footer-bg" fill="rgba(20,20,23,0.8)"');
+
+  // Ecosystem diagrams (mcp-ecosystem-2026, mcp-n-times-m) — card backgrounds
+  svgContent = svgContent.replace(/fill="#0f2a1a"/g, 'class="excali-eco-card-green" fill="#0f2a1a"');
+  svgContent = svgContent.replace(/fill="#1a1a2e"/g, 'class="excali-eco-card-navy" fill="#1a1a2e"');
+  svgContent = svgContent.replace(/fill="#1a0a2e"/g, 'class="excali-eco-card-purple" fill="#1a0a2e"');
+  svgContent = svgContent.replace(/fill="#1a1a0a"/g, 'class="excali-eco-card-amber" fill="#1a1a0a"');
+  svgContent = svgContent.replace(/fill="#1e293b"/g, 'class="excali-eco-card-slate" fill="#1e293b"');
+
+  // Slate palette (generic Tailwind, reusable across diagrams)
+  svgContent = svgContent.replace(/fill="#475569"/g, 'class="excali-slate-600-fill" fill="#475569"');
+  svgContent = svgContent.replace(/fill="#64748b"/g, 'class="excali-slate-500-fill" fill="#64748b"');
+  svgContent = svgContent.replace(/stroke="#94a3b8"/g, 'class="excali-slate-400-stroke" stroke="#94a3b8"');
+  svgContent = svgContent.replace(/stroke="#334155"/g, 'class="excali-slate-700-stroke" stroke="#334155"');
+  svgContent = svgContent.replace(/fill="#e2e8f0"/g, 'class="excali-slate-200-fill" fill="#e2e8f0"');
+
+  // Indigo palette (generic Tailwind, reusable)
+  svgContent = svgContent.replace(/fill="#a5b4fc"/g, 'class="excali-indigo-300-fill" fill="#a5b4fc"');
+  svgContent = svgContent.replace(/stroke="#6366f1"/g, 'class="excali-indigo-500-stroke" stroke="#6366f1"');
+
+  // Generic mid-gray (used as muted text/fills in middleware + deployment diagrams)
+  svgContent = svgContent.replace(/fill="#888888"/g, 'class="excali-gray-mid-fill" fill="#888888"');
 }
 ---
 
@@ -354,6 +377,27 @@ if (svgContent) {
   .excalidraw-wrapper .excali-arch-footer-bg { fill: rgba(226,224,219,0.8) !important; }
   .excalidraw-wrapper .excali-ma-footer-bg { fill: rgba(226,224,219,0.8) !important; }
 
+  /* Ecosystem diagrams — card backgrounds (dark → light pastel) */
+  .excalidraw-wrapper .excali-eco-card-green { fill: #dcfce7 !important; }
+  .excalidraw-wrapper .excali-eco-card-navy { fill: #dbeafe !important; }
+  .excalidraw-wrapper .excali-eco-card-purple { fill: #ede9fe !important; }
+  .excalidraw-wrapper .excali-eco-card-amber { fill: #fef3c7 !important; }
+  .excalidraw-wrapper .excali-eco-card-slate { fill: #e2e8f0 !important; }
+
+  /* Slate palette — WCAG-compliant dark variants for light mode */
+  .excalidraw-wrapper .excali-slate-600-fill { fill: #334155 !important; }
+  .excalidraw-wrapper .excali-slate-500-fill { fill: #475569 !important; }
+  .excalidraw-wrapper .excali-slate-400-stroke { stroke: #64748b !important; }
+  .excalidraw-wrapper .excali-slate-700-stroke { stroke: #64748b !important; }
+  .excalidraw-wrapper .excali-slate-200-fill { fill: #334155 !important; }
+
+  /* Indigo palette — dark variants for light mode */
+  .excalidraw-wrapper .excali-indigo-300-fill { fill: #4338ca !important; }
+  .excalidraw-wrapper .excali-indigo-500-stroke { stroke: #4338ca !important; }
+
+  /* Generic mid-gray fill */
+  .excalidraw-wrapper .excali-gray-mid-fill { fill: #6b7280 !important; }
+
   /* ========================================
      EXCALIDRAW DIAGRAM - DARK MODE
      ======================================== */
@@ -489,6 +533,27 @@ if (svgContent) {
   html[data-theme="dark"] .excalidraw-wrapper .excali-arch-slate-stroke { stroke: #475569 !important; }
   html[data-theme="dark"] .excalidraw-wrapper .excali-arch-footer-bg { fill: rgba(30,41,59,0.8) !important; }
   html[data-theme="dark"] .excalidraw-wrapper .excali-ma-footer-bg { fill: rgba(20,20,23,0.8) !important; }
+
+  /* Ecosystem diagrams — restore dark card backgrounds for dark mode */
+  html[data-theme="dark"] .excalidraw-wrapper .excali-eco-card-green { fill: #0f2a1a !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-eco-card-navy { fill: #1a1a2e !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-eco-card-purple { fill: #1a0a2e !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-eco-card-amber { fill: #1a1a0a !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-eco-card-slate { fill: #1e293b !important; }
+
+  /* Slate palette — restore original values for dark mode */
+  html[data-theme="dark"] .excalidraw-wrapper .excali-slate-600-fill { fill: #475569 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-slate-500-fill { fill: #64748b !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-slate-400-stroke { stroke: #94a3b8 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-slate-700-stroke { stroke: #334155 !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-slate-200-fill { fill: #e2e8f0 !important; }
+
+  /* Indigo palette — restore bright for dark mode */
+  html[data-theme="dark"] .excalidraw-wrapper .excali-indigo-300-fill { fill: #a5b4fc !important; }
+  html[data-theme="dark"] .excalidraw-wrapper .excali-indigo-500-stroke { stroke: #6366f1 !important; }
+
+  /* Generic mid-gray — restore */
+  html[data-theme="dark"] .excalidraw-wrapper .excali-gray-mid-fill { fill: #888888 !important; }
 
   /* Dark mode container */
   html[data-theme="dark"] .excalidraw-figure .excalidraw-caption {

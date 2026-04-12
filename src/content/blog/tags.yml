@@ -158,3 +158,33 @@ devtools:
   label: DevTools
   permalink: /devtools
   description: Developer tools and workflow automation
+
+mobile:
+  label: Mobile
+  permalink: /mobile
+  description: Mobile UX patterns, iframe constraints, responsive viewers
+
+mcp-apps:
+  label: MCP Apps
+  permalink: /mcp-apps
+  description: MCP Apps SDK — interactive UI resources for MCP servers
+
+ux:
+  label: UX
+  permalink: /ux
+  description: Interface design and user experience patterns
+
+oauth2:
+  label: OAuth2
+  permalink: /oauth2
+  description: OAuth2 flows, authorization servers, and bearer tokens
+
+auth0:
+  label: Auth0
+  permalink: /auth0
+  description: Auth0 tenant configuration and RS256 token dialects
+
+security:
+  label: Security
+  permalink: /security
+  description: Authentication, authorization, and secure infrastructure

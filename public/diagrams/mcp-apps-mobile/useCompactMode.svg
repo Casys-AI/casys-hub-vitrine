@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 380" width="880" height="380">
+  <!-- mcp-apps-mobile — useCompactMode -->
+  <defs>
+    <marker id="ah-red3" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#ef4444"/></marker>
+    <marker id="ah-green4" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#4ade80"/></marker>
+  </defs>
+  <rect x="0" y="0" width="880" height="380" fill="#08080a"/>
+  <text x="440" y="40" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="22" fill="#f0ede8" text-anchor="middle">Why @media lies inside an iframe</text>
+  <text x="440" y="62" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="13" fill="#666666" text-anchor="middle">The iframe has its own width — ask the container, not the viewport</text>
+
+  <!-- Left: @media -->
+  <rect x="40" y="100" width="380" height="240" rx="10" fill="#3a1a2e" stroke="#ef4444" stroke-width="2"/>
+  <text x="230" y="128" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="14" fill="#ef4444" text-anchor="middle">@media (max-width: 420px)</text>
+  <rect x="70" y="150" width="320" height="160" rx="6" fill="#08080a" stroke="#2d2d35"/>
+  <text x="86" y="172" font-family='"JetBrains Mono", "Menlo", ui-monospace, monospace' font-size="12" fill="#666666">/* in the CSS */</text>
+  <text x="86" y="194" font-family='"JetBrains Mono", "Menlo", ui-monospace, monospace' font-size="12" fill="#f0ede8">@media (max-width: 420px) {</text>
+  <text x="86" y="214" font-family='"JetBrains Mono", "Menlo", ui-monospace, monospace' font-size="12" fill="#f0ede8">  .doclist { display: grid; }</text>
+  <text x="86" y="234" font-family='"JetBrains Mono", "Menlo", ui-monospace, monospace' font-size="12" fill="#f0ede8">}</text>
+  <text x="86" y="266" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="11" fill="#ef4444">window.innerWidth = 1024</text>
+  <text x="86" y="284" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="11" fill="#ef4444">(the host, not the iframe)</text>
+  <text x="230" y="328" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="12" font-weight="600" fill="#ef4444" text-anchor="middle">✗ never triggers</text>
+
+  <!-- Right: ResizeObserver -->
+  <rect x="460" y="100" width="380" height="240" rx="10" fill="#1a3a1a" stroke="#4ade80" stroke-width="2"/>
+  <text x="650" y="128" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="14" fill="#4ade80" text-anchor="middle">useCompactMode()</text>
+  <rect x="490" y="150" width="320" height="160" rx="6" fill="#08080a" stroke="#2d2d35"/>
+  <text x="506" y="172" font-family='"JetBrains Mono", "Menlo", ui-monospace, monospace' font-size="12" fill="#666666">// in the component</text>
+  <text x="506" y="194" font-family='"JetBrains Mono", "Menlo", ui-monospace, monospace' font-size="12" fill="#f0ede8">const [compact, ref] =</text>
+  <text x="506" y="214" font-family='"JetBrains Mono", "Menlo", ui-monospace, monospace' font-size="12" fill="#f0ede8">  useCompactMode(420);</text>
+  <text x="506" y="242" font-family='"JetBrains Mono", "Menlo", ui-monospace, monospace' font-size="12" fill="#f0ede8">&lt;div ref={ref}&gt;...&lt;/div&gt;</text>
+  <text x="506" y="270" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="11" fill="#4ade80">ResizeObserver on the element</text>
+  <text x="506" y="288" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="11" fill="#4ade80">container width = iframe width</text>
+  <text x="650" y="328" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="12" font-weight="600" fill="#4ade80" text-anchor="middle">✓ fires on every resize</text>
+</svg>

@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 440" width="900" height="440">
+  <defs>
+    <marker id="ah-red4" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#ef4444"/></marker>
+    <marker id="ah-green5" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#4ade80"/></marker>
+  </defs>
+  <rect x="0" y="0" width="900" height="440" fill="#08080a"/>
+  <text x="450" y="40" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="22" fill="#f0ede8" text-anchor="middle">Expectation vs Reality</text>
+  <text x="450" y="62" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="13" fill="#666666" text-anchor="middle">claude.ai supports MCP — just not the way you were going to ship it</text>
+
+  <!-- Expectation -->
+  <rect x="40" y="100" width="390" height="310" rx="10" fill="#3a1a2e" stroke="#ef4444" stroke-width="2"/>
+  <text x="235" y="128" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="14" fill="#ef4444" text-anchor="middle">Expectation</text>
+  <rect x="70" y="150" width="130" height="56" rx="6" fill="#1a2744" stroke="#60a5fa"/>
+  <text x="135" y="174" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="12" fill="#60a5fa" text-anchor="middle">claude.ai</text>
+  <text x="135" y="192" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="10" fill="#666666" text-anchor="middle">MCP client</text>
+  <rect x="270" y="150" width="130" height="56" rx="6" fill="#1a3a1a" stroke="#4ade80"/>
+  <text x="335" y="174" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="12" fill="#4ade80" text-anchor="middle">Your MCP server</text>
+  <text x="335" y="192" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="10" fill="#666666" text-anchor="middle">Deno Deploy</text>
+  <path d="M200 178 L270 178" stroke="#ef4444" stroke-width="2" marker-end="url(#ah-red4)"/>
+  <rect x="70" y="230" width="330" height="90" rx="6" fill="#08080a" stroke="#2d2d35"/>
+  <text x="86" y="252" font-family='"JetBrains Mono", "Menlo", ui-monospace, monospace' font-size="11" fill="#f0ede8">GET /mcp</text>
+  <text x="86" y="272" font-family='"JetBrains Mono", "Menlo", ui-monospace, monospace' font-size="11" fill="#f0ede8">Authorization: Bearer sk-casys-...</text>
+  <text x="86" y="294" font-family='"JetBrains Mono", "Menlo", ui-monospace, monospace' font-size="11" fill="#fbbf24">(like every other API on earth)</text>
+  <text x="235" y="362" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="13" fill="#ef4444" text-anchor="middle">Static API key</text>
+  <text x="235" y="382" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="13" fill="#ef4444" text-anchor="middle">paste-once, done</text>
+
+  <!-- Reality -->
+  <rect x="470" y="100" width="390" height="310" rx="10" fill="#1a3a1a" stroke="#4ade80" stroke-width="2"/>
+  <text x="665" y="128" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="14" fill="#4ade80" text-anchor="middle">Reality</text>
+  <rect x="500" y="150" width="110" height="56" rx="6" fill="#1a2744" stroke="#60a5fa"/>
+  <text x="555" y="174" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="12" fill="#60a5fa" text-anchor="middle">claude.ai</text>
+  <text x="555" y="192" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="10" fill="#666666" text-anchor="middle">MCP client</text>
+  <rect x="625" y="150" width="100" height="56" rx="6" fill="#2d2044" stroke="#a78bfa"/>
+  <text x="675" y="174" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="12" fill="#a78bfa" text-anchor="middle">Auth0</text>
+  <text x="675" y="192" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="10" fill="#666666" text-anchor="middle">Authorization</text>
+  <rect x="740" y="150" width="100" height="56" rx="6" fill="#1a3a1a" stroke="#4ade80"/>
+  <text x="790" y="174" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="12" fill="#4ade80" text-anchor="middle">Your MCP</text>
+  <text x="790" y="192" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="10" fill="#666666" text-anchor="middle">Resource server</text>
+  <path d="M610 178 L625 178" stroke="#4ade80" stroke-width="2" marker-end="url(#ah-green5)"/>
+  <path d="M725 178 L740 178" stroke="#4ade80" stroke-width="2" marker-end="url(#ah-green5)"/>
+  <rect x="500" y="230" width="340" height="90" rx="6" fill="#08080a" stroke="#2d2d35"/>
+  <text x="516" y="252" font-family='"JetBrains Mono", "Menlo", ui-monospace, monospace' font-size="11" fill="#f0ede8">GET /.well-known/oauth-protected-resource</text>
+  <text x="516" y="272" font-family='"JetBrains Mono", "Menlo", ui-monospace, monospace' font-size="11" fill="#f0ede8">→ OAuth2 authorization_code flow</text>
+  <text x="516" y="294" font-family='"JetBrains Mono", "Menlo", ui-monospace, monospace' font-size="11" fill="#4ade80">→ RS256 JWT (rfc9068_profile)</text>
+  <text x="665" y="362" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="13" fill="#4ade80" text-anchor="middle">Per-user OAuth2</text>
+  <text x="665" y="382" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="13" fill="#4ade80" text-anchor="middle">consent screen, revocable</text>
+</svg>

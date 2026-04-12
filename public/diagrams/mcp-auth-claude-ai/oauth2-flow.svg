@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 620" width="980" height="620">
+  <defs>
+    <marker id="ah-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#60a5fa"/>
+    </marker>
+    <marker id="ah-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#4ade80"/>
+    </marker>
+    <marker id="ah-purple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#a78bfa"/>
+    </marker>
+    <marker id="ah-amber" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#fbbf24"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect x="0" y="0" width="980" height="620" fill="#08080a"/>
+
+  <!-- Title -->
+  <text x="490" y="38" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="22" font-weight="600" fill="#f0ede8" text-anchor="middle">MCP OAuth2 Flow on claude.ai</text>
+  <text x="490" y="60" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="13" fill="#666666" text-anchor="middle">Protected Resource Metadata → Authorization Server → Bearer JWT</text>
+
+  <!-- Lane headers (boxes) -->
+  <rect x="40" y="90" width="210" height="50" rx="8" fill="#1a3a1a" stroke="#4ade80" stroke-width="1.5"/>
+  <text x="145" y="114" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="13" font-weight="600" fill="#4ade80" text-anchor="middle">MCP server</text>
+  <text x="145" y="130" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="11" fill="#666666" text-anchor="middle">(Protected Resource)</text>
+
+  <rect x="260" y="90" width="210" height="50" rx="8" fill="#1a2744" stroke="#60a5fa" stroke-width="1.5"/>
+  <text x="365" y="114" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="13" font-weight="600" fill="#60a5fa" text-anchor="middle">claude.ai</text>
+  <text x="365" y="130" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="11" fill="#666666" text-anchor="middle">(MCP client)</text>
+
+  <rect x="480" y="90" width="210" height="50" rx="8" fill="#2d2044" stroke="#a78bfa" stroke-width="1.5"/>
+  <text x="585" y="114" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="13" font-weight="600" fill="#a78bfa" text-anchor="middle">Auth0</text>
+  <text x="585" y="130" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="11" fill="#666666" text-anchor="middle">(Authorization Server)</text>
+
+  <rect x="700" y="90" width="240" height="50" rx="8" fill="#3a2a0a" stroke="#fbbf24" stroke-width="1.5"/>
+  <text x="820" y="114" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="13" font-weight="600" fill="#fbbf24" text-anchor="middle">User browser</text>
+
+  <!-- Lifelines (dashed vertical lines down each actor) -->
+  <line x1="145" y1="140" x2="145" y2="610" stroke="#666666" stroke-width="1" stroke-dasharray="4,4"/>
+  <line x1="365" y1="140" x2="365" y2="610" stroke="#666666" stroke-width="1" stroke-dasharray="4,4"/>
+  <line x1="585" y1="140" x2="585" y2="610" stroke="#666666" stroke-width="1" stroke-dasharray="4,4"/>
+  <line x1="820" y1="140" x2="820" y2="610" stroke="#666666" stroke-width="1" stroke-dasharray="4,4"/>
+
+  <!-- Phase 1: Discovery (steps 1-2) -->
+  <text x="20" y="186" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="9" font-weight="600" fill="#666666" text-anchor="start" letter-spacing="1">DISCOVERY</text>
+
+  <!-- Step 1: claude.ai → MCP server (GET /.well-known/oauth-protected-resource) -->
+  <text x="255" y="195" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="11" fill="#f0ede8" text-anchor="middle">GET /.well-known/oauth-protected-resource</text>
+  <line x1="365" y1="208" x2="155" y2="208" stroke="#60a5fa" stroke-width="2" marker-end="url(#ah-blue)"/>
+  <circle cx="365" cy="208" r="9" fill="#1a2744" stroke="#60a5fa" stroke-width="1.5"/>
+  <text x="365" y="212" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="10" font-weight="700" fill="#60a5fa" text-anchor="middle">1</text>
+
+  <!-- Step 2: MCP server → claude.ai (Protected Resource Metadata) -->
+  <text x="255" y="232" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="11" fill="#4ade80" text-anchor="middle">{ authorization_server, resource }</text>
+  <line x1="145" y1="245" x2="355" y2="245" stroke="#4ade80" stroke-width="2" marker-end="url(#ah-green)"/>
+  <circle cx="145" cy="245" r="9" fill="#1a3a1a" stroke="#4ade80" stroke-width="1.5"/>
+  <text x="145" y="249" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="10" font-weight="700" fill="#4ade80" text-anchor="middle">2</text>
+
+  <!-- Phase 2: Authorization (steps 3-6) -->
+  <text x="20" y="285" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="9" font-weight="600" fill="#666666" text-anchor="start" letter-spacing="1">AUTHORIZATION</text>
+
+  <!-- Step 3: claude.ai → Auth0 (GET /authorize) -->
+  <text x="475" y="294" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="11" fill="#60a5fa" text-anchor="middle">GET /authorize?resource=…&amp;redirect_uri=/api/mcp/auth_callback</text>
+  <line x1="365" y1="307" x2="575" y2="307" stroke="#60a5fa" stroke-width="2" marker-end="url(#ah-blue)"/>
+  <circle cx="365" cy="307" r="9" fill="#1a2744" stroke="#60a5fa" stroke-width="1.5"/>
+  <text x="365" y="311" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="10" font-weight="700" fill="#60a5fa" text-anchor="middle">3</text>
+
+  <!-- Step 4: Auth0 → User browser (redirect to login + consent) -->
+  <text x="702" y="331" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="11" fill="#a78bfa" text-anchor="middle">redirect to login + consent</text>
+  <line x1="585" y1="344" x2="810" y2="344" stroke="#a78bfa" stroke-width="2" marker-end="url(#ah-purple)"/>
+  <circle cx="585" cy="344" r="9" fill="#2d2044" stroke="#a78bfa" stroke-width="1.5"/>
+  <text x="585" y="348" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="10" font-weight="700" fill="#a78bfa" text-anchor="middle">4</text>
+
+  <!-- Step 5: User browser → Auth0 (credentials + approve) -->
+  <text x="702" y="368" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="11" fill="#fbbf24" text-anchor="middle">credentials + approve scopes</text>
+  <line x1="820" y1="381" x2="595" y2="381" stroke="#fbbf24" stroke-width="2" marker-end="url(#ah-amber)"/>
+  <circle cx="820" cy="381" r="9" fill="#3a2a0a" stroke="#fbbf24" stroke-width="1.5"/>
+  <text x="820" y="385" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="10" font-weight="700" fill="#fbbf24" text-anchor="middle">5</text>
+
+  <!-- Step 6: Auth0 → claude.ai (302 → callback?code=…) -->
+  <text x="475" y="405" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="11" fill="#a78bfa" text-anchor="middle">302 → /api/mcp/auth_callback?code=…</text>
+  <line x1="585" y1="418" x2="375" y2="418" stroke="#a78bfa" stroke-width="2" marker-end="url(#ah-purple)"/>
+  <circle cx="585" cy="418" r="9" fill="#2d2044" stroke="#a78bfa" stroke-width="1.5"/>
+  <text x="585" y="422" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="10" font-weight="700" fill="#a78bfa" text-anchor="middle">6</text>
+
+  <!-- Phase 3: Token Exchange (steps 7-8) -->
+  <text x="20" y="455" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="9" font-weight="600" fill="#666666" text-anchor="start" letter-spacing="1">TOKEN EXCHANGE</text>
+
+  <!-- Step 7: claude.ai → Auth0 (POST /oauth/token) -->
+  <text x="475" y="464" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="11" fill="#60a5fa" text-anchor="middle">POST /oauth/token (code → access_token)</text>
+  <line x1="365" y1="477" x2="575" y2="477" stroke="#60a5fa" stroke-width="2" marker-end="url(#ah-blue)"/>
+  <circle cx="365" cy="477" r="9" fill="#1a2744" stroke="#60a5fa" stroke-width="1.5"/>
+  <text x="365" y="481" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="10" font-weight="700" fill="#60a5fa" text-anchor="middle">7</text>
+
+  <!-- Step 8: Auth0 → claude.ai (RS256 JWT) -->
+  <text x="475" y="501" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="11" fill="#a78bfa" text-anchor="middle">RS256 JWT (aud = resource, rfc9068_profile)</text>
+  <line x1="585" y1="514" x2="375" y2="514" stroke="#a78bfa" stroke-width="2" marker-end="url(#ah-purple)"/>
+  <circle cx="585" cy="514" r="9" fill="#2d2044" stroke="#a78bfa" stroke-width="1.5"/>
+  <text x="585" y="518" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="10" font-weight="700" fill="#a78bfa" text-anchor="middle">8</text>
+
+  <!-- Phase 4: MCP Session (steps 9-10) -->
+  <text x="20" y="551" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="9" font-weight="600" fill="#666666" text-anchor="start" letter-spacing="1">MCP SESSION</text>
+
+  <!-- Step 9: claude.ai → MCP server (GET /mcp + Bearer) -->
+  <text x="255" y="560" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="11" fill="#60a5fa" text-anchor="middle">GET /mcp · Authorization: Bearer ey…</text>
+  <line x1="365" y1="573" x2="155" y2="573" stroke="#60a5fa" stroke-width="2" marker-end="url(#ah-blue)"/>
+  <circle cx="365" cy="573" r="9" fill="#1a2744" stroke="#60a5fa" stroke-width="1.5"/>
+  <text x="365" y="577" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="10" font-weight="700" fill="#60a5fa" text-anchor="middle">9</text>
+
+  <!-- Step 10: MCP server → claude.ai (session established) -->
+  <text x="255" y="586" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="11" fill="#4ade80" text-anchor="middle">MCP session established</text>
+  <line x1="145" y1="595" x2="355" y2="595" stroke="#4ade80" stroke-width="2" marker-end="url(#ah-green)"/>
+  <circle cx="145" cy="595" r="9" fill="#1a3a1a" stroke="#4ade80" stroke-width="1.5"/>
+  <text x="145" y="599" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="10" font-weight="700" fill="#4ade80" text-anchor="middle">10</text>
+</svg>

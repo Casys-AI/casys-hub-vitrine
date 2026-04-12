@@ -1,0 +1,329 @@
+---
+title: "Connecting Your MCP Server to claude.ai: The Auth0 + OAuth2 Guide"
+description: "Step-by-step tutorial to authenticate a remote MCP server on claude.ai with Auth0. Covers OAuth2 setup, RFC 9068 tokens, the Resource Parameter toggle, JWT verification middleware, and the failure modes nobody tells you about."
+author: "Erwan Lee Pesle"
+date: 2026-04-12
+tags:
+  - mcp
+  - oauth2
+  - auth0
+  - security
+  - agents
+  - tutorial
+category: "Tutorial"
+language: en
+snippet: "claude.ai talks to MCP servers over OAuth2 — no static bearer tokens, no shared secrets. Here is the complete setup with Auth0, from creating the API to verifying the JWT in your middleware."
+featured: true
+draft: false
+---
+
+import ExcalidrawDiagram from '../../../components/ExcalidrawDiagram.astro';
+
+# Connecting Your MCP Server to claude.ai
+
+> By the end of this guide your remote MCP server will be reachable from claude.ai, every request will carry a verified user identity, and you will know exactly which Auth0 settings matter and which don't.
+
+---
+
+## What This Guide Covers
+
+If you're building remote MCP servers, sooner or later you want them to work on [claude.ai](https://claude.ai) — the web app — not just the desktop client. The web app is where most users live, and it's where non-technical collaborators get to use your tools without installing anything.
+
+The integration is *not* "paste this bearer token." claude.ai's MCP client speaks OAuth2 only: a full authorization-code flow with discovery, redirect URIs, and RFC 9068-compliant JWTs. This guide walks you from a working local MCP server to a production setup where claude.ai connects to it on behalf of real users.
+
+**You will learn**:
+
+- Why claude.ai rejects static bearer tokens, and what it expects instead
+- How to configure an Auth0 tenant + API + application from scratch (10 minutes if you know which switches to flip)
+- Which two Auth0 settings are non-obvious and why ignoring them costs hours of debugging
+- How to verify RFC 9068 JWTs in your MCP server middleware (with a complete TypeScript example)
+- The five failure modes you'll hit and how to fix each one in under a minute
+
+**What you need**:
+
+- A remote MCP server that already works in MCP Inspector or Claude Desktop with a static token
+- An Auth0 account (free tier is fine for getting started)
+- 30 minutes the first time, 5 minutes for every subsequent MCP server
+
+This is the companion piece to [The iframe Scroll Problem](/blog/mcp-apps-mobile-ux-patterns) — both share a theme: **when your client is someone else's app, stop fighting it and learn its rules.**
+
+---
+
+## Why Static Tokens Don't Work
+
+Before the setup, it helps to understand exactly *why* the obvious approach fails — the failure mode is non-obvious and the error messages are useless.
+
+A typical starting point: a [Deno Deploy](https://deno.com/deploy) server (we'll use [mcp-einvoice](https://github.com/casysai/mcp-einvoice) as the running example throughout this guide) publishing tools via streamable HTTP on `https://mcp-einvoice.casys.deno.net/mcp`, with auth as a static bearer token in a header. That setup works in MCP Inspector, in `curl`, and in Claude Desktop via the `claude_desktop_config.json` with a pre-filled Authorization header. So far, so good.
+
+Then you go to claude.ai → Settings → Integrations → Add MCP Server, paste the URL, and the UI asks exactly one question: "Server URL." No token field. No header field. No "advanced options." Just the URL.
+
+You click Connect. claude.ai hits your server. Your server returns `401 Unauthorized`. And then claude.ai does something you might not expect: it goes looking for `/.well-known/oauth-protected-resource`.
+
+<ExcalidrawDiagram src="mcp-auth-claude-ai/expectation-vs-reality" alt="Expectation: claude.ai sends Authorization: Bearer to your MCP server. Reality: claude.ai does OAuth2 discovery, authenticates against Auth0, gets an RS256 JWT, then talks to your MCP server." />
+
+That URL is the [MCP authorization spec](https://modelcontextprotocol.io/specification/draft/basic/authorization) in action. When claude.ai hits an MCP endpoint and gets a 401, it expects the server to respond with a **Protected Resource Metadata** document pointing at an OAuth2 authorization server. Static bearer auth is not part of the spec. It was never part of the spec. The desktop client lets you get away with a header — the web client does not.
+
+claude.ai isn't broken. The bearer-token model just isn't the right shape for it. The rest of this guide is about shipping the right shape.
+
+---
+
+## The Spec in Two Paragraphs
+
+Here's the MCP authorization story, stripped of jargon.
+
+**The MCP server is a Protected Resource.** It does not issue tokens. It does not verify passwords. It only accepts RS256-signed JWTs issued by an Authorization Server whose identity the MCP server publishes at a well-known URL. Think of it as the same separation you'd get between your API and Auth0, or between your API and Okta. The API never sees a password.
+
+**The MCP client (claude.ai) is an OAuth2 client.** It discovers the authorization server from your Protected Resource Metadata, walks the user through an authorization-code flow, exchanges the code for a bearer JWT, then includes that JWT in the `Authorization` header for every MCP request. The user logs in **once**, claude.ai caches the tokens, and from then on the session is per-user.
+
+Two consequences you should internalize before going further:
+
+1. **No shared credentials.** Every user of your MCP server has their own identity. Your server never sees the same token twice across different users. Revocation is free — disable the user in Auth0, their token stops working on the next refresh.
+2. **You're not building the auth server.** You're *pointing at* an auth server. Which means your job is a lot smaller than "implement OAuth2" — it's "set up Auth0 correctly and add a tiny metadata endpoint."
+
+When I realised this on day one, my reaction was irritation. By day three, it had flipped to "oh — this is actually the right design." Let me explain why before we get to the YAML.
+
+---
+
+## Why This Is The Right Call
+
+I'll be honest: my first instinct was "this is Anthropic flexing." Static bearers are fine for 90% of API integrations, and forcing OAuth2 for every hobby MCP server looks like cargo-culted enterprise security.
+
+I was wrong. Here's the case, in order of strength:
+
+**User consent is not optional for MCP tools.** An MCP tool can read my invoices. It can create users in my ERP. It can delete documents. When claude.ai asks me to connect a server, I need to see a consent screen that tells me *exactly* what scopes I'm granting, from a domain I trust, with my own credentials. A "paste this token" field provides none of that. The first time a malicious MCP tool exfiltrates someone's data via a misconfigured static key, the whole ecosystem takes the reputational hit. Forcing OAuth2 pushes that failure mode to zero by construction.
+
+**Per-user identity is not optional either.** If two people at the same company connect the same MCP server, they should **not** share a token. They should each get their own. Auth0 does this trivially. A static API key cannot. The moment you need multi-user, per-user audit logging, per-user rate limits, or per-user data scoping, static keys fall over and you end up reinventing OAuth2 badly anyway.
+
+**Revocation is a first-class operation.** When a laptop gets lost, an ex-employee leaves, or a user rotates their credentials, OAuth2 gives you a single button to push. Static bearers require you to hunt down every place the key was pasted.
+
+**Scopes.** A well-designed MCP server has read-only scopes, write scopes, admin scopes. OAuth2 makes that a first-class concept. The user sees, at the consent screen, exactly which capabilities they're granting to claude.ai. With a static key, it's all or nothing.
+
+So: yes, it's more work. Yes, you have to set up Auth0 or equivalent. But this is the same "more work" that moved us from storing passwords in plaintext to using bcrypt. It's not a bureaucratic hurdle, it's a pattern that has been load-bearing in production systems for fifteen years, newly applied to the AI tooling layer. Fight it and you'll lose. Adopt it and you'll sleep better.
+
+Now let's get it working.
+
+---
+
+## The Shape of the Flow
+
+Before diving into Auth0, here's the complete flow. Burn it into your head — it'll save you two hours of confused console-tabbing.
+
+<ExcalidrawDiagram src="mcp-auth-claude-ai/oauth2-flow" alt="MCP OAuth2 flow on claude.ai: claude.ai discovers the protected resource metadata, redirects to Auth0, user logs in and consents, Auth0 redirects back to claude.ai/api/mcp/auth_callback, claude.ai exchanges the code for an RS256 JWT, claude.ai calls the MCP server with Bearer JWT." />
+
+Ten steps, four actors. You control exactly two of them: your MCP server (steps 1, 2, 9, 10) and Auth0 (steps 4, 5, 7, 8). claude.ai and the user's browser do the rest on their own.
+
+The single most important thing about this diagram: **claude.ai's redirect URI is fixed.** It's `https://claude.ai/api/mcp/auth_callback`. You don't choose it. You don't configure it. You register it verbatim on the Auth0 client, or nothing works. The moment you try to be clever and redirect somewhere else, Auth0's callback check fails and the browser lands on an error page nobody can help you with.
+
+OK. Here's the setup.
+
+---
+
+## Auth0 in Ten Minutes (The Parts That Matter)
+
+I'm using [Auth0](https://auth0.com) because it handles MCP correctly out of the box once you know which switches to flip. You could use Keycloak, Authentik, Clerk, Stytch, or any RFC 9068-compliant authorization server. The *concepts* below are all the same. Auth0 just has the best documentation for MCP specifically, through their [Auth for AI](https://auth0.com/ai/docs/mcp/intro/overview) docs.
+
+### 1. The tenant
+
+Create a tenant. I use `casys.eu.auth0.com`. Any region is fine — pick one close to your users because this sits on the critical path for login latency.
+
+### 2. The API (your MCP server as a Protected Resource)
+
+This is the object in Auth0 that represents your MCP server from OAuth2's point of view. Create it:
+
+- **Name**: `MCP eInvoice` (whatever you want, it's the label)
+- **Identifier (audience)**: `https://mcp-einvoice.casys.deno.net/` — **the exact URL of your MCP server, with the trailing slash.** Auth0 uses this string as the `aud` claim of every issued JWT, and your MCP server will later check that the `aud` of incoming tokens matches its own URL. A missing or extra slash is a 401.
+
+Save. Auth0 drops you on the API's settings page — leave it open, you'll need it in the next step.
+
+### 3. The token format: switch to RFC 9068
+
+The MCP authorization spec explicitly requires [RFC 9068](https://www.rfc-editor.org/rfc/rfc9068.html) ("JWT Profile for OAuth 2.0 Access Tokens"). MCP client libraries — and therefore claude.ai — validate against that profile. If your `aud`, `iss`, `exp`, `iat`, `scope`, and `jti` claims don't line up exactly, the client rejects the token and you get a 401 *after* a successful OAuth2 round-trip. It's the single most confusing failure mode in this entire stack: the OAuth flow looks fine in the network tab, the JWT decodes cleanly on jwt.io, and your server still says no.
+
+Auth0's APIs default to a legacy "Auth0" token format. You have to switch them. The setting is **APIs → your API → Settings → JSON Web Token (JWT) Profile**, and it has exactly two options:
+
+<figure class="blog-screenshot">
+  <img src="/images/blog/mcp-auth/access-token-settings.png" alt="Auth0 dashboard — API Settings → Access Token Settings. JSON Web Token (JWT) Profile dropdown set to RFC 9068. Signing Algorithm RS256. JSON Web Encryption disabled." loading="lazy" />
+  <figcaption>APIs → your API → Settings → Access Token Settings. Pick <code>RFC 9068</code> for the Profile and <code>RS256</code> for the Signing Algorithm. Save.</figcaption>
+</figure>
+
+- **JWT Profile** = `RFC 9068`. The "Auth0" default produces JWTs that look right but lack the strict RFC 9068 claim shape MCP validators expect. RFC 9068 fixes that.
+- **Signing Algorithm** = `RS256`. Not HS256. HS256 requires a shared secret between Auth0 and your server, which is exactly what we're trying to avoid. RS256 is public/private — Auth0 signs with the private key, your server verifies against the public JWKS at `https://<tenant>/.well-known/jwks.json`, no secret in your environment.
+- **JSON Web Encryption** = off. You don't need it. The token is already signed and travels over HTTPS.
+
+Older Auth0 docs (and earlier versions of the dashboard) reference a `token_dialect` field with values like `access_token_authz` and `rfc9068_profile_authz` set via the Management API. That was the legacy story. The dashboard now exposes the choice directly as "JWT Profile", and the value Auth0 stores is `rfc9068_profile`. If you find yourself patching via `auth0 api`, you're reading old docs.
+
+Save. The next token your API issues will be RFC 9068-compliant.
+
+### 4. The client (claude.ai as an OAuth2 client)
+
+In Auth0, an "application" (they mean OAuth2 client) represents claude.ai:
+
+- **Type**: Regular Web Application.
+- **Name**: `Claude.ai`.
+- **Allowed Callback URLs**: `https://claude.ai/api/mcp/auth_callback` — **exactly this, verbatim, no trailing slash, no query string**. This is claude.ai's fixed redirect URI and you cannot negotiate it.
+- **Grant Types**: Authorization Code. Refresh Token.
+- **Connections**: enable at least one. I use Username-Password-Authentication (database) and google-oauth2 (social). The user picks one at login time.
+
+Save. Auth0 gives you a `client_id`. Copy it — the user will see it in their browser URL during the flow, but you don't need it anywhere in your MCP server code.
+
+### 5. The invisible toggle
+
+This is the one that made me laugh out loud when I found it.
+
+<figure class="blog-screenshot">
+  <img src="/images/blog/mcp-auth/resource-parameter-toggle.png" alt="Auth0 dashboard — Settings → Advanced → Resource Parameter Compatibility Profile toggle, enabled. Profile that determines how the identity of the protected resource is specified in OAuth endpoints." loading="lazy" />
+  <figcaption>Tenant Settings → Advanced → Resource Parameter Compatibility Profile. Off by default. Flip it on or claude.ai's <code>/authorize</code> request fails with <code>invalid_request</code>.</figcaption>
+</figure>
+
+Auth0 has a tenant-level setting called **Resource Parameter Compatibility Profile**, buried under Settings → Advanced. It's **off by default**. When it's off, Auth0 does not accept the `resource` parameter on `/authorize` and `/oauth/token` — the parameter that claude.ai sends to tell Auth0 "I'm requesting a token for this specific MCP server."
+
+Without it, claude.ai's authorization request is rejected as `invalid_request`, you see a generic error page, and the error message mentions neither "resource" nor "MCP." I only found it because a throwaway line in the Auth0 for AI docs mentioned it. It took two hours.
+
+**Enable it. Once. Per tenant.** No CLI gymnastics, no patch — just flip the toggle and save.
+
+At this point Auth0 is ready. Time to teach your MCP server to be a Protected Resource.
+
+---
+
+## The MCP Server Side: Two Endpoints
+
+Your MCP server needs two things on top of what it already has:
+
+1. A **Protected Resource Metadata** endpoint at `/.well-known/oauth-protected-resource`.
+2. A **JWT verification** middleware on the MCP route.
+
+Everything else stays the same.
+
+### Protected Resource Metadata
+
+Claude.ai hits this URL first (after the initial 401) to discover where to authenticate. The spec is [RFC 9728](https://datatracker.ietf.org/doc/html/rfc9728). Minimal payload:
+
+```typescript
+// src/routes/protected-resource.ts
+export function protectedResourceMetadata() {
+  return Response.json({
+    resource: "https://mcp-einvoice.casys.deno.net/",
+    authorization_servers: [
+      "https://casys.eu.auth0.com/"
+    ],
+    scopes_supported: [
+      "mcp:read",
+      "mcp:write"
+    ],
+    bearer_methods_supported: ["header"],
+    resource_documentation: "https://casys.ai/engine/mcp-einvoice"
+  });
+}
+```
+
+The `resource` field must match the audience you set in Auth0, exactly. The `authorization_servers` field tells claude.ai where the OAuth2 endpoints live — Auth0 publishes its own `/.well-known/openid-configuration` from that root, so claude.ai can discover `/authorize` and `/oauth/token` without you hardcoding them.
+
+Serve that JSON at `/.well-known/oauth-protected-resource`. That's the discovery side done.
+
+### JWT verification middleware
+
+For every MCP request, validate the JWT:
+
+```typescript
+// src/middleware/auth.ts
+import { jwtVerify, createRemoteJWKSet } from "jose";
+
+const JWKS = createRemoteJWKSet(
+  new URL("https://casys.eu.auth0.com/.well-known/jwks.json")
+);
+
+export async function authenticate(req: Request) {
+  const auth = req.headers.get("authorization");
+  if (!auth?.startsWith("Bearer ")) {
+    return { error: unauthorized("missing_token") };
+  }
+  const token = auth.slice(7);
+
+  try {
+    const { payload } = await jwtVerify(token, JWKS, {
+      issuer: "https://casys.eu.auth0.com/",
+      audience: "https://mcp-einvoice.casys.deno.net/",
+    });
+    return { user: payload };
+  } catch (e) {
+    return { error: unauthorized("invalid_token") };
+  }
+}
+
+function unauthorized(code: string) {
+  return new Response(null, {
+    status: 401,
+    headers: {
+      "WWW-Authenticate": `Bearer realm="mcp-einvoice", error="${code}", resource_metadata="https://mcp-einvoice.casys.deno.net/.well-known/oauth-protected-resource"`
+    }
+  });
+}
+```
+
+Three details worth pausing on:
+
+1. **JWKS is cached.** `createRemoteJWKSet` fetches Auth0's public keys once and caches them. Do not re-fetch per request — you'll rate-limit yourself and add 200ms to every call.
+2. **`issuer` and `audience` are hard-coded checks.** These are the only reasons you paid for an RFC 9068 token. If you skip them, a token signed by Auth0 for a *different* audience would pass, and a malicious MCP server could replay tokens against yours.
+3. **`WWW-Authenticate` header on 401.** This is the breadcrumb claude.ai follows back to your Protected Resource Metadata. Without it, claude.ai sees a bare 401 and gives up. The `resource_metadata` parameter is specified in the MCP authorization RFC and is the hook that kicks off re-discovery.
+
+That's it. Register the middleware on your MCP route, deploy, and claude.ai's "Connect" button now walks through the full OAuth2 flow, parks a per-user token, and calls your tools with a real user identity attached.
+
+---
+
+## The Failure Modes I Hit (So You Don't Have To)
+
+In rough order of pain:
+
+**"Invalid audience"** — the `aud` claim doesn't match. Check the trailing slash on your API identifier in Auth0. This bit me twice.
+
+**"Missing claims"** — your API's JWT Profile is still on Auth0's legacy default. Switch it to `RFC 9068` in **APIs → your API → Settings → Access Token Settings**.
+
+**"invalid_request" on /authorize** — Resource Parameter Compatibility Profile is off. Flip the toggle.
+
+**"invalid_redirect_uri"** — the Callback URL in the Auth0 client is wrong. It must be `https://claude.ai/api/mcp/auth_callback` verbatim.
+
+**"401 after successful OAuth2"** — your JWT middleware is rejecting valid tokens. Usually because you forgot to pin `issuer` and `audience` and `jose` is defaulting to something wrong. Or because your server clock is skewed past `exp` (Deno Deploy gets this right, containers sometimes don't).
+
+**"Works once, then fails on refresh"** — you disabled Refresh Token grant on the Auth0 client. Re-enable it.
+
+**"Works in Europe, fails in US"** — your tenant is `casys.eu.auth0.com` but a user connected through claude.ai from a region that can't route to it. Usually not a problem in practice, but if you're serving high-volume, consider a US tenant mirror.
+
+None of these are exotic. All of them are findable in logs. The only thing that makes them painful is that the logs live in three different places (Auth0 logs, claude.ai network tab, your server), so you spend half your debugging time figuring out which actor actually rejected the request.
+
+---
+
+## What You Get On the Other Side
+
+Once it works, here's what changes about your MCP server:
+
+- **Every request has a user identity.** `payload.sub` is an Auth0 user ID. You can scope database queries by user, write per-user audit logs, apply per-user rate limits, all without inventing anything.
+- **Multi-tenant is free.** Two companies can connect the same MCP server from the same claude.ai, and they never see each other's data, because their tokens are distinct.
+- **Revocation is a dashboard click.** Disable the Auth0 user, their next refresh fails, they're out.
+- **Scopes actually work.** Annotate your tools with required scopes (`mcp:read`, `mcp:write`, `mcp:admin`), check them in the middleware, and the user sees exactly which capabilities they're granting at consent time.
+- **You can finally publish it.** A public MCP server with static auth is an accident waiting to happen. A public MCP server with OAuth2 is a real product. I'd never put mcp-einvoice behind a "paste this token" form. With OAuth2, I can share the URL on the landing page and trust the auth layer.
+
+The work to get here was a weekend. The work to *not* get here — to reinvent per-user auth inside my own server, or to stick with static keys and pretend multi-tenant would sort itself out later — would have been months and would have shipped broken.
+
+---
+
+## The Bigger Lesson
+
+This is the same lesson as [the mobile UX piece](/blog/mcp-apps-mobile-ux-patterns), viewed from a different angle. When the client is someone else's app, you don't get to dictate the interaction model. claude.ai decided that MCP servers must speak OAuth2, and that decision pushes a whole pile of good practices down onto server authors who might not have implemented them otherwise.
+
+I used to think that was gatekeeping. Now I think it's how ecosystems stay healthy. The web survived untrusted code because browsers got aggressive about origins and CORS. MCP will survive untrusted tools because clients get aggressive about auth and consent. If you're building in this space, lean into it — don't ship a static-key MCP server and hope users will tolerate the friction. Set up Auth0 once, copy the middleware, and you're done forever.
+
+The next time you stare at "Server URL" in claude.ai's connect dialog and wonder where the token field went: it's not missing. It's a feature.
+
+---
+
+## Links
+
+- [MCP Authorization spec (draft)](https://modelcontextprotocol.io/specification/draft/basic/authorization)
+- [Auth0 for AI — MCP docs](https://auth0.com/ai/docs/mcp/intro/overview)
+- [RFC 9068 — JWT Profile for OAuth 2.0 Access Tokens](https://www.rfc-editor.org/rfc/rfc9068.html)
+- [RFC 9728 — OAuth 2.0 Protected Resource Metadata](https://datatracker.ietf.org/doc/html/rfc9728)
+- [mcp-einvoice](https://github.com/casysai/mcp-einvoice) — the server this was built for
+- [MCP Apps on Mobile](/blog/mcp-apps-mobile-ux-patterns) — the companion piece
+- [The Localhost Trap](/blog/the-localhost-trap) — the networking version of the same lesson
+
+If you're standing up MCP auth and hit a failure mode I didn't list here, reach out — I'm collecting them.
