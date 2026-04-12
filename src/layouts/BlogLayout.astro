@@ -375,11 +375,26 @@ function getPostSlug(post: typeof sortedPosts[0]) {
                       </li>
                     ))}
                     {posts.length > 3 && (
-                      <li>
-                        <span class="blog-category-more">
-                          +{posts.length - 3} {t.others}
-                        </span>
-                      </li>
+                      <>
+                        {posts.slice(3).map((post) => (
+                          <li class="blog-category-overflow">
+                            <a
+                              href={`${blogBase}/${getPostSlug(post)}`}
+                              class:list={[
+                                'blog-nav-link blog-nav-link--sub',
+                                { 'blog-nav-link--active': currentPath === `${blogBase}/${getPostSlug(post)}` }
+                              ]}
+                            >
+                              <span class="blog-nav-link-title">{post.data.title}</span>
+                            </a>
+                          </li>
+                        ))}
+                        <li>
+                          <button class="blog-category-toggle" data-count={posts.length - 3} data-others={t.others}>
+                            +{posts.length - 3} {t.others}
+                          </button>
+                        </li>
+                      </>
                     )}
                   </ul>
                 </li>
@@ -398,10 +413,6 @@ function getPostSlug(post: typeof sortedPosts[0]) {
           </div>
 
           <!-- Actions -->
-          <div class="blog-sidebar-actions">
-            <button class="blog-sidebar-action-btn">{t.search}</button>
-            <button class="blog-sidebar-action-btn">{t.subscribe}</button>
-          </div>
         </nav>
         </div><!-- /.blog-sidebar-content -->
       </aside>
@@ -525,6 +536,18 @@ function getPostSlug(post: typeof sortedPosts[0]) {
         }, { root: mainEl, rootMargin: '0px 0px -80% 0px', threshold: 0 });
 
         headings.forEach(h => observer.observe(h));
+
+        // Category expand/collapse toggles
+        document.querySelectorAll('.blog-category-toggle').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const list = btn.closest('.blog-category-posts');
+            if (!list) return;
+            const expanded = list.classList.toggle('blog-category--expanded');
+            const count = btn.dataset.count;
+            const others = btn.dataset.others;
+            btn.textContent = expanded ? '↑' : `+${count} ${others}`;
+          });
+        });
       });
     </script>
     <Analytics />
@@ -901,12 +924,29 @@ function getPostSlug(post: typeof sortedPosts[0]) {
     margin-top: 1px;
   }
 
-  .blog-category-more {
+  .blog-category-overflow {
+    display: none;
+  }
+
+  .blog-category-posts.blog-category--expanded .blog-category-overflow {
+    display: list-item;
+  }
+
+  .blog-category-toggle {
     display: block;
     padding: 0.2rem 0.5rem;
     font-size: 0.72rem;
     color: var(--md-sys-color-on-surface-variant, #a8a29e);
     font-style: italic;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    transition: color 0.15s;
+  }
+
+  .blog-category-toggle:hover {
+    color: var(--md-sys-color-primary, #6750a4);
   }
 
   /* --- Tags --- */
@@ -926,44 +966,7 @@ function getPostSlug(post: typeof sortedPosts[0]) {
     font-weight: 500;
     background-color: var(--md-sys-color-surface-variant, #f5f5f4);
     color: var(--md-sys-color-on-surface-variant, #57534e);
-    cursor: pointer;
-    transition: background-color 0.15s, color 0.15s;
     user-select: none;
-  }
-
-  .blog-tag:hover {
-    background-color: var(--md-sys-color-outline-variant, #e7e5e4);
-    color: var(--md-sys-color-on-surface, #1c1917);
-  }
-
-  /* --- Sidebar Actions --- */
-  .blog-sidebar-actions {
-    border-top: 1px solid var(--md-sys-color-outline-variant, #e7e5e4);
-    padding: 0.75rem 1rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-
-  .blog-sidebar-action-btn {
-    display: block;
-    width: 100%;
-    text-align: left;
-    padding: 0.45rem 0.6rem;
-    font-family: inherit;
-    font-size: 0.82rem;
-    font-weight: 500;
-    color: var(--md-sys-color-on-surface-variant, #57534e);
-    background: none;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background-color 0.15s, color 0.15s;
-  }
-
-  .blog-sidebar-action-btn:hover {
-    background-color: var(--md-sys-color-surface-variant, #f5f5f4);
-    color: var(--md-sys-color-on-surface, #1c1917);
   }
 
   /* --- Main Content Area --- */
@@ -1214,8 +1217,12 @@ function getPostSlug(post: typeof sortedPosts[0]) {
     background-color: rgba(255, 184, 111, 0.08);
   }
 
-  html[data-theme="dark"] .blog-category-more {
+  html[data-theme="dark"] .blog-category-toggle {
     color: #6d6358;
+  }
+
+  html[data-theme="dark"] .blog-category-toggle:hover {
+    color: #FFB86F;
   }
 
   /* --- Tags (dark) --- */
@@ -1224,24 +1231,6 @@ function getPostSlug(post: typeof sortedPosts[0]) {
     color: #d5c3b5;
   }
 
-  html[data-theme="dark"] .blog-tag:hover {
-    background-color: rgba(255, 184, 111, 0.16);
-    color: #FFB86F;
-  }
-
-  /* --- Sidebar Actions (dark) --- */
-  html[data-theme="dark"] .blog-sidebar-actions {
-    border-top-color: rgba(255, 184, 111, 0.1);
-  }
-
-  html[data-theme="dark"] .blog-sidebar-action-btn {
-    color: #a89b8c;
-  }
-
-  html[data-theme="dark"] .blog-sidebar-action-btn:hover {
-    background-color: rgba(255, 184, 111, 0.06);
-    color: #FFB86F;
-  }
 
   /* --- Main Content (dark) --- */
   html[data-theme="dark"] .blog-main {
