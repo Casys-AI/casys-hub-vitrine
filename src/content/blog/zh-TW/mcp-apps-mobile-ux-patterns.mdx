@@ -1,0 +1,365 @@
+---
+title: "MCP Apps 行動裝置版：沒人說的 iframe 滾動問題"
+description: "我花了三天試圖修好第三方 WebView iframe 內的橫向滾動。根本修不了。以下是取代它的模式：精簡卡片、requestDisplayMode，以及零來回請求的主從流程。"
+author: "Erwan Lee Pesle"
+date: 2026-04-12
+tags:
+  - mcp
+  - mcp-apps
+  - mobile
+  - ux
+  - claude-code
+  - agents
+category: "產品"
+language: zh-TW
+snippet: "claude.ai 行動版會將你的 MCP App 載入 WebView iframe 中。這個 iframe 有自己的物理法則。你對響應式設計的大多數認知，在這裡都不適用。"
+featured: true
+draft: false
+---
+
+import ExcalidrawDiagram from '../../../components/ExcalidrawDiagram.astro';
+
+# MCP Apps 行動裝置版
+
+> 你打造了一個精緻的 MCP App。雙欄佈局、資料表格、逐層展開的 modal、深色模式。桌面版 Claude 看起來完美。然後你在手機上打開它，一切都折疊變形。你找出 `@media (max-width: 420px)`，什麼反應都沒有。歡迎來到 iframe 的世界。
+
+---
+
+## 你來這裡的原因
+
+如果你正在開發帶有 UI 的 MCP 伺服器，你使用的就是 [MCP Apps](https://modelcontextprotocol.io)——規格中讓工具回傳 `ui://` 資源、供 claude.ai 等主機渲染成互動式檢視器的那個部分。相較於把 JSON blob 丟進聊天室，這才是為 MCP 工具附加真實介面的正確做法。
+
+在桌面版，一切正常。你的檢視器有足夠的聊天面板空間，元件得以呼吸，整體效果和設計稿一致。
+
+在行動版，則截然不同。檢視器被塞進一個狹窄的 WebView iframe，你的表格溢出邊界，使用者試著橫向滾動，但什麼都沒發生。你打開 DevTools，準備祭出慣用的 `overflow-x`、`touch-action`、`viewport meta` 三連招，全試了一遍，沒有一個有效。
+
+我在開發 [mcp-einvoice](https://github.com/casysai/mcp-einvoice) 的檢視器時，在這個迴圈裡耗了三天。這篇文章，是我希望在第一天就有人告訴我的事。
+
+它適用於**所有你要為行動版 Claude 發佈的 MCP App**——發票檢視器、看板、儀表板，不論是什麼。約束條件都一樣：你的 UI 是一個 iframe，嵌在別人 app 控制的 WebView 裡，而你對響應式設計的大多數認知，在 iframe 邊界就停止了。
+
+---
+
+## 三種視窗，一個 iframe
+
+讓我們對「行動版」的定義精確一點，因為它並不是你直覺想的那樣。
+
+<ExcalidrawDiagram src="mcp-apps-mobile/viewport-modes" alt="Three viewport modes for MCP Apps: Large (~700px+), Desktop Claude (~400–500px), Mobile Claude (~300–360px)" />
+
+你會遇到三種寬度：
+
+| 模式                | 寬度         | 情境                                    |
+| ------------------- | ------------ | --------------------------------------- |
+| **大型**            | ~700px+      | MCP Inspector、完整瀏覽器               |
+| **桌面版 Claude**   | ~400–500px   | Claude Desktop 聊天側邊欄——**主要使用情境** |
+| **行動版 Claude**   | ~300–360px   | Claude Android/iOS app                  |
+
+注意清單上沒有的東西：**裝置螢幕尺寸**。iframe 的寬度由 Claude 的聊天面板決定，而非實體裝置。一支 6.7 吋手機直向顯示時，你的檢視器會被渲染成 ~340px。一台 13 吋筆電的聊天面板折疊一半，同樣也是 340px。iframe 不知道外面是什麼，也不在乎。
+
+這是第一個思維轉換。停止思考「行動裝置」，改為思考「狹窄 iframe」。其他一切都從這裡推演。
+
+---
+
+## 陷阱：`@media` 在 iframe 裡說謊
+
+每個前端工程師的第一反應都是用媒體查詢。
+
+```css
+@media (max-width: 420px) {
+  .doclist { display: grid; }
+  .table    { display: none; }
+}
+```
+
+在 claude.ai 桌面版，這勉強有效，因為外層 `window` 的寬度和聊天面板吻合。但在**行動版 claude.ai**，它會靜默失效。即使 iframe 只有 320px 寬，你的檢視器仍然退回寬版佈局。
+
+為什麼？`@media` 查詢的是 `window.innerWidth`，而 `window.innerWidth` 回報的是**外層 WebView**，不是你的程式碼實際執行所在的 iframe。你的 CSS 問錯了問題。你關心的是容器，瀏覽器告訴你的卻是宿主。
+
+你可以試著用各種方法繞過這個問題——`document.documentElement.clientWidth`、`visualViewport`、與宿主的 postMessage 握手。別這樣做。有一行程式碼能做對的事，我稍後會說到。
+
+---
+
+## 那三天，我想要回來
+
+在找到正確模式之前，我嘗試了以下這些方法。省你的時間。
+
+**嘗試一 — 在表格上加 `overflow-x: auto`。**
+在桌面版 Safari 上，它會給你一個可滾動的區域。但在 claude.ai 行動版 WebView 裡，手勢在到達 iframe 之前就被外層滾動容器捕獲了。你向左滑，WebView 無動於衷，表格紋絲不動。從 iframe 內部，沒有事件可以監聽，沒有方法可以宣告手勢所有權，沒有逃脫出口。
+
+**嘗試二 — 在滾動容器上加 `touch-action: pan-x`。**
+語法正確，意圖正確，效果為零。`touch-action` 是在告訴瀏覽器你的元素*想要*哪些手勢。它無法覆蓋一個 WebView 宿主已經決定滑動手勢歸它所有的情況。你無法贏得一個你從未看見的手勢。
+
+**嘗試三 — 在 iframe 裡加 `<meta name="viewport" content="width=device-width">`。**
+框架早已設定，而且無論如何都無關緊要。viewport meta 標籤控制的是文件的*版面視窗*。你的文件渲染沒問題。問題是 iframe 比你的內容還窄，而 iframe 本身不滾動——那是宿主決定的。
+
+**嘗試四 — 從底部滑出的 `position: fixed` 抽屜。**
+有半秒鐘是有效的，然後宿主的 modal 動畫開始，和你搶奪螢幕。我試過的每一種全螢幕 hack 都被 WebView 自身的手勢處理攔截了。你不是前景 app，你是某個 app 裡的一個元件。
+
+**嘗試五 — 「直接叫使用者把手機轉橫的就好了。」**
+不行。
+
+<ExcalidrawDiagram src="mcp-apps-mobile/scroll-problem" alt="The iframe scroll wall: a table wider than the iframe. The user swipes to scroll, the WebView captures the gesture, the iframe never receives it." />
+
+三天之後，我停止試圖修復滾動問題，坐下來和問題本身對話。以下是我在第一天就應該問的問題：**既然橫向滾動在這個 iframe 裡無法運作，我為什麼要用一個需要橫向滾動的佈局？**
+
+> **SDK 說明（v1.3.2）：** 除了 WebView 手勢捕獲的問題，還有一個[獨立的 SDK 錯誤](https://github.com/modelcontextprotocol/ext-apps/pull/567)：`setupSizeChangedNotifications()` 在測量時會暫時將 `documentElement.style.width` 設為 `'fit-content'`，導致每次 resize 時 `scrollLeft` 都被歸零。所以即使你*真的*成功在容器內滾動，視窗切換（inline ↔ fullscreen）也會重置你的滾動位置。已在 1.3.2 修復。如果你使用較舊的 SDK 版本，請在偵錯滾動問題之前先更新——你可能同時在和兩個 bug 搏鬥。
+
+---
+
+## 轉向：改變佈局，而非手勢
+
+你沒辦法修好第三方 iframe 內的橫向滾動。這是約束條件。所以正確的做法，是讓自己完全不需要橫向滾動。
+
+這不是繞過問題的妥協，這是行動端原生 app 從 2013 年就在做的事。**表格不屬於小螢幕。**卡片才是。這就是為什麼 Gmail、Notion、Linear 以及每個像樣的行動 app，都用卡片渲染清單，而不是帶有橫向滾動條的表格。我只是用最艱難的方式重新學了這一課，因為我一直停在「修 bug」的思維，而那個 bug 根本不是 bug——那是 iframe 宿主的設計決定。
+
+所以這條規則，已刻入團隊的記憶：
+
+> **永遠不要在行動版 MCP App 中使用需要橫向滾動的表格。使用卡片佈局。**
+
+就這樣。只要你接受這條規則，本文中的其他問題就會迎刃而解。
+
+但卡片本身還不夠，因為詳細檢視仍然需要足夠的空間。卡片清單適合*瀏覽*。當使用者點進一張卡片，他需要完整的發票內容——交易雙方、明細、稅金、操作按鈕。這些塞不進聊天側邊欄。所以你需要第二招。
+
+---
+
+## 第二招：`requestDisplayMode("fullscreen")`
+
+以下這部分，幾乎所有 MCP Apps 教學都沒提到：只要你禮貌地請求，宿主可以把**整個螢幕**給你的檢視器。
+
+API 在 MCP Apps SDK 裡：
+
+```typescript
+// 在 app 建構時（pip 是可選的——見下方「第三招」）
+const app = new App({
+  availableDisplayModes: ["inline", "fullscreen", "pip"],
+});
+
+// 在元件掛載時
+if (host.supportsDisplayMode?.("fullscreen")) {
+  await app.requestDisplayMode("fullscreen");
+}
+```
+
+當宿主接受請求（claude.ai 會），你的 iframe 會暫時從「聊天側邊欄面板」提升為「佔據整個視窗」。返回按鈕是你的。手勢是你的。而且——關鍵是——你終於可以渲染真正的雙欄發票佈局，因為你有 360 個可用像素，而不是 300 個。
+
+這是關鍵的解鎖。行動版 Claude 不是「螢幕更少的 Claude」，而是「有**兩種**螢幕模式的 Claude」：瀏覽時是 inline，深入查看時是 fullscreen。兩種都要用。
+
+---
+
+## 第三招：`pip` 模式
+
+自 [MCP Apps SDK v1.0.0](https://github.com/modelcontextprotocol/ext-apps) 起，規格定義了三種顯示模式，而不是兩種：
+
+```typescript
+type McpUiDisplayMode = "inline" | "fullscreen" | "pip";
+```
+
+`pip` 是子母畫面：一個浮動覆蓋層，在使用者繼續對話時持續顯示。你的 app 在初始化時宣告支援哪些模式，宿主則揭示它實際提供的內容：
+
+```typescript
+const app = new App({
+  availableDisplayModes: ["inline", "fullscreen", "pip"],
+});
+
+const ctx = app.getHostContext();
+if (ctx?.availableDisplayModes?.includes("pip")) {
+  await app.requestDisplayMode({ mode: "pip" });
+}
+```
+
+`pip` 在行動版什麼時候有意義？當 fullscreen 太強勢的時候。全螢幕發票檢視器會佔用整個 UI——你失去了對話脈絡。但一個應該在角落保持可見、讓你一邊輸入下一個提示一邊查看的儀表板？那就是 `pip`。
+
+把它想成在 YouTube 上選擇全螢幕播放，還是讓影片浮在角落的差別。對 MCP Apps 而言，適用情境包括：
+
+- **即時儀表板**——收入計數器、監控面板，在使用者問後續問題時即時更新
+- **媒體播放器**——如果你的工具回傳影片或音訊串流，pip 讓使用者在聊天的同時繼續觀看
+- **參考面板**——使用者想在撰寫訊息時隨時查閱的文件預覽
+
+搭配 `useCompactMode` 使用的模式和 fullscreen 相同：檢查 `availableDisplayModes`、請求模式、優雅處理宿主拒絕的情況。宿主透過 `ui/notifications/host-context-changed` 通知你的 app 顯示模式變更，讓你在使用者拖動 pip 視窗或宿主調整大小時能夠調整佈局。
+
+**注意：** 不是每個宿主都支援 `pip`。在請求之前先檢查 `availableDisplayModes`——宿主回傳的是*實際*模式集合，可能和你要求的不同。永遠防禦性地撰寫程式碼：
+
+```typescript
+const result = await app.requestDisplayMode({ mode: "pip" });
+if (result.mode !== "pip") {
+  // 宿主不支援 pip——退回 inline 或 fullscreen
+}
+```
+
+---
+
+## 模式：不需來回請求的主從流程
+
+把這兩招合在一起——清單用卡片、詳細頁用 fullscreen——你就得到了我現在所有 MCP App 都採用的行動版模式。
+
+<ExcalidrawDiagram src="mcp-apps-mobile/master-detail-flow" alt="Master-detail flow: list of cards → tap → inline detail panel with light preview → tap 'Full details' → fullscreen viewer rendered from already-loaded drill-down data" />
+
+三個狀態，一個 iframe：
+
+1. **清單（inline）**——`DoclistViewer` 顯示卡片：方向圖示、標題、對方、金額、狀態列。沒有橫向滾動，沒有隱藏欄位，只有人類一眼就能判讀的資訊。每張卡片都有點擊目標。
+
+2. **行內詳細（仍然 inline）**——點擊卡片後，在清單下方展開 `InlineDetailPanel`（或取代清單，取決於你的元件）。它顯示輕量預覽——交易雙方、合計、日期——使用工具已經回傳的逐層展開資料。**不需要 `sendMessage` 來回請求伺服器。**不需要「請等候 Claude 思考」。資料已在記憶體中，你只需渲染它。
+
+3. **全螢幕（詳細頁）**——如果使用者想要完整發票，他們點擊「完整詳細內容」。在桌面版，那個按鈕會觸發 `sendMessage`，在聊天中開啟新檢視器。**在行動版**，同一個按鈕做不同的事：呼叫 `requestDisplayMode("fullscreen")`，並使用狀態中已載入的相同逐層展開資料，就地渲染完整的 `InvoiceDetail` 元件。退出全螢幕（「← 返回」）讓你回到文件清單，零重新載入。
+
+重點在於：**行動版使用者從清單到完整發票，完全不需要向 Claude 要求任何東西。**使用者和模型之間的網路延遲——在行動連線上可能是令人痛苦的 2-3 秒——從關鍵路徑中消失了。因為資料早已在那裡。
+
+這比聽起來更重要。一次 `sendMessage` 來回請求在行動版看起來是這樣的：使用者點擊，模型啟動，模型決定呼叫工具，工具回傳資料，UI 渲染。這至少是一次模型輪次。在 4G 訊號不穩的手機上，這是有保證的 3 秒停頓，讓使用者盯著載入狀態，不知道自己是不是做錯了什麼。使用預載資料的 fullscreen 逐層展開，把這個時間縮短到 16 毫秒。
+
+---
+
+## Hook：`useCompactMode`（以及為什麼 `@media` 沒用）
+
+要做到以上這些，你需要知道當前 iframe 寬度是否算「緊湊」。我已經解釋了為什麼 `@media` 說謊。以下是取代它的方式。
+
+<ExcalidrawDiagram src="mcp-apps-mobile/useCompactMode" alt="@media vs useCompactMode: @media queries window.innerWidth which reports the outer WebView; useCompactMode uses a ResizeObserver on the container element, which correctly tracks the iframe width" />
+
+這個 hook 大約 30 行 React：
+
+```typescript
+// shared/useCompactMode.ts
+import { useEffect, useRef, useState } from "react";
+
+export function useCompactMode(breakpoint = 420) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [compact, setCompact] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      setCompact(entry.contentRect.width < breakpoint);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [breakpoint]);
+
+  return [compact, ref] as const;
+}
+```
+
+使用方式：
+
+```tsx
+function DoclistViewer({ rows }: Props) {
+  const [compact, ref] = useCompactMode(420);
+  return (
+    <div ref={ref}>
+      {compact ? <CardList rows={rows} /> : <Table rows={rows} />}
+    </div>
+  );
+}
+```
+
+訣竅在於 `ResizeObserver` 監看的是**元素**，而不是 window。當 iframe 是 320px 寬時，裡面的元素也是 ~320px 寬，observer 會以正確的值觸發。當宿主調整 iframe 大小（它確實會這樣做——試試在桌面版分割你的聊天面板），observer 再次觸發，元件重新渲染成正確的佈局。沒有媒體查詢，沒有視窗猜測，沒有 postMessage。
+
+搭配 `useDisplayMode`——一個封裝了 `requestDisplayMode` 和 `onhostcontextchanged` 事件的姊妹 hook——你就擁有了所有需要的工具：
+
+```tsx
+function InvoiceViewer({ invoice }: Props) {
+  const [compact, ref] = useCompactMode(420);
+  const display = useDisplayMode(app);
+
+  useEffect(() => {
+    if (compact && display.supports("fullscreen") && display.current === "inline") {
+      display.request("fullscreen");
+    }
+  }, [compact, display]);
+
+  return <div ref={ref}>{/* ... */}</div>;
+}
+```
+
+**詳細檢視器在掛載時，當 iframe 為緊湊模式且宿主支援 fullscreen 時，會自動請求 fullscreen。**清單檢視器保持 inline，因為 fullscreen 瀏覽沒有意義。一條規則，每個元件系列套用一次。
+
+---
+
+## 要花你一天時間的 CSS 地雷
+
+說到這裡，有一條 CSS 規則，我花了很長時間才找到，結果卻很丟臉地簡單。
+
+如果你這樣寫：
+
+```css
+html { overflow: hidden; }
+body { overflow: auto; }
+```
+
+看起來沒問題。在桌面版甚至能正常運作。但在行動版 Claude 上，你的檢視器垂直滾動會靜默失效。在 iframe 內上下滑動什麼都不發生。宿主仍然滾動聊天，但你的全螢幕詳細頁變成一塊鎖死的看板。
+
+為什麼？因為 `html` 上的 `overflow: hidden` 會傳播到 WebView 用來決定誰的滾動獲勝的視窗傳播規則。修復方法很簡單：
+
+```css
+html { border-radius: 12px; } /* 給 iframe 圓角 */
+#app  { overflow: hidden; }   /* 原本在 html 上 */
+body  { overflow: auto; }     /* 垂直滾動在這裡 */
+```
+
+把 `overflow: hidden` 從 `html` 移到 `#app`。就這樣。視覺效果相同，垂直滾動恢復正常。再多的 `touch-action` 或 `overscroll-behavior` 都找不到這個問題——我是在同事問「等等，為什麼它在 `html` 上？」時才發現的。
+
+**規則：**`overflow: hidden` 放在 `#app`，永遠不要放在 `html`。垂直滾動屬於 `body`。
+
+---
+
+## 你不該做的事：一份誘惑清單
+
+在把這個模式教給其他兩位工程師之後，以下是他們都先試過的彎路。直接跳過。
+
+**「我在行動版把表格字體縮小就好了。」**
+你還在表格思維裡。問題是表格本身，不是它的大小。卡片佈局。
+
+**「我在 420px 以下隱藏欄位。」**
+現在你有兩種表格佈局要維護，還有使用者抱怨被隱藏的那欄正好是他們需要的。卡片佈局。
+
+**「我用 `@container` 查詢。」**
+[Container queries](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_containment/Container_queries) 很好用，但它們解決的是不同的問題——基於容器尺寸的*佈局*適應。你仍然需要決定要渲染 `<table>` 還是 `<div role="list">`，而那是 TypeScript 的決定，不是 CSS 的決定，因為兩個子樹幾乎沒有共同之處。`useCompactMode` 給你那個布林值。用 `@container` 在每個分支內部進行微調。
+
+**「我自己用 `window.resize` + `getBoundingClientRect` 做 resize 偵測。」**
+你是在劣質地重新發明 ResizeObserver。使用平台提供的工具。
+
+**「我放棄了，直接渲染一條帶連結的文字訊息，指向一個網頁。」**
+這是大多數 MCP 伺服器今天的做法。這也是為什麼 MCP Apps 在行動版感覺像一個錯失的機會。工具在那裡，模式也在那裡。唯一缺少的，是有人做過這三天的轉變，讓你不必再走一遍。
+
+---
+
+## MCP Apps「支援行動版」實際上是什麼意思
+
+如果你正在發佈帶有 UI 元件的 MCP 伺服器，以下是你能宣稱支援行動版的最低檢查清單：
+
+1. **沒有橫向滾動表格。**任何地方都沒有。不要「就這一個」。卡片。
+2. **在每個有多種佈局的檢視器上使用 `useCompactMode`。**不用媒體查詢。
+3. **在 `App` 建構子中加入 `availableDisplayModes: ["inline", "fullscreen"]`。**
+4. **詳細檢視器在緊湊模式且宿主支援時，自動請求 fullscreen。**
+5. **清單→詳細流程中預載逐層展開資料**，讓 fullscreen 不需來回請求。
+6. **`overflow: hidden` 放在 `#app`，不放在 `html`。**相信我。
+7. **在 Claude 行動版上測試。**不是 Chrome DevTools 的「行動裝置模擬」。不是 MCP Inspector 的縮窄視窗。是真正的 Claude 行動 app，在真正的手機上。WebView 手勢行為在任何其他地方都無法重現，而那正是會讓你出問題的地方。
+
+步驟一到六在知道模式後大約需要半天時間。步驟七是最容易讓人忽略的——MCP Inspector 是預設的開發迴圈，但它的行為和生產環境的 WebView 不一樣。在 Inspector 中開發、透過 Inspector 發佈，但在宣告完成之前，**一定要在實際的行動 app 上驗證**。
+
+---
+
+## 更大的教訓
+
+讓我花了三天的，不是一個 CSS bug。那是一個框架 bug。我一直把檢視器視為「我的網頁 app，只是更窄了」。它不是。它是**別人 app 內的一個元件**，以 Web 平台功能的部分子集運行，手勢、視窗，乃至基本的滾動行為，都在執行時與一個你無法控制的宿主協商。
+
+一旦你接受了這個框架，那些解決方案就不再像是妥協，而是開始像良好的設計：
+
+- **卡片優於表格**，因為表格預設了橫向滾動，而你沒有橫向滾動的所有權。
+- **Fullscreen 逐層展開**，因為宿主可以在你請求時給你整個螢幕，而行動版使用者需要它。
+- **預載資料**，因為網路很慢，而你已經支付過一次資料的代價。
+- **ResizeObserver 優於 `@media`**，因為你的容器不是 window，即使它謊稱自己是。
+
+這些都不是 MCP 專屬的。它們是 Web 元件和 iframe widget 二十年來反覆重新學習的相同教訓。新的是，MCP Apps 終於讓「可嵌入的互動式 UI」成為 AI 工具世界的一等公民，這意味著全新一代的開發者即將撞上同樣的牆。
+
+希望你現在是在第零天撞上它，而不是第三天。
+
+---
+
+## 相關連結
+
+- [MCP 規格——UI 資源](https://modelcontextprotocol.io)
+- [mcp-einvoice](https://github.com/casysai/mcp-einvoice)——誕生這個模式的檢視器
+- [ResizeObserver MDN](https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver)
+- [本機陷阱](/blog/the-localhost-trap)——另一篇「從內部修不了」的文章
+- [在 claude.ai 上驗證 MCP 伺服器身份](/blog/mcp-authentication-claude-ai-oauth2)——OAuth2 for MCP 的配套文章
+
+如果你在開發 MCP Apps 時遇到奇怪的行動版問題，找我——我可能也踩過同樣的坑。

@@ -1,0 +1,329 @@
+---
+title: "将 MCP 服务器接入 claude.ai：Auth0 + OAuth2 完整指南"
+description: "手把手教你用 Auth0 为 claude.ai 上的远程 MCP 服务器配置身份认证。涵盖 OAuth2 配置、RFC 9068 令牌、Resource Parameter 开关、JWT 验证中间件，以及那些没人告诉你的失败场景。"
+author: "Erwan Lee Pesle"
+date: 2026-04-12
+tags:
+  - mcp
+  - oauth2
+  - auth0
+  - security
+  - agents
+  - tutorial
+category: "教程"
+language: zh
+snippet: "claude.ai 与 MCP 服务器之间通过 OAuth2 通信——不接受静态 Bearer 令牌，不接受共享密钥。本文用 Auth0 完整演示整个配置流程，从创建 API 到在中间件中验证 JWT。"
+featured: true
+draft: false
+---
+
+import ExcalidrawDiagram from '../../../components/ExcalidrawDiagram.astro';
+
+# 将 MCP 服务器接入 claude.ai
+
+> 读完本指南，你的远程 MCP 服务器将可以从 claude.ai 访问，每个请求都会携带经过验证的用户身份，你也会清楚地知道哪些 Auth0 配置是关键的，哪些无关紧要。
+
+---
+
+## 本指南涵盖的内容
+
+如果你在构建远程 MCP 服务器，迟早会想让它在 [claude.ai](https://claude.ai) 网页端运行——而不只是桌面客户端。网页端才是大多数用户所在的地方，也是让非技术协作者无需安装任何东西就能使用你的工具的地方。
+
+接入方式**并非**"粘贴这个 Bearer 令牌"。claude.ai 的 MCP 客户端只支持 OAuth2：完整的授权码流程，包含服务发现、重定向 URI，以及符合 RFC 9068 规范的 JWT。本指南将带你从一个已经可以本地运行的 MCP 服务器，一步步配置到生产环境，让 claude.ai 代表真实用户与它通信。
+
+**你将学到**：
+
+- 为什么 claude.ai 拒绝静态 Bearer 令牌，以及它真正期望的是什么
+- 如何从零开始配置 Auth0 租户 + API + 应用（熟悉后 10 分钟搞定）
+- 两个不直观的 Auth0 配置项，忽略它们会让你花好几个小时调试
+- 如何在 MCP 服务器中间件中验证 RFC 9068 JWT（附完整 TypeScript 示例）
+- 你会遇到的五种失败场景以及如何在一分钟内逐一解决
+
+**你需要准备**：
+
+- 一个已经可以在 MCP Inspector 或 Claude Desktop 中使用静态令牌运行的远程 MCP 服务器
+- 一个 Auth0 账号（免费套餐足够入门）
+- 第一次需要 30 分钟，之后每个 MCP 服务器只需 5 分钟
+
+本文是 [iframe 滚动问题](/blog/mcp-apps-mobile-ux-patterns) 的姊妹篇——两篇文章共同指向同一个主题：**当你的客户端是别人的应用时，不要对抗它，而是去了解它的规则。**
+
+---
+
+## 为什么静态令牌行不通
+
+在开始配置之前，先搞清楚这个"显而易见的方案"究竟为何失败——失败的方式并不直观，错误信息也毫无帮助。
+
+一个典型的起点：一台部署在 [Deno Deploy](https://deno.com/deploy) 上的服务器（本指南全程以 [mcp-einvoice](https://github.com/casysai/mcp-einvoice) 为例），通过 Streamable HTTP 在 `https://mcp-einvoice.casys.deno.net/mcp` 上发布工具，认证方式是请求头中的静态 Bearer 令牌。这套方案在 MCP Inspector、`curl` 以及通过 `claude_desktop_config.json` 预填 Authorization 头的 Claude Desktop 中都能正常工作。到这里，一切顺利。
+
+然后你进入 claude.ai → 设置 → 集成 → 添加 MCP 服务器，粘贴 URL，界面只问了一个问题："服务器 URL"。没有令牌字段，没有请求头字段，没有"高级选项"，只有 URL。
+
+你点击连接。claude.ai 请求你的服务器。服务器返回 `401 Unauthorized`。接着 claude.ai 做了一件你可能没想到的事：它去请求 `/.well-known/oauth-protected-resource`。
+
+<ExcalidrawDiagram src="mcp-auth-claude-ai/expectation-vs-reality" alt="Expectation: claude.ai sends Authorization: Bearer to your MCP server. Reality: claude.ai does OAuth2 discovery, authenticates against Auth0, gets an RS256 JWT, then talks to your MCP server." />
+
+这个 URL 正是 [MCP 授权规范](https://modelcontextprotocol.io/specification/draft/basic/authorization) 在发挥作用。当 claude.ai 请求一个 MCP 端点并收到 401 时，它期望服务器返回一个**受保护资源元数据**文档，指向一个 OAuth2 授权服务器。静态 Bearer 认证从来都不在规范之内——从未如此。桌面客户端允许你用请求头绕过，网页客户端不行。
+
+claude.ai 没有问题。只是 Bearer 令牌模型与它的期望不匹配。本指南剩余的内容就是教你交付正确的形态。
+
+---
+
+## 两段话讲清规范
+
+以下是 MCP 授权的故事，去掉所有术语。
+
+**MCP 服务器是受保护资源（Protected Resource）。** 它不颁发令牌，不验证密码。它只接受由授权服务器颁发的 RS256 签名 JWT，而该授权服务器的身份由 MCP 服务器在一个众所周知的 URL 上公开。这和你的 API 与 Auth0、或你的 API 与 Okta 之间的分离是同一个逻辑。API 永远看不到密码。
+
+**MCP 客户端（claude.ai）是 OAuth2 客户端。** 它从你的受保护资源元数据中发现授权服务器，引导用户完成授权码流程，用 code 换取 Bearer JWT，然后在每个 MCP 请求的 `Authorization` 头中携带该 JWT。用户**登录一次**，claude.ai 缓存令牌，之后的会话是按用户独立维护的。
+
+在深入之前，有两个结论需要先内化：
+
+1. **没有共享凭证。** 你的 MCP 服务器的每个用户都有自己的身份。服务器永远不会在不同用户之间看到相同的令牌。吊销操作是免费的——在 Auth0 中禁用用户，他们的令牌在下次刷新时就会失效。
+2. **你不是在构建认证服务器。** 你是在**指向**一个认证服务器。这意味着你的任务比"实现 OAuth2"小得多——只是"正确配置 Auth0，并添加一个小小的元数据端点"。
+
+第一天我意识到这一点时，感到很烦躁。到第三天，我的感受变成了"哦——这其实是正确的设计"。在讲 YAML 之前，让我解释一下原因。
+
+---
+
+## 为什么这是正确的选择
+
+说实话，我的第一反应是"这是 Anthropic 在耍威风"。静态 Bearer 令牌对 90% 的 API 集成来说都够用，为每个玩具级 MCP 服务器强制要求 OAuth2 看起来像是照搬企业安全的形式主义。
+
+我错了。以下是论据，按说服力从强到弱排列：
+
+**MCP 工具的用户同意不是可选项。** 一个 MCP 工具可以读取我的发票、在我的 ERP 中创建用户、删除文档。当 claude.ai 让我连接一个服务器时，我需要看到一个同意界面，清晰地告诉我我在授权哪些 scope，来自我信任的域名，用我自己的凭证。"粘贴这个令牌"的字段完全无法提供这些保障。一旦有恶意 MCP 工具通过配置错误的静态密钥泄露用户数据，整个生态系统都会受到声誉冲击。强制要求 OAuth2 从结构上消除了这种失败可能。
+
+**按用户区分身份同样不是可选项。** 如果同一家公司的两个人连接了同一个 MCP 服务器，他们**不应该**共用一个令牌。他们各自应有独立的令牌。Auth0 轻松实现这一点；静态 API 密钥做不到。一旦你需要多租户、按用户的审计日志、按用户的速率限制或按用户的数据隔离，静态密钥就会崩溃，你最终还是会以糟糕的方式重新发明 OAuth2。
+
+**吊销是一等公民操作。** 当笔记本电脑丢失、员工离职或用户更换凭证时，OAuth2 只需按一个按钮。静态 Bearer 令牌要求你追踪每一个粘贴过密钥的地方。
+
+**Scope。** 一个设计良好的 MCP 服务器有只读 scope、写入 scope、管理员 scope。OAuth2 让这成为一等公民概念。用户在同意界面看到的，是他们正在授予 claude.ai 哪些具体能力。静态密钥是全有或全无。
+
+所以：是的，需要更多工作；是的，你必须配置 Auth0 或同类服务。但这和我们从明文存储密码转向使用 bcrypt 是同样性质的"更多工作"。这不是官僚障碍，而是在生产系统中经历了十五年考验的模式，如今被应用到 AI 工具层。对抗它，你会输。拥抱它，你会睡得更好。
+
+现在让我们把它跑起来。
+
+---
+
+## 流程全貌
+
+在深入 Auth0 之前，先看一下完整流程。把它烙进脑子里——这能帮你省两个小时的迷茫调试。
+
+<ExcalidrawDiagram src="mcp-auth-claude-ai/oauth2-flow" alt="MCP OAuth2 flow on claude.ai: claude.ai discovers the protected resource metadata, redirects to Auth0, user logs in and consents, Auth0 redirects back to claude.ai/api/mcp/auth_callback, claude.ai exchanges the code for an RS256 JWT, claude.ai calls the MCP server with Bearer JWT." />
+
+十个步骤，四个角色。你只控制其中两个：你的 MCP 服务器（第 1、2、9、10 步）和 Auth0（第 4、5、7、8 步）。claude.ai 和用户浏览器自行完成其余步骤。
+
+这张图最重要的一点：**claude.ai 的重定向 URI 是固定的。** 它是 `https://claude.ai/api/mcp/auth_callback`。你无法选择，无法配置。你只能原封不动地在 Auth0 客户端上注册它，否则一切都会失败。一旦你想耍小聪明重定向到其他地方，Auth0 的回调检查就会失败，浏览器会落在一个没人能帮你解决的错误页面上。
+
+好了，开始配置。
+
+---
+
+## Auth0 十分钟配置（重要的那些部分）
+
+我选择 [Auth0](https://auth0.com) 是因为一旦你知道该拨动哪些开关，它就能开箱即用地正确处理 MCP。你也可以用 Keycloak、Authentik、Clerk、Stytch 或任何符合 RFC 9068 的授权服务器。以下**概念**完全通用。Auth0 只是针对 MCP 有最好的文档，参见他们的 [Auth for AI](https://auth0.com/ai/docs/mcp/intro/overview) 文档。
+
+### 1. 租户
+
+创建一个租户。我使用 `casys.eu.auth0.com`。选哪个地区都行——选一个离你的用户近的，因为它处于登录延迟的关键路径上。
+
+### 2. API（将你的 MCP 服务器声明为受保护资源）
+
+这是 Auth0 中代表你的 MCP 服务器的 OAuth2 对象。创建时填写：
+
+- **名称**：`MCP eInvoice`（随便填，只是个标签）
+- **标识符（Audience）**：`https://mcp-einvoice.casys.deno.net/` — **你的 MCP 服务器的确切 URL，包含末尾斜杠。** Auth0 将此字符串作为所有颁发 JWT 的 `aud` 声明，你的 MCP 服务器后续会检查传入令牌的 `aud` 是否与自身 URL 匹配。少一个或多一个斜杠都会导致 401。
+
+保存。Auth0 会跳转到 API 设置页——保持页面打开，下一步需要用到。
+
+### 3. 令牌格式：切换到 RFC 9068
+
+MCP 授权规范明确要求 [RFC 9068](https://www.rfc-editor.org/rfc/rfc9068.html)（"OAuth 2.0 访问令牌的 JWT Profile"）。MCP 客户端库——包括 claude.ai——会针对该 Profile 进行验证。如果你的 `aud`、`iss`、`exp`、`iat`、`scope` 和 `jti` 声明不完全对齐，客户端会拒绝令牌，然后你得到一个 401——*发生在一次成功的 OAuth2 往返之后*。这是整个技术栈中最令人困惑的失败模式：OAuth 流程在网络面板中看起来完全正常，JWT 在 jwt.io 上解码也没问题，但你的服务器仍然说不。
+
+Auth0 的 API 默认使用旧版 "Auth0" 令牌格式。你必须切换它。设置在 **APIs → 你的 API → Settings → JSON Web Token (JWT) Profile**，只有两个选项：
+
+<figure class="blog-screenshot">
+  <img src="/images/blog/mcp-auth/access-token-settings.png" alt="Auth0 dashboard — API Settings → Access Token Settings. JSON Web Token (JWT) Profile dropdown set to RFC 9068. Signing Algorithm RS256. JSON Web Encryption disabled." loading="lazy" />
+  <figcaption>APIs → 你的 API → Settings → Access Token Settings。将 Profile 选为 <code>RFC 9068</code>，Signing Algorithm 选为 <code>RS256</code>。保存。</figcaption>
+</figure>
+
+- **JWT Profile** = `RFC 9068`。默认的 "Auth0" 选项生成的 JWT 看起来是对的，但缺少 MCP 验证器所期望的严格 RFC 9068 声明结构。RFC 9068 修正了这个问题。
+- **Signing Algorithm** = `RS256`。不是 HS256。HS256 要求 Auth0 和你的服务器之间共享一个密钥，而这正是我们要避免的。RS256 使用公私钥对——Auth0 用私钥签名，你的服务器通过 `https://<tenant>/.well-known/jwks.json` 的公共 JWKS 进行验证，你的环境中不需要任何密钥。
+- **JSON Web Encryption** = 关闭。不需要。令牌已经有签名，并通过 HTTPS 传输。
+
+较旧的 Auth0 文档（以及更早版本的控制台）引用了一个 `token_dialect` 字段，值为 `access_token_authz` 和 `rfc9068_profile_authz`，通过 Management API 设置。那是旧的做法。现在控制台直接以 "JWT Profile" 的形式暴露该选项，Auth0 存储的值为 `rfc9068_profile`。如果你发现自己在用 `auth0 api` 打补丁，说明你在看旧文档。
+
+保存。你的 API 颁发的下一个令牌将符合 RFC 9068。
+
+### 4. 应用（claude.ai 作为 OAuth2 客户端）
+
+在 Auth0 中，"Application"（他们的意思是 OAuth2 客户端）代表 claude.ai：
+
+- **类型**：Regular Web Application。
+- **名称**：`Claude.ai`。
+- **Allowed Callback URLs**：`https://claude.ai/api/mcp/auth_callback` — **原封不动，没有末尾斜杠，没有查询字符串**。这是 claude.ai 固定的重定向 URI，不可协商。
+- **Grant Types**：Authorization Code，Refresh Token。
+- **Connections**：至少启用一个。我使用 Username-Password-Authentication（数据库）和 google-oauth2（社交登录）。用户在登录时自行选择。
+
+保存。Auth0 会给你一个 `client_id`。复制它——用户在流程中会在浏览器 URL 中看到它，但你的 MCP 服务器代码中不需要它。
+
+### 5. 那个隐藏的开关
+
+这是我发现时忍不住笑出声的那个。
+
+<figure class="blog-screenshot">
+  <img src="/images/blog/mcp-auth/resource-parameter-toggle.png" alt="Auth0 dashboard — Settings → Advanced → Resource Parameter Compatibility Profile toggle, enabled. Profile that determines how the identity of the protected resource is specified in OAuth endpoints." loading="lazy" />
+  <figcaption>Tenant Settings → Advanced → Resource Parameter Compatibility Profile。默认关闭。把它打开，否则 claude.ai 的 <code>/authorize</code> 请求会因 <code>invalid_request</code> 失败。</figcaption>
+</figure>
+
+Auth0 有一个租户级别的设置叫做 **Resource Parameter Compatibility Profile**，深埋在 Settings → Advanced 中。它**默认是关闭的**。关闭时，Auth0 不接受 `/authorize` 和 `/oauth/token` 上的 `resource` 参数——而 claude.ai 正是通过这个参数告诉 Auth0"我在为这个特定的 MCP 服务器请求令牌"。
+
+没有它，claude.ai 的授权请求会被拒绝，返回 `invalid_request`，你看到一个通用错误页面，错误信息中既不提 "resource"，也不提 "MCP"。我是因为在 Auth0 for AI 文档中看到一句不起眼的话才找到它的。花了两个小时。
+
+**启用它。每个租户操作一次。** 不需要任何 CLI 操作或补丁——只需拨动开关并保存。
+
+到这里，Auth0 已经就绪。现在来教你的 MCP 服务器成为受保护资源。
+
+---
+
+## MCP 服务器端：两个端点
+
+在现有基础上，你的 MCP 服务器需要两样东西：
+
+1. 在 `/.well-known/oauth-protected-resource` 上的**受保护资源元数据**端点。
+2. MCP 路由上的 **JWT 验证**中间件。
+
+其他一切保持不变。
+
+### 受保护资源元数据
+
+claude.ai 会在初始 401 之后首先请求这个 URL，用于发现去哪里进行身份验证。规范是 [RFC 9728](https://datatracker.ietf.org/doc/html/rfc9728)。最简载荷如下：
+
+```typescript
+// src/routes/protected-resource.ts
+export function protectedResourceMetadata() {
+  return Response.json({
+    resource: "https://mcp-einvoice.casys.deno.net/",
+    authorization_servers: [
+      "https://casys.eu.auth0.com/"
+    ],
+    scopes_supported: [
+      "mcp:read",
+      "mcp:write"
+    ],
+    bearer_methods_supported: ["header"],
+    resource_documentation: "https://casys.ai/engine/mcp-einvoice"
+  });
+}
+```
+
+`resource` 字段必须与你在 Auth0 中设置的 Audience 完全一致。`authorization_servers` 字段告诉 claude.ai OAuth2 端点在哪里——Auth0 从该根路径发布自己的 `/.well-known/openid-configuration`，所以 claude.ai 可以自动发现 `/authorize` 和 `/oauth/token`，不需要你硬编码它们。
+
+在 `/.well-known/oauth-protected-resource` 上提供该 JSON。发现端配置完毕。
+
+### JWT 验证中间件
+
+对每个 MCP 请求验证 JWT：
+
+```typescript
+// src/middleware/auth.ts
+import { jwtVerify, createRemoteJWKSet } from "jose";
+
+const JWKS = createRemoteJWKSet(
+  new URL("https://casys.eu.auth0.com/.well-known/jwks.json")
+);
+
+export async function authenticate(req: Request) {
+  const auth = req.headers.get("authorization");
+  if (!auth?.startsWith("Bearer ")) {
+    return { error: unauthorized("missing_token") };
+  }
+  const token = auth.slice(7);
+
+  try {
+    const { payload } = await jwtVerify(token, JWKS, {
+      issuer: "https://casys.eu.auth0.com/",
+      audience: "https://mcp-einvoice.casys.deno.net/",
+    });
+    return { user: payload };
+  } catch (e) {
+    return { error: unauthorized("invalid_token") };
+  }
+}
+
+function unauthorized(code: string) {
+  return new Response(null, {
+    status: 401,
+    headers: {
+      "WWW-Authenticate": `Bearer realm="mcp-einvoice", error="${code}", resource_metadata="https://mcp-einvoice.casys.deno.net/.well-known/oauth-protected-resource"`
+    }
+  });
+}
+```
+
+三个细节值得停下来说：
+
+1. **JWKS 有缓存。** `createRemoteJWKSet` 只获取一次 Auth0 的公钥并缓存。不要每次请求都重新获取——你会触达速率限制，并给每次调用增加 200ms 延迟。
+2. **`issuer` 和 `audience` 是硬编码的检查。** 这正是你为 RFC 9068 令牌付出代价的原因。如果跳过它们，一个由 Auth0 为*不同* Audience 颁发的令牌也能通过验证，恶意 MCP 服务器就可以拿别处的令牌来攻击你的服务器。
+3. **401 响应上的 `WWW-Authenticate` 头。** 这是 claude.ai 用来找回你的受保护资源元数据的面包屑。没有它，claude.ai 看到裸 401 就会放弃。`resource_metadata` 参数在 MCP 授权 RFC 中有规定，是触发重新发现的钩子。
+
+就是这些。在你的 MCP 路由上注册中间件，部署，claude.ai 的"连接"按钮现在会走完完整的 OAuth2 流程，为每个用户停放一个独立的令牌，并用真实的用户身份调用你的工具。
+
+---
+
+## 我遇到的失败场景（让你少走弯路）
+
+大致按痛苦程度排序：
+
+**"Invalid audience"** — `aud` 声明不匹配。检查 Auth0 中 API 标识符的末尾斜杠。这个坑我踩了两次。
+
+**"Missing claims"** — 你的 API JWT Profile 还停留在 Auth0 旧版默认值。在 **APIs → 你的 API → Settings → Access Token Settings** 中将其切换到 `RFC 9068`。
+
+**"/authorize 上的 invalid_request"** — Resource Parameter Compatibility Profile 是关闭的。拨动开关。
+
+**"invalid_redirect_uri"** — Auth0 客户端中的 Callback URL 填错了。必须是 `https://claude.ai/api/mcp/auth_callback`，原封不动。
+
+**"OAuth2 成功后仍然 401"** — 你的 JWT 中间件拒绝了有效令牌。通常是因为你忘记固定 `issuer` 和 `audience`，`jose` 默认使用了错误的值。或者因为你的服务器时钟偏差超过了 `exp`（Deno Deploy 处理得很好，容器有时不行）。
+
+**"第一次有效，刷新后失败"** — 你在 Auth0 客户端上禁用了 Refresh Token grant。重新启用它。
+
+**"欧洲可用，美国不行"** — 你的租户是 `casys.eu.auth0.com`，但有用户从 claude.ai 的某个无法路由到它的地区连接。实际上通常不是问题，但如果你服务高流量，可以考虑一个美国镜像租户。
+
+以上都不是奇怪的边缘情况。所有的问题都能在日志中找到。唯一让它们变得痛苦的是，日志分布在三个不同的地方（Auth0 日志、claude.ai 网络面板、你的服务器），所以你有一半的调试时间花在搞清楚到底是哪个角色拒绝了请求上。
+
+---
+
+## 成功之后你得到了什么
+
+一旦它工作起来，你的 MCP 服务器就会有这些变化：
+
+- **每个请求都有用户身份。** `payload.sub` 是 Auth0 的用户 ID。你可以按用户限定数据库查询范围、写入按用户的审计日志、应用按用户的速率限制——不需要自己发明任何东西。
+- **多租户是免费的。** 同一家 claude.ai 上的两个公司可以连接同一个 MCP 服务器，他们永远看不到彼此的数据，因为他们的令牌是独立的。
+- **吊销只需点击控制台。** 禁用 Auth0 用户，他们的下次刷新就会失败，他们就出局了。
+- **Scope 真正起作用了。** 给你的工具加上所需的 scope 注解（`mcp:read`、`mcp:write`、`mcp:admin`），在中间件中检查它们，用户在同意时就会清楚地看到他们在授予哪些能力。
+- **你终于可以公开发布了。** 一个使用静态认证的公共 MCP 服务器是个定时炸弹。一个使用 OAuth2 的公共 MCP 服务器才是真正的产品。我从不会把 mcp-einvoice 放在"粘贴这个令牌"的表单后面。有了 OAuth2，我可以把 URL 放在落地页上，并信任认证层。
+
+走到这里花了一个周末。而*不*走到这里——在我自己的服务器里重新发明按用户认证，或者继续用静态密钥假装多租户以后会自己解决——会花费数月时间，而且最终会交付一个破损的系统。
+
+---
+
+## 更大的教训
+
+这和[移动端 UX 那篇文章](/blog/mcp-apps-mobile-ux-patterns)是同一个教训，只是从不同的角度看。当客户端是别人的应用时，你无法决定交互模型。claude.ai 决定 MCP 服务器必须支持 OAuth2，而这个决定把一整堆良好实践推给了那些本来可能不会主动实现它们的服务器作者。
+
+我曾经认为那是在设置门槛。现在我认为这是生态系统保持健康的方式。Web 之所以在不受信任的代码中存活下来，是因为浏览器对 Origin 和 CORS 采取了强硬态度。MCP 之所以能在不受信任的工具中存活下来，是因为客户端对认证和同意采取了强硬态度。如果你在这个领域构建产品，顺势而为吧——不要发布一个静态密钥 MCP 服务器然后指望用户容忍那种摩擦。配置一次 Auth0，复制中间件，从此永久搞定。
+
+下次当你盯着 claude.ai 连接对话框中的"服务器 URL"，疑惑令牌字段去哪了时：它不是缺失了，是一个特性。
+
+---
+
+## 相关链接
+
+- [MCP 授权规范（草案）](https://modelcontextprotocol.io/specification/draft/basic/authorization)
+- [Auth0 for AI — MCP 文档](https://auth0.com/ai/docs/mcp/intro/overview)
+- [RFC 9068 — OAuth 2.0 访问令牌的 JWT Profile](https://www.rfc-editor.org/rfc/rfc9068.html)
+- [RFC 9728 — OAuth 2.0 受保护资源元数据](https://datatracker.ietf.org/doc/html/rfc9728)
+- [mcp-einvoice](https://github.com/casysai/mcp-einvoice) — 本文构建所基于的服务器
+- [MCP 应用移动端 UX](/blog/mcp-apps-mobile-ux-patterns) — 姊妹篇
+- [本地陷阱](/blog/the-localhost-trap) — 同一教训的网络层版本
+
+如果你在配置 MCP 认证时遇到了本文未列出的失败场景，欢迎联系我——我在持续收集这些案例。
