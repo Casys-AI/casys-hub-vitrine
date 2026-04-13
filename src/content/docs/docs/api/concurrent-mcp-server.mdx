@@ -20,13 +20,15 @@ The main entry point for the framework. `McpApp` handles tool registration, midd
 ```typescript
 import { McpApp } from "@casys/mcp-server";
 
-const server = new McpApp(options: ConcurrentServerOptions);
+const server = new McpApp(options: McpAppOptions);
 ```
 
-### ConcurrentServerOptions
+### McpAppOptions
+
+`ConcurrentServerOptions` is a deprecated alias for `McpAppOptions` and will be removed in v1.0. Use `McpAppOptions` in new code.
 
 ```typescript
-interface ConcurrentServerOptions {
+interface McpAppOptions {
   // Required
   name: string;                          // Server name (shown to clients)
   version: string;                       // Semver version string
@@ -228,10 +230,10 @@ Start with STDIO transport. Use this for local tools (Claude Desktop, Cursor, et
 ### startHttp
 
 ```typescript
-server.startHttp(options: HttpServerOptions): HttpServerInstance;
+async startHttp(options: HttpServerOptions): Promise<HttpServerInstance>
 ```
 
-Start with Streamable HTTP transport. Includes SSE streaming, session management, and RFC 9728 discovery. Returns an `HttpServerInstance` (not a Promise).
+Start with Streamable HTTP transport. Includes SSE streaming, session management, and RFC 9728 discovery. Returns a `Promise<HttpServerInstance>` — always `await` it.
 
 ```typescript
 interface HttpServerOptions {
@@ -242,15 +244,25 @@ interface HttpServerOptions {
   maxBodyBytes?: number | null;   // Default: 1_000_000 (1 MB). null = no limit
   requireAuth?: boolean;          // Default: false — throws at startup if true without auth
   customRoutes?: RouteConfig[];   // Additional HTTP routes
-  ipRateLimit?: {
-    maxRequests: number;
-    windowMs: number;
-    keyExtractor?: (request: Request) => string;   // Custom key extraction (default: IP)
-    onLimitExceeded?: (request: Request) => void;  // Called when a limit is hit
-  };
+  ipRateLimit?: HttpRateLimitOptions;
   onListen?: (info: { hostname: string; port: number }) => void;  // Called when server is ready
   embedded?: boolean;             // Skip port binding — use getFetchHandler() instead
   embeddedHandlerCallback?: (handler: FetchHandler) => void;  // Receives handler in embedded mode (set internally by getFetchHandler)
+}
+
+interface HttpRateLimitOptions {
+  maxRequests: number;
+  windowMs: number;
+  keyExtractor?: (context: HttpRateLimitContext) => string;  // Custom key extraction (default: IP)
+  onLimitExceeded?: "reject" | "wait";  // "reject" returns 429 immediately; "wait" queues the request until a slot opens
+}
+
+interface HttpRateLimitContext {
+  ip: string;
+  method: string;
+  path: string;
+  headers: Headers;
+  sessionId?: string;
 }
 ```
 
@@ -518,12 +530,19 @@ Pipeline behaviour:
 
 ## Sampling bridge
 
-When `enableSampling: true` is set, the server can delegate LLM calls back through the client connection. A `samplingClient` must also be provided to handle the actual requests:
+When `enableSampling: true` is set, the server can delegate LLM calls back through the client connection. Provide a `samplingClient` — either instantiate `SamplingBridge` directly or supply any object implementing the `SamplingClient` interface:
 
 ```typescript
-import { McpApp, createSamplingClient } from "@casys/mcp-server";
+import { McpApp, SamplingBridge } from "@casys/mcp-server";
+import type { SamplingClient } from "@casys/mcp-server";
 
-const samplingClient = createSamplingClient(/* client config */);
+// Option A: use SamplingBridge with your own SamplingClient implementation
+const myClient: SamplingClient = {
+  async createMessage(params) {
+    // delegate to your LLM provider
+  },
+};
+const samplingClient = new SamplingBridge(myClient);
 
 const server = new McpApp({
   name: "my-server",

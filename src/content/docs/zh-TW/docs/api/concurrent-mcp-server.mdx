@@ -20,13 +20,15 @@ import { Aside } from '@astrojs/starlight/components';
 ```typescript
 import { McpApp } from "@casys/mcp-server";
 
-const server = new McpApp(options: ConcurrentServerOptions);
+const server = new McpApp(options: McpAppOptions);
 ```
 
-### ConcurrentServerOptions
+### McpAppOptions
+
+`ConcurrentServerOptions` 是 `McpAppOptions` 的已棄用別名，將在 v1.0 中移除。新程式碼請使用 `McpAppOptions`。
 
 ```typescript
-interface ConcurrentServerOptions {
+interface McpAppOptions {
   // 必填
   name: string;                          // 伺服器名稱（顯示給客戶端）
   version: string;                       // Semver 版本字串
@@ -228,10 +230,10 @@ await server.start(): Promise<void>;
 ### startHttp
 
 ```typescript
-server.startHttp(options: HttpServerOptions): HttpServerInstance;
+async startHttp(options: HttpServerOptions): Promise<HttpServerInstance>
 ```
 
-以 Streamable HTTP 傳輸啟動。包含 SSE 串流、工作階段管理和 RFC 9728 探索。返回 `HttpServerInstance`（非 Promise）。
+以 Streamable HTTP 傳輸啟動。包含 SSE 串流、工作階段管理和 RFC 9728 探索。返回 `Promise<HttpServerInstance>` — 請務必使用 `await`。
 
 ```typescript
 interface HttpServerOptions {
@@ -242,15 +244,25 @@ interface HttpServerOptions {
   maxBodyBytes?: number | null;   // 預設：1_000_000（1 MB）。null = 無限制
   requireAuth?: boolean;          // 預設：false — 若為 true 且無認證則啟動時拋出錯誤
   customRoutes?: RouteConfig[];   // 額外的 HTTP 路由
-  ipRateLimit?: {
-    maxRequests: number;
-    windowMs: number;
-    keyExtractor?: (request: Request) => string;   // 自訂金鑰提取（預設：IP）
-    onLimitExceeded?: (request: Request) => void;  // 達到限制時呼叫
-  };
+  ipRateLimit?: HttpRateLimitOptions;
   onListen?: (info: { hostname: string; port: number }) => void;  // 伺服器就緒時呼叫
   embedded?: boolean;             // 跳過連接埠綁定 — 改用 getFetchHandler()
   embeddedHandlerCallback?: (handler: FetchHandler) => void;  // 嵌入模式下接收處理器（由 getFetchHandler() 內部設定）
+}
+
+interface HttpRateLimitOptions {
+  maxRequests: number;
+  windowMs: number;
+  keyExtractor?: (context: HttpRateLimitContext) => string;  // 自訂金鑰提取（預設：IP）
+  onLimitExceeded?: "reject" | "wait";  // "reject" 立即返回 429；"wait" 將請求排隊直到有空閒槽位
+}
+
+interface HttpRateLimitContext {
+  ip: string;
+  method: string;
+  path: string;
+  headers: Headers;
+  sessionId?: string;
 }
 ```
 
@@ -518,12 +530,19 @@ interface MultiTenantMiddlewareOptions {
 
 ## Sampling Bridge
 
-設定 `enableSampling: true` 時，伺服器可以透過客戶端連線回委派 LLM 呼叫。還必須提供 `samplingClient` 來處理實際請求：
+設定 `enableSampling: true` 時，伺服器可以透過客戶端連線回委派 LLM 呼叫。提供一個 `samplingClient` — 直接實例化 `SamplingBridge` 或提供任何實作 `SamplingClient` 介面的物件：
 
 ```typescript
-import { McpApp, createSamplingClient } from "@casys/mcp-server";
+import { McpApp, SamplingBridge } from "@casys/mcp-server";
+import type { SamplingClient } from "@casys/mcp-server";
 
-const samplingClient = createSamplingClient(/* client config */);
+// 方式 A：使用 SamplingBridge 搭配自訂 SamplingClient 實作
+const myClient: SamplingClient = {
+  async createMessage(params) {
+    // 委派給你的 LLM 提供者
+  },
+};
+const samplingClient = new SamplingBridge(myClient);
 
 const server = new McpApp({
   name: "my-server",

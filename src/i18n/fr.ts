@@ -788,7 +788,7 @@ const html = renderComposite(descriptor);`,
       },
     ],
     quickstartTitle: "Demarrage rapide",
-    quickstartCode: `import { createCollector, buildCompositeUi, renderComposite } from "@casys/mcp-compose/core";
+    quickstartCode: `import { createCollector, buildCompositeUi, renderComposite } from "@casys/mcp-compose";
 
 // 1. Collecter les ressources UI des resultats d'outils
 const collector = createCollector();
@@ -807,8 +807,8 @@ const descriptor = buildCompositeUi(resources, {
 // 3. Rendre en HTML autonome
 const html = renderComposite(descriptor);`,
     installTitle: "Installation",
-    installDeno: "deno add jsr:@casys/mcp-compose",
-    installNpm: "npx jsr add @casys/mcp-compose",
+    installDeno: "deno add jsr:@casys/mcp-compose@0.4.0",
+    installNpm: "npx jsr add @casys/mcp-compose@0.4.0",
   },
   contact: {
     title: "Prêt à brancher l'IA sur votre métier ?",

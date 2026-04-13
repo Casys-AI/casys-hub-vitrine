@@ -668,7 +668,7 @@ const html = renderComposite(descriptor);`,
       { step: "3", title: "Render", description: "Renderer outputs self-contained HTML with JSON-RPC event bus for cross-UI sync" },
     ],
     quickstartTitle: "Quick start",
-    quickstartCode: `import { createCollector, buildCompositeUi, renderComposite } from "@casys/mcp-compose/core";
+    quickstartCode: `import { createCollector, buildCompositeUi, renderComposite } from "@casys/mcp-compose";
 
 // 1. 从工具结果中收集 UI 资源
 const collector = createCollector();
@@ -687,8 +687,8 @@ const descriptor = buildCompositeUi(resources, {
 // 3. 渲染为自包含 HTML
 const html = renderComposite(descriptor);`,
     installTitle: "Install",
-    installDeno: "deno add jsr:@casys/mcp-compose",
-    installNpm: "npx jsr add @casys/mcp-compose",
+    installDeno: "deno add jsr:@casys/mcp-compose@0.4.0",
+    installNpm: "npx jsr add @casys/mcp-compose@0.4.0",
   },
   contact: {
     title: "准备好将 AI 接入您的业务了吗？",

@@ -20,13 +20,15 @@ import { Aside } from '@astrojs/starlight/components';
 ```typescript
 import { McpApp } from "@casys/mcp-server";
 
-const server = new McpApp(options: ConcurrentServerOptions);
+const server = new McpApp(options: McpAppOptions);
 ```
 
-### ConcurrentServerOptions
+### McpAppOptions
+
+`ConcurrentServerOptions` 是 `McpAppOptions` 的已弃用别名，将在 v1.0 中移除。新代码请使用 `McpAppOptions`。
 
 ```typescript
-interface ConcurrentServerOptions {
+interface McpAppOptions {
   // Required
   name: string;                          // Server name (shown to clients)
   version: string;                       // Semver version string
@@ -228,10 +230,10 @@ await server.start(): Promise<void>;
 ### startHttp
 
 ```typescript
-server.startHttp(options: HttpServerOptions): HttpServerInstance;
+async startHttp(options: HttpServerOptions): Promise<HttpServerInstance>
 ```
 
-使用 Streamable HTTP 传输启动。包含 SSE 流、会话管理和 RFC 9728 发现。返回 `HttpServerInstance`（非 Promise）。
+使用 Streamable HTTP 传输启动。包含 SSE 流、会话管理和 RFC 9728 发现。返回 `Promise<HttpServerInstance>` — 始终使用 `await`。
 
 ```typescript
 interface HttpServerOptions {
@@ -242,15 +244,25 @@ interface HttpServerOptions {
   maxBodyBytes?: number | null;   // Default: 1_000_000 (1 MB). null = no limit
   requireAuth?: boolean;          // Default: false — throws at startup if true without auth
   customRoutes?: RouteConfig[];   // Additional HTTP routes
-  ipRateLimit?: {
-    maxRequests: number;
-    windowMs: number;
-    keyExtractor?: (request: Request) => string;   // Custom key extraction (default: IP)
-    onLimitExceeded?: (request: Request) => void;  // Called when a limit is hit
-  };
+  ipRateLimit?: HttpRateLimitOptions;
   onListen?: (info: { hostname: string; port: number }) => void;  // Called when server is ready
   embedded?: boolean;             // Skip port binding — use getFetchHandler() instead
   embeddedHandlerCallback?: (handler: FetchHandler) => void;  // Receives handler in embedded mode (set internally by getFetchHandler)
+}
+
+interface HttpRateLimitOptions {
+  maxRequests: number;
+  windowMs: number;
+  keyExtractor?: (context: HttpRateLimitContext) => string;  // 自定义键提取（默认：IP）
+  onLimitExceeded?: "reject" | "wait";  // "reject" 立即返回 429；"wait" 将请求排队直到有空闲槽位
+}
+
+interface HttpRateLimitContext {
+  ip: string;
+  method: string;
+  path: string;
+  headers: Headers;
+  sessionId?: string;
 }
 ```
 
@@ -518,12 +530,19 @@ interface MultiTenantMiddlewareOptions {
 
 ## Sampling Bridge
 
-设置 `enableSampling: true` 后，服务器可以通过客户端连接委托 LLM 调用。还必须提供 `samplingClient` 来处理实际请求：
+设置 `enableSampling: true` 后，服务器可以通过客户端连接委托 LLM 调用。提供一个 `samplingClient` — 直接实例化 `SamplingBridge` 或提供任何实现 `SamplingClient` 接口的对象：
 
 ```typescript
-import { McpApp, createSamplingClient } from "@casys/mcp-server";
+import { McpApp, SamplingBridge } from "@casys/mcp-server";
+import type { SamplingClient } from "@casys/mcp-server";
 
-const samplingClient = createSamplingClient(/* client config */);
+// 方式 A：使用 SamplingBridge 配合自定义 SamplingClient 实现
+const myClient: SamplingClient = {
+  async createMessage(params) {
+    // 委托给你的 LLM 提供商
+  },
+};
+const samplingClient = new SamplingBridge(myClient);
 
 const server = new McpApp({
   name: "my-server",
