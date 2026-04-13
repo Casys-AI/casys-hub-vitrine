@@ -1,0 +1,289 @@
+---
+title: Platform Quick Start
+description: "All three packages wired together: McpApp with UI-producing tools, mcp-bridge serving them to Telegram, and mcp-compose building a dashboard."
+---
+
+import { Steps, Aside, Card, CardGrid } from '@astrojs/starlight/components';
+import Mermaid from '../../../../components/Mermaid.astro';
+
+This example builds a minimal invoices MCP server with two tools that produce UI resources, then shows how `mcp-bridge` serves those UIs in a Telegram webview and how `mcp-compose` combines them into a split-pane dashboard.
+
+## Prerequisites
+
+- Deno 2.x
+- A Telegram bot token from [@BotFather](https://t.me/botfather) (for the bridge section)
+
+## Step 1 — McpApp with two UI-producing tools
+
+Install `mcp-server`:
+
+```bash
+deno add jsr:@casys/mcp-server@0.14.0
+```
+
+Create `server.ts`:
+
+```typescript
+import { McpApp } from "@casys/mcp-server";
+import { uiMeta } from "@casys/mcp-server"; // re-exported from mcp-compose
+import { existsSync } from "node:fs";
+import { readFileSync } from "node:fs";
+
+const app = new McpApp({
+  name: "invoices",
+  version: "1.0.0",
+  maxConcurrent: 10,
+  validateSchema: true,
+});
+
+// Tool 1 — list invoices, produces a table UI
+app.registerTool(
+  {
+    name: "invoices:list",
+    description: "List recent invoices",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workflowId: { type: "string" },
+      },
+    },
+    ...uiMeta({
+      resourceUri: "ui://invoices/invoice-list",
+      emits: ["invoice.selected"],
+      visibility: ["model", "app"],
+    }),
+  },
+  async (args) => {
+    // Fetch invoices from your data source here
+    return {
+      content: [{ type: "text", text: "3 invoices loaded" }],
+      _meta: { ui: { resourceUri: "ui://invoices/invoice-list" } },
+    };
+  },
+);
+
+// Tool 2 — render a chart, reacts to invoice selection
+app.registerTool(
+  {
+    name: "chart:render",
+    description: "Render invoice amount chart",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workflowId: { type: "string" },
+      },
+    },
+    ...uiMeta({
+      resourceUri: "ui://invoices/invoice-chart",
+      accepts: ["invoice.selected"],
+      visibility: ["model", "app"],
+    }),
+  },
+  async (args) => {
+    return {
+      content: [{ type: "text", text: "Chart rendered" }],
+      _meta: { ui: { resourceUri: "ui://invoices/invoice-chart" } },
+    };
+  },
+);
+
+// Register HTML viewers — each maps to a built ui/*/dist/index.html
+app.registerViewers({
+  prefix: "invoices",
+  moduleUrl: import.meta.url,
+  exists: (path) => existsSync(path),
+  readFile: (path) => readFileSync(path, "utf-8"),
+  viewers: ["invoice-list", "invoice-chart"],
+});
+
+// Start over HTTP on port 3000
+await app.startHttp({ port: 3000 });
+console.log("MCP server running at http://localhost:3000/mcp");
+```
+
+<Aside type="note">
+  `uiMeta()` is re-exported from `@casys/mcp-server` — you do not need a separate `mcp-compose` import for the server. The `_meta.ui` object is spread directly into the tool definition and forwarded in every tool result.
+</Aside>
+
+When an LLM calls `invoices:list`, the result contains `_meta.ui.resourceUri = "ui://invoices/invoice-list"`. The client (bridge or compose) uses that URI to render the interactive viewer.
+
+## Step 2 — Bridge to Telegram
+
+Install `mcp-bridge`:
+
+```bash
+deno add jsr:@casys/mcp-bridge@0.2.0
+```
+
+<Aside type="caution">
+  `mcp-bridge` is at v0.2.0 (prototype). API may change. Pin the exact version.
+</Aside>
+
+Create `bridge.ts`:
+
+```typescript
+import { JsonRpcMcpBackend, startResourceServer } from "@casys/mcp-bridge";
+
+const server = startResourceServer({
+  // Serve the built HTML viewers by name
+  assetDirectories: {
+    "invoices": "./ui/invoice-list/dist",
+  },
+  platform: "telegram",
+  telegramBotToken: Deno.env.get("TELEGRAM_BOT_TOKEN")!,
+  backend: new JsonRpcMcpBackend({
+    // Point at the McpApp started in Step 1
+    endpointUrl: "http://localhost:3000/mcp",
+  }),
+  options: {
+    resourceServerPort: 4000,
+  },
+});
+
+console.log(`Bridge running at ${server.baseUrl}`);
+```
+
+Run both files:
+
+```bash
+deno run -A server.ts &
+deno run -A bridge.ts
+```
+
+Set the Telegram Mini App URL in BotFather to:
+
+```text
+http://localhost:4000/app/invoices/index.html
+```
+
+When a user opens the Mini App, the bridge:
+1. Serves the HTML with `bridge.js` injected.
+2. Opens a WebSocket session.
+3. Validates Telegram init data (HMAC check with the bot token).
+4. Forwards JSON-RPC messages between the webview and the MCP server.
+
+For `ui://` resources registered on the MCP server (not in `assetDirectories`), use the `/ui?uri=ui://...` route — the bridge forwards a `resources/read` request to the backend and returns the HTML.
+
+## Step 3 — Compose both tools into a dashboard
+
+Install `mcp-compose`:
+
+```bash
+deno add jsr:@casys/mcp-compose@0.4.0
+```
+
+<Aside type="caution">
+  `mcp-compose` is at v0.4.0 (alpha). API may change. Pin the exact version.
+</Aside>
+
+Create `compose.ts`:
+
+```typescript
+import {
+  buildCompositeUi,
+  createCollector,
+  renderComposite,
+  validateSyncRules,
+} from "@casys/mcp-compose";
+
+// Simulate tool results from your LLM agent
+// In practice, these come from your MCP client calling the tools above
+const invoiceListResult = {
+  content: [{ type: "text", text: "3 invoices loaded" }],
+  _meta: { ui: { resourceUri: "ui://invoices/invoice-list" } },
+};
+
+const chartResult = {
+  content: [{ type: "text", text: "Chart rendered" }],
+  _meta: { ui: { resourceUri: "ui://invoices/invoice-chart" } },
+};
+
+// 1. Collect results
+const collector = createCollector();
+collector.collect("invoices:list", invoiceListResult, { workflowId: "wf-001" });
+collector.collect("chart:render", chartResult, { workflowId: "wf-001" });
+
+const resources = collector.getResources();
+
+// 2. Define sync rules and layout
+const orchestration = {
+  layout: "split" as const,
+  sync: [
+    {
+      from: "invoices:list",
+      event: "invoice.selected",
+      to: "chart:render",
+      action: "update",
+    },
+  ],
+  sharedContext: ["workflowId"],
+};
+
+// 3. Validate sync rules before building
+const validation = validateSyncRules(
+  orchestration.sync,
+  resources.map((r) => r.source),
+);
+
+if (!validation.valid) {
+  console.error("Sync rule issues:", validation.issues);
+  Deno.exit(1);
+}
+
+// 4. Build and render
+const descriptor = buildCompositeUi(resources, orchestration);
+const html = renderComposite(descriptor);
+
+await Deno.writeTextFile("./dashboard.html", html);
+console.log("Dashboard written to dashboard.html");
+```
+
+Run it:
+
+```bash
+deno run -A compose.ts
+```
+
+Open `dashboard.html` in a browser. You will see:
+- Two iframes side-by-side (split layout).
+- When the invoice list iframe emits `invoice.selected`, the compose event bus routes it to the chart iframe's `update` action handler.
+- `workflowId` is available in every `ComposeEventPayload.sharedContext`.
+
+## What just happened
+
+<Mermaid chart={`graph LR
+  AGENT[LLM agent] -->|invoices:list| APP[McpApp\nserver.ts]
+  AGENT -->|chart:render| APP
+  APP -->|_meta.ui| BRIDGE[mcp-bridge\nbridge.ts\nTelegram webview]
+  APP -->|_meta.ui| COMPOSE[mcp-compose\ncompose.ts\nHTML dashboard]
+  style APP fill:#6750A4,color:#fff
+  style BRIDGE fill:#FFB86F,color:#000
+  style COMPOSE fill:#FFB86F,color:#000`} />
+
+1. **`McpApp`** registered two tools. Each tool result carries `_meta.ui.resourceUri`.
+2. **`registerViewers()`** mapped those URIs to built HTML files on the MCP server.
+3. **`mcp-bridge`** ran an HTTP server that serves those pages inside a Telegram Mini App and forwards WebSocket messages to the MCP server.
+4. **`mcp-compose`** collected both tool results, validated the sync rules, and rendered a split-pane HTML dashboard with a wired event bus.
+
+The two consumers (`mcp-bridge` and `mcp-compose`) are independent — you can use one, both, or neither. The contract between them and the server is `_meta.ui.resourceUri`.
+
+## Next steps
+
+<CardGrid>
+  <a href="/docs/platform/architecture" class="sl-link-card">
+    <span>Architecture</span>
+    <span>Full details on registerViewers, the event bus, and shared context.</span>
+  </a>
+  <a href="/docs/guides/mcp-apps" class="sl-link-card">
+    <span>MCP Apps Guide</span>
+    <span>Building HTML viewers with the MCP Apps protocol.</span>
+  </a>
+  <a href="/docs/mcp-bridge/telegram" class="sl-link-card">
+    <span>Telegram Adapter</span>
+    <span>Auth, CSP configuration, and Telegram-specific options.</span>
+  </a>
+  <a href="/docs/mcp-compose/composer" class="sl-link-card">
+    <span>Composer &amp; Layouts</span>
+    <span>Available layout presets and sync rule options.</span>
+  </a>
+</CardGrid>

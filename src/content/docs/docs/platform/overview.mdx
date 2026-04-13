@@ -1,0 +1,82 @@
+---
+title: MCP Platform Overview
+description: "Build, connect, and compose MCP Apps with @casys/mcp-server, @casys/mcp-bridge, and @casys/mcp-compose."
+---
+
+import { Card, CardGrid, LinkCard, Aside } from '@astrojs/starlight/components';
+import Mermaid from '../../../../components/Mermaid.astro';
+
+The MCP Platform is three packages that work together: **build** MCP servers with UI-producing tools, **connect** them to messaging platforms, and **compose** multiple UIs into a single dashboard.
+
+## The three packages
+
+<CardGrid>
+  <Card title="@casys/mcp-server" icon="rocket">
+    A framework for building MCP servers on Deno. Middleware pipeline, OAuth2, concurrency control, and `McpApp` — the class that registers tools and serves `ui://` resources. **v0.14.0, stable, 301 tests.**
+  </Card>
+  <Card title="@casys/mcp-bridge" icon="laptop">
+    Bridges MCP App UIs to messaging platforms (Telegram, LINE). Runs an HTTP resource server that serves HTML pages into platform webviews over WebSocket JSON-RPC. **v0.2.0, prototype.**
+  </Card>
+  <Card title="@casys/mcp-compose" icon="list-format">
+    Collects `_meta.ui` results from multiple tool calls and composes them into a split-pane HTML dashboard. Event bus lets iframes communicate. **v0.4.0, alpha.**
+  </Card>
+</CardGrid>
+
+## Maturity
+
+| Package | Version | Status | Tests |
+|---|---|---|---|
+| `@casys/mcp-server` | 0.14.0 | Stable | 301 |
+| `@casys/mcp-bridge` | 0.2.0 | Prototype | — |
+| `@casys/mcp-compose` | 0.4.0 | Alpha | — |
+
+<Aside type="caution">
+  `mcp-bridge` and `mcp-compose` are early-stage. APIs may change between minor versions. Do not use in production without pinning the exact version.
+</Aside>
+
+## The `_meta.ui` contract
+
+The three packages connect through one shared convention: when a tool returns a result it includes a `_meta.ui.resourceUri` field. The value is a `ui://` URI that points to an HTML page registered on the server.
+
+```typescript
+// A tool result that carries a UI resource
+{
+  content: [{ type: "text", text: "Invoice INV-001 loaded" }],
+  _meta: { ui: { resourceUri: "ui://invoices/invoice-viewer" } }
+}
+```
+
+`mcp-server` registers the HTML at that URI. `mcp-bridge` resolves the URI and serves the HTML into a Telegram Mini App webview. `mcp-compose` collects multiple such results and renders them side-by-side in an iframe dashboard.
+
+## Data flow
+
+<Mermaid chart={`graph LR
+  AGENT[LLM Agent] -->|tool calls| APP[McpApp]
+  APP -->|_meta.ui results| BRIDGE[mcp-bridge\nMessaging webview]
+  APP -->|_meta.ui results| COMPOSE[mcp-compose\nDashboard]
+  APP -->|ui:// resource| BRIDGE
+  APP -->|ui:// resource| COMPOSE
+  BRIDGE -->|iframe in Telegram| USER1[User in Telegram]
+  COMPOSE -->|split-pane HTML| USER2[User in browser]
+  style APP fill:#6750A4,color:#fff
+  style BRIDGE fill:#FFB86F,color:#000
+  style COMPOSE fill:#FFB86F,color:#000`} />
+
+## When to use which package
+
+**Use `mcp-server` alone** when you need an MCP server — any tool-building use case. It has no dependency on `mcp-bridge` or `mcp-compose`.
+
+**Add `mcp-bridge`** when your users interact with the server through a messaging platform (Telegram, LINE) and you want to open interactive HTML pages inside platform webviews.
+
+**Add `mcp-compose`** when an LLM workflow calls multiple tools that each return a UI and you want to show those UIs side-by-side in a single dashboard. `mcp-compose` can be used without `mcp-bridge` — it renders to plain HTML.
+
+**Use all three** when you want a full pipeline: MCP tools with UIs, delivered in a messaging platform, with cross-UI event communication.
+
+## Get started
+
+<CardGrid>
+  <LinkCard title="Quick Start" href="/docs/platform/quickstart" description="All three packages wired together in one worked example." />
+  <LinkCard title="Architecture" href="/docs/platform/architecture" description="How the _meta.ui contract, registerViewers, and compose events work." />
+  <LinkCard title="mcp-server docs" href="/docs/getting-started/introduction" description="Full framework reference: middleware, auth, concurrency, MCP Apps." />
+  <LinkCard title="mcp-bridge docs" href="/docs/mcp-bridge/introduction" description="Resource server, Telegram adapter, security model." />
+</CardGrid>

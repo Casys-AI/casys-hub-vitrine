@@ -1,0 +1,205 @@
+---
+title: Platform Architecture
+description: "How mcp-server, mcp-bridge, and mcp-compose integrate through the _meta.ui contract, registerViewers, and compose events."
+---
+
+import { Card, CardGrid, Aside } from '@astrojs/starlight/components';
+import Mermaid from '../../../../components/Mermaid.astro';
+
+## The `_meta.ui` contract
+
+The three packages share one convention: a tool result can carry a `_meta.ui` object alongside its `content` array.
+
+```typescript
+// Shape of a tool result with UI metadata
+{
+  content: [{ type: "text", text: "..." }],
+  _meta: {
+    ui: {
+      resourceUri: "ui://my-server/viewer-name",  // required
+      visibility: ["model", "app"],                // optional
+      emits: ["rowSelected"],                      // optional — PML events
+      accepts: ["setFilter"],                      // optional — PML events
+    }
+  }
+}
+```
+
+The `resourceUri` is a `ui://` URI. It is not an HTTP URL — it is resolved at serve time by whichever package handles the result (`mcp-bridge` or `mcp-compose`).
+
+### Building `_meta.ui` with `uiMeta()`
+
+The `uiMeta()` helper from `@casys/mcp-compose` builds the `_meta` object from a typed options bag:
+
+```typescript
+import { uiMeta } from "@casys/mcp-compose";
+
+const tool = {
+  name: "invoices:list",
+  description: "List invoices",
+  inputSchema: { type: "object", properties: {} },
+  ...uiMeta({
+    resourceUri: "ui://invoices/invoice-list",
+    emits: ["invoice.selected"],
+    accepts: ["filter.apply"],
+    visibility: ["model", "app"],
+  }),
+};
+```
+
+`uiMeta()` is re-exported from `@casys/mcp-server` as well, so you do not need to add `mcp-compose` as a direct dependency if you are using `mcp-server`.
+
+## `registerViewers()` — serving HTML at `ui://` URIs
+
+`McpApp.registerViewers()` walks a set of built UI directories and registers each one as an MCP resource at `ui://{prefix}/{viewerName}`.
+
+```typescript
+import { McpApp } from "@casys/mcp-server";
+import { existsSync } from "node:fs";
+import { readFileSync } from "node:fs";
+
+const app = new McpApp({ name: "invoices", version: "1.0.0" });
+
+app.registerViewers({
+  prefix: "invoices",
+  moduleUrl: import.meta.url,
+  exists: (path) => existsSync(path),
+  readFile: (path) => readFileSync(path, "utf-8"),
+  viewers: ["invoice-list", "invoice-detail"],
+});
+// Registers:
+//   ui://invoices/invoice-list  → ./ui/invoice-list/dist/index.html
+//   ui://invoices/invoice-detail → ./ui/invoice-detail/dist/index.html
+```
+
+Viewers whose `dist/` directory does not exist are skipped with a warning, not an error. The server starts even if a UI has not been built yet.
+
+`RegisterViewersConfig` fields:
+
+| Field | Required | Description |
+|---|---|---|
+| `prefix` | Yes | URI prefix, e.g. `"invoices"` → `ui://invoices/…` |
+| `moduleUrl` | Yes | `import.meta.url` of the server file, used to resolve relative paths |
+| `exists` | Yes | Filesystem existence check |
+| `readFile` | Yes | File reader, may be async |
+| `viewers` | No | Explicit list of viewer names. Omit to use `discover`. |
+| `discover` | No | Auto-discover by scanning a `uiDir` directory |
+| `csp` | No | `resourceDomains`, `connectDomains`, `frameDomains` for CSP headers |
+
+## Bridge path: messaging platform webviews
+
+When a tool result reaches `mcp-bridge`, the resource server resolves the `ui://` URI by forwarding a `resources/read` JSON-RPC request to the MCP backend and serving the HTML response as an HTTP page, injecting `bridge.js`.
+
+<Mermaid chart={`sequenceDiagram
+  participant A as LLM Agent
+  participant S as McpApp
+  participant B as mcp-bridge
+  participant W as Webview (Telegram)
+
+  A->>S: tools/call invoices:list
+  S-->>A: _meta.ui.resourceUri = ui://invoices/invoice-list
+  A->>B: open ui://invoices/invoice-list
+  B->>S: resources/read ui://invoices/invoice-list
+  S-->>B: HTML content
+  B-->>W: HTTP page + injected bridge.js
+  W->>B: WebSocket JSON-RPC
+  B->>S: tools/call (from webview interactions)`} />
+
+`startResourceServer()` is the entry point:
+
+```typescript
+import { JsonRpcMcpBackend, startResourceServer } from "@casys/mcp-bridge";
+
+const server = startResourceServer({
+  assetDirectories: { "invoices": "./ui/invoice-list/dist" },
+  platform: "telegram",
+  telegramBotToken: Deno.env.get("TELEGRAM_BOT_TOKEN")!,
+  backend: new JsonRpcMcpBackend({
+    endpointUrl: "https://my-mcp.example.com/mcp",
+  }),
+  options: { resourceServerPort: 4000 },
+});
+```
+
+The `/ui?uri=ui://...` route proxies `ui://` resources from the backend. Local files in `assetDirectories` are served directly without a backend round-trip.
+
+## Compose path: multi-UI dashboards
+
+`mcp-compose` implements the Collector → Composer → Renderer pipeline entirely server-side. The output is a standalone HTML file with iframes and an event bus.
+
+<Mermaid chart={`graph TD
+  R1[Tool result A\n_meta.ui.resourceUri] --> C[createCollector]
+  R2[Tool result B\n_meta.ui.resourceUri] --> C
+  C -->|getResources| COMP[buildCompositeUi\norchestration + layout]
+  COMP -->|CompositeUiDescriptor| REND[renderComposite]
+  REND -->|HTML string| OUT[Dashboard HTML\niframes + event bus]
+  style C fill:#6750A4,color:#fff
+  style COMP fill:#FFB86F,color:#000`} />
+
+```typescript
+import {
+  buildCompositeUi,
+  createCollector,
+  renderComposite,
+} from "@casys/mcp-compose";
+
+const collector = createCollector();
+collector.collect("invoices:list", invoiceToolResult);
+collector.collect("chart:render", chartToolResult);
+
+const descriptor = buildCompositeUi(collector.getResources(), {
+  layout: "split",
+  sync: [
+    { from: "invoices:list", event: "invoice.selected", to: "chart:render", action: "update" },
+  ],
+  sharedContext: ["workflowId"],
+});
+
+const html = renderComposite(descriptor);
+```
+
+## Shared context propagation
+
+Both `mcp-bridge` and `mcp-compose` propagate a shared context object alongside UI events. In `mcp-compose`, `sharedContext` is declared in the orchestration options and the field names (e.g. `"workflowId"`, `"userId"`) are extracted from each collected tool call's arguments:
+
+```typescript
+collector.collect("invoices:list", result, {
+  workflowId: "wf-abc",
+  userId: "u-123",
+});
+
+const descriptor = buildCompositeUi(collector.getResources(), {
+  layout: "split",
+  sync: [...],
+  sharedContext: ["workflowId", "userId"],  // these fields are forwarded to iframes
+});
+```
+
+Each iframe receives the shared context in the `ComposeEventPayload.sharedContext` field when an event arrives.
+
+## Cross-UI events with `composeEvents()`
+
+Inside an iframe rendered by `mcp-compose`, use `composeEvents()` to emit and receive events without any dependency on the MCP Apps protocol:
+
+```typescript
+// Inside an iframe (browser code, e.g. invoice-list viewer)
+import { composeEvents } from "@casys/mcp-compose/sdk";
+
+const events = composeEvents();
+
+// Emit when a row is selected
+button.addEventListener("click", () => {
+  events.emit("invoice.selected", { invoiceId: "INV-001" });
+});
+
+// Listen for filter actions from the chart iframe
+events.on("filter.apply", (payload) => {
+  applyFilter(payload.data);
+});
+```
+
+`composeEvents()` uses a dedicated `ui/compose/event` JSON-RPC method over `postMessage`. It does not interfere with the MCP Apps `App` instance if you are using one.
+
+<Aside type="note">
+  `emits` and `accepts` declared in `uiMeta()` are hints for the event bus — the compose renderer uses them to route events between slots. Declare them on the tool definition so the orchestrator knows the wiring before the iframes load.
+</Aside>

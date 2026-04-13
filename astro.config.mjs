@@ -42,6 +42,15 @@ export default defineConfig({
       ],
       sidebar: [
         {
+          label: 'MCP Platform',
+          collapsed: false,
+          items: [
+            { label: 'Overview', slug: 'docs/platform/overview' },
+            { label: 'Architecture', slug: 'docs/platform/architecture' },
+            { label: 'Quick Start', slug: 'docs/platform/quickstart' },
+          ],
+        },
+        {
           label: '@casys/mcp-server',
           collapsed: false,
           items: [
