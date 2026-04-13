@@ -268,6 +268,8 @@ Three details worth pausing on:
 
 That's it. Register the middleware on your MCP route, deploy, and claude.ai's "Connect" button now walks through the full OAuth2 flow, parks a per-user token, and calls your tools with a real user identity attached.
 
+> **If you're using [`@casys/mcp-server`](https://jsr.io/@casys/mcp-server):** both endpoints above are built in. The Auth0 OIDC preset generates the Protected Resource Metadata and wires up JWT verification — the ~80 lines of code above collapse into a YAML config block. The manual approach shown here is what happens under the hood.
+
 ---
 
 ## The Failure Modes I Hit (So You Don't Have To)
@@ -323,6 +325,7 @@ The next time you stare at "Server URL" in claude.ai's connect dialog and wonder
 - [RFC 9068 — JWT Profile for OAuth 2.0 Access Tokens](https://www.rfc-editor.org/rfc/rfc9068.html)
 - [RFC 9728 — OAuth 2.0 Protected Resource Metadata](https://datatracker.ietf.org/doc/html/rfc9728)
 - [mcp-einvoice](https://github.com/casysai/mcp-einvoice) — the server this was built for
+- [@casys/mcp-server](https://jsr.io/@casys/mcp-server) — the framework that handles auth, middleware, and transport
 - [MCP Apps on Mobile](/blog/mcp-apps-mobile-ux-patterns) — the companion piece
 - [The Localhost Trap](/blog/the-localhost-trap) — the networking version of the same lesson
 

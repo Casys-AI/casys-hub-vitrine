@@ -268,6 +268,8 @@ function unauthorized(code: string) {
 
 就是这些。在你的 MCP 路由上注册中间件，部署，claude.ai 的"连接"按钮现在会走完完整的 OAuth2 流程，为每个用户停放一个独立的令牌，并用真实的用户身份调用你的工具。
 
+> **如果你使用 [`@casys/mcp-server`](https://jsr.io/@casys/mcp-server)：** 以上两个端点都是内置的。Auth0 OIDC 预设会自动生成受保护资源元数据并配置 JWT 验证——上面约 80 行代码可以缩减为一个 YAML 配置块。这里展示的手动方式，就是框架底层做的事情。
+
 ---
 
 ## 我遇到的失败场景（让你少走弯路）
@@ -323,6 +325,7 @@ function unauthorized(code: string) {
 - [RFC 9068 — OAuth 2.0 访问令牌的 JWT Profile](https://www.rfc-editor.org/rfc/rfc9068.html)
 - [RFC 9728 — OAuth 2.0 受保护资源元数据](https://datatracker.ietf.org/doc/html/rfc9728)
 - [mcp-einvoice](https://github.com/casysai/mcp-einvoice) — 本文构建所基于的服务器
+- [@casys/mcp-server](https://jsr.io/@casys/mcp-server) — 处理认证、中间件和传输的框架
 - [MCP 应用移动端 UX](/blog/mcp-apps-mobile-ux-patterns) — 姊妹篇
 - [本地陷阱](/blog/the-localhost-trap) — 同一教训的网络层版本
 
