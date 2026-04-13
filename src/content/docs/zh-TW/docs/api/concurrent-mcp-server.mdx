@@ -85,11 +85,10 @@ interface RateLimitContext {
 ```typescript
 interface AuthOptions {
   provider: AuthProvider;              // 使用預設配置（createGoogleAuthProvider 等）或 JwtAuthProvider
-  authorizationServers: string[];      // 授權伺服器 URL（例如 ["https://accounts.google.com"]）
-  resource: string;                    // 此伺服器的資源 URL（用於 RFC 9728 探索）
-  scopesSupported?: string[];          // 在探索文件中宣傳的範圍
 }
 ```
+
+將 `resource`、`authorizationServers` 和 `scopesSupported` 傳給 preset factory — 這些欄位屬於 provider，不屬於 `AuthOptions`。
 
 ## 註冊方法
 

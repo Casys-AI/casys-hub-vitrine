@@ -12,23 +12,23 @@ The MCP Platform is three packages that work together: **build** MCP servers wit
 
 <CardGrid>
   <Card title="@casys/mcp-server" icon="rocket">
-    A framework for building MCP servers on Deno. Middleware pipeline, OAuth2, concurrency control, and `McpApp` — the class that registers tools and serves `ui://` resources. **v0.14.0, stable, 301 tests.**
+    A framework for building MCP servers on Deno. Middleware pipeline, OAuth2, concurrency control, and `McpApp` — the class that registers tools and serves `ui://` resources.
   </Card>
   <Card title="@casys/mcp-bridge" icon="laptop">
-    Bridges MCP App UIs to messaging platforms (Telegram, LINE). Runs an HTTP resource server that serves HTML pages into platform webviews over WebSocket JSON-RPC. **v0.2.0, prototype.**
+    Bridges MCP App UIs to messaging platforms (Telegram, LINE). Runs an HTTP resource server that serves HTML pages into platform webviews over WebSocket JSON-RPC.
   </Card>
   <Card title="@casys/mcp-compose" icon="list-format">
-    Collects `_meta.ui` results from multiple tool calls and composes them into a split-pane HTML dashboard. Event bus lets iframes communicate. **v0.4.0, alpha.**
+    Collects `_meta.ui` results from multiple tool calls and composes them into a split-pane HTML dashboard. Event bus lets iframes communicate.
   </Card>
 </CardGrid>
 
 ## Maturity
 
-| Package | Version | Status | Tests |
-|---|---|---|---|
-| `@casys/mcp-server` | 0.14.0 | Stable | 301 |
-| `@casys/mcp-bridge` | 0.2.0 | Prototype | — |
-| `@casys/mcp-compose` | 0.4.0 | Alpha | — |
+| Package | Status |
+|---|---|
+| `@casys/mcp-server` | Stable |
+| `@casys/mcp-bridge` | Prototype |
+| `@casys/mcp-compose` | Alpha |
 
 <Aside type="caution">
   `mcp-bridge` and `mcp-compose` are early-stage. APIs may change between minor versions. Do not use in production without pinning the exact version.

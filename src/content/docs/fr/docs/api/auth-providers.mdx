@@ -68,22 +68,74 @@ Fournisseur OIDC generique. Si `jwksUri` est omis, l'URI JWKS prend par defaut l
   Pas sur de quel preset utiliser ? Consultez le [Guide d'authentification](/fr/docs/guides/auth/) pour des exemples d'utilisation avec chaque fournisseur.
 </Aside>
 
-## JwtAuthProvider
+## buildJwtAuthProvider
 
-Pour un controle total sur la validation JWT. A utiliser quand les presets ne couvrent pas votre fournisseur d'identite :
+Fonction bridge publique pour construire des factories de fournisseurs OIDC personnalises. Accepte des chaines brutes, valide les URLs, et choisit automatiquement la bonne branche de `JwtAuthProviderOptions` :
 
 ```typescript
-import { JwtAuthProvider } from "@casys/mcp-server";
+import { buildJwtAuthProvider, type BuildJwtAuthProviderOptions } from "@casys/mcp-server";
 
-const provider = new JwtAuthProvider({
-  issuer: string;
+export function createKeycloakAuthProvider(options: {
+  keycloakHost: string;
+  realm: string;
   audience: string;
   resource: string;
-  authorizationServers: string[];
-  jwksUri?: string;            // Derived from issuer if omitted
+}): JwtAuthProvider {
+  const issuer = `https://${options.keycloakHost}/realms/${options.realm}`;
+  return buildJwtAuthProvider({
+    issuer,
+    audience: options.audience,
+    authorizationServers: [issuer],
+    jwksUri: `${issuer}/protocol/openid-connect/certs`,
+    resource: options.resource,
+  }, "createKeycloakAuthProvider");
+}
+```
+
+`BuildJwtAuthProviderOptions` :
+
+```typescript
+interface BuildJwtAuthProviderOptions {
+  issuer: string;
+  audience: string;
+  jwksUri?: string;
+  authorizationServers: string[];   // chaines brutes — le bridge valide via httpsUrl()
   scopesSupported?: string[];
+  resource: string;                 // URL HTTP(S) → branche url ; URI opaque → branche opaque
+  resourceMetadataUrl?: string;     // Requis quand resource est un URI opaque
+}
+```
+
+## JwtAuthProvider
+
+Pour un controle total sur la validation JWT. A utiliser quand les presets ne couvrent pas votre fournisseur d'identite. Requiert un tag discriminant `kind: "url" | "opaque"` :
+
+```typescript
+import { httpsUrl, JwtAuthProvider } from "@casys/mcp-server";
+
+// Branche URL resource (resource est une URL HTTP(S) — metadata URL auto-derivee)
+const provider = new JwtAuthProvider({
+  kind: "url",
+  issuer: "https://accounts.google.com",
+  audience: "https://my-mcp.example.com",
+  resource: httpsUrl("https://my-mcp.example.com"),
+  authorizationServers: [httpsUrl("https://accounts.google.com")],
+  jwksUri: "https://www.googleapis.com/oauth2/v3/certs",
+  scopesSupported: ["read", "write"],
+});
+
+// Branche opaque resource (resource est un URI opaque — metadata URL requise)
+const provider = new JwtAuthProvider({
+  kind: "opaque",
+  issuer: "https://my-tenant.zitadel.cloud",
+  audience: "367545125829670172",
+  resource: "367545125829670172",
+  resourceMetadataUrl: httpsUrl("https://my-mcp.example.com/.well-known/oauth-protected-resource"),
+  authorizationServers: [httpsUrl("https://my-tenant.zitadel.cloud")],
 });
 ```
+
+Dans la plupart des cas, preferez les factories preset ou `buildJwtAuthProvider` plutot que de construire `JwtAuthProvider` directement.
 
 ### verifyToken
 
@@ -116,6 +168,25 @@ interface AuthInfo {
 ## Chargeur de config
 
 Pour la distribution binaire — charge la config d'auth depuis des fichiers YAML et des variables d'environnement au runtime.
+
+### AuthConfig (union discriminee)
+
+`AuthConfig` est une union discriminee sur `provider`. Chaque variante encode ses champs requis au niveau du type :
+
+```typescript
+interface GitHubAuthConfig extends AuthConfigBase { provider: "github"; }
+interface GoogleAuthConfig extends AuthConfigBase { provider: "google"; }
+interface Auth0AuthConfig  extends AuthConfigBase { provider: "auth0"; domain: string; }
+interface OIDCAuthConfig   extends AuthConfigBase { provider: "oidc";  issuer: string; jwksUri?: string; }
+
+type AuthConfig =
+  | GitHubAuthConfig
+  | GoogleAuthConfig
+  | Auth0AuthConfig
+  | OIDCAuthConfig;
+```
+
+TypeScript affine sur `config.provider`, donc `config.domain` et `config.issuer` sont types comme requis dans leurs branches respectives.
 
 ### loadAuthConfig
 

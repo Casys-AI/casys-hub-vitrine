@@ -7,7 +7,7 @@ import { Card, CardGrid, LinkCard, Aside } from '@astrojs/starlight/components';
 
 `@casys/mcp-server` 是一个生产级框架，用于构建具有可组合中间件、OAuth2 认证、双传输 (STDIO + HTTP/SSE) 和并发控制的 MCP 服务器。
 
-基于官方 [@modelcontextprotocol/sdk](https://github.com/modelcontextprotocol/sdk) (SDK 1.27) 构建。发布在 [JSR](https://jsr.io/@casys/mcp-server) 上。**版本 0.14.0 — 301 个测试。**
+基于官方 [@modelcontextprotocol/sdk](https://github.com/modelcontextprotocol/sdk) (SDK 1.27) 构建。发布在 [JSR](https://jsr.io/@casys/mcp-server) 上。
 
 <img src="/diagrams/mcp-server/mcp-architecture.svg" alt="MCP Server 架构" style="width: 100%; max-width: 600px; margin: 24px auto; display: block;" />
 
@@ -37,8 +37,6 @@ const server = new McpApp({
       audience: "https://my-mcp.example.com",
       resource: "https://my-mcp.example.com",
     }),
-    authorizationServers: ["https://accounts.google.com"],
-    resource: "https://my-mcp.example.com",
   },
 });
 

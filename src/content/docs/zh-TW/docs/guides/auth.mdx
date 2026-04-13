@@ -29,8 +29,6 @@ import { Tabs, TabItem, Aside, Steps } from '@astrojs/starlight/components';
           audience: "https://my-mcp.example.com",
           resource: "https://my-mcp.example.com",
         }),
-        authorizationServers: ["https://accounts.google.com"],
-        resource: "https://my-mcp.example.com",
       },
     });
     ```
@@ -52,9 +50,6 @@ import { Tabs, TabItem, Aside, Steps } from '@astrojs/starlight/components';
           resource: "https://my-mcp.example.com",
           scopesSupported: ["read", "write"],
         }),
-        authorizationServers: ["https://my-tenant.auth0.com"],
-        resource: "https://my-mcp.example.com",
-        scopesSupported: ["read", "write"],
       },
     });
     ```
@@ -74,8 +69,6 @@ import { Tabs, TabItem, Aside, Steps } from '@astrojs/starlight/components';
           audience: "https://my-mcp.example.com",
           resource: "https://my-mcp.example.com",
         }),
-        authorizationServers: ["https://token.actions.githubusercontent.com"],
-        resource: "https://my-mcp.example.com",
       },
     });
     ```
@@ -100,8 +93,6 @@ import { Tabs, TabItem, Aside, Steps } from '@astrojs/starlight/components';
           audience: "https://my-mcp.example.com",
           resource: "https://my-mcp.example.com",
         }),
-        authorizationServers: ["https://my-idp.example.com"],
-        resource: "https://my-mcp.example.com",
       },
     });
     ```
@@ -151,13 +142,14 @@ server.registerTool(
 如需完全控制驗證參數，請直接使用 `JwtAuthProvider`：
 
 ```typescript
-import { JwtAuthProvider } from "@casys/mcp-server";
+import { httpsUrl, JwtAuthProvider } from "@casys/mcp-server";
 
 const provider = new JwtAuthProvider({
+  kind: "url",
   issuer: "https://accounts.google.com",
   audience: "https://my-mcp.example.com",
-  resource: "https://my-mcp.example.com",
-  authorizationServers: ["https://accounts.google.com"],
+  resource: httpsUrl("https://my-mcp.example.com"),
+  authorizationServers: [httpsUrl("https://accounts.google.com")],
   jwksUri: "https://www.googleapis.com/oauth2/v3/certs",
   scopesSupported: ["read", "write"],
 });

@@ -12,23 +12,23 @@ La MCP Platform regroupe trois packages qui fonctionnent ensemble : **construire
 
 <CardGrid>
   <Card title="@casys/mcp-server" icon="rocket">
-    Un framework pour construire des serveurs MCP sur Deno. Pipeline de middleware, OAuth2, controle de concurrence, et `McpApp` — la classe qui enregistre les outils et sert les ressources `ui://`. **v0.14.0, stable, 301 tests.**
+    Un framework pour construire des serveurs MCP sur Deno. Pipeline de middleware, OAuth2, controle de concurrence, et `McpApp` — la classe qui enregistre les outils et sert les ressources `ui://`.
   </Card>
   <Card title="@casys/mcp-bridge" icon="laptop">
-    Relie les interfaces des MCP Apps aux plateformes de messagerie (Telegram, LINE). Execute un serveur de ressources HTTP qui sert des pages HTML dans les webviews des plateformes via WebSocket JSON-RPC. **v0.2.0, prototype.**
+    Relie les interfaces des MCP Apps aux plateformes de messagerie (Telegram, LINE). Execute un serveur de ressources HTTP qui sert des pages HTML dans les webviews des plateformes via WebSocket JSON-RPC.
   </Card>
   <Card title="@casys/mcp-compose" icon="list-format">
-    Collecte les resultats `_meta.ui` de plusieurs appels d'outils et les compose en un tableau de bord HTML a panneaux divises. Un bus d'evenements permet aux iframes de communiquer. **v0.4.0, alpha.**
+    Collecte les resultats `_meta.ui` de plusieurs appels d'outils et les compose en un tableau de bord HTML a panneaux divises. Un bus d'evenements permet aux iframes de communiquer.
   </Card>
 </CardGrid>
 
 ## Maturite
 
-| Package | Version | Statut | Tests |
-|---|---|---|---|
-| `@casys/mcp-server` | 0.14.0 | Stable | 301 |
-| `@casys/mcp-bridge` | 0.2.0 | Prototype | — |
-| `@casys/mcp-compose` | 0.4.0 | Alpha | — |
+| Package | Statut |
+|---|---|
+| `@casys/mcp-server` | Stable |
+| `@casys/mcp-bridge` | Prototype |
+| `@casys/mcp-compose` | Alpha |
 
 <Aside type="caution">
   `mcp-bridge` et `mcp-compose` sont en phase initiale. Les API peuvent changer entre les versions mineures. Ne pas utiliser en production sans epingler la version exacte.

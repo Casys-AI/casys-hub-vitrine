@@ -68,22 +68,74 @@ const provider = createOIDCAuthProvider({
   不确定使用哪个预设？参见[认证指南](/zh/docs/guides/auth/)了解每个提供商的使用示例。
 </Aside>
 
-## JwtAuthProvider
+## buildJwtAuthProvider
 
-完全控制 JWT 验证。当预设无法覆盖你的身份提供商时使用：
+用于构建自定义 OIDC provider factory 的公共 bridge 函数。接受原始字符串，验证 URL，并自动选择正确的 `JwtAuthProviderOptions` 分支：
 
 ```typescript
-import { JwtAuthProvider } from "@casys/mcp-server";
+import { buildJwtAuthProvider, type BuildJwtAuthProviderOptions } from "@casys/mcp-server";
 
-const provider = new JwtAuthProvider({
-  issuer: string;
+export function createKeycloakAuthProvider(options: {
+  keycloakHost: string;
+  realm: string;
   audience: string;
   resource: string;
-  authorizationServers: string[];
-  jwksUri?: string;            // Derived from issuer if omitted
+}): JwtAuthProvider {
+  const issuer = `https://${options.keycloakHost}/realms/${options.realm}`;
+  return buildJwtAuthProvider({
+    issuer,
+    audience: options.audience,
+    authorizationServers: [issuer],
+    jwksUri: `${issuer}/protocol/openid-connect/certs`,
+    resource: options.resource,
+  }, "createKeycloakAuthProvider");
+}
+```
+
+`BuildJwtAuthProviderOptions`：
+
+```typescript
+interface BuildJwtAuthProviderOptions {
+  issuer: string;
+  audience: string;
+  jwksUri?: string;
+  authorizationServers: string[];   // 原始字符串 — bridge 通过 httpsUrl() 验证
   scopesSupported?: string[];
+  resource: string;                 // HTTP(S) URL → url 分支；opaque URI → opaque 分支
+  resourceMetadataUrl?: string;     // resource 为 opaque URI 时必填
+}
+```
+
+## JwtAuthProvider
+
+完全控制 JWT 验证。当预设无法覆盖你的身份提供商时使用。需要 `kind: "url" | "opaque"` 判别标签：
+
+```typescript
+import { httpsUrl, JwtAuthProvider } from "@casys/mcp-server";
+
+// URL resource 分支（resource 是 HTTP(S) URL — metadata URL 自动推导）
+const provider = new JwtAuthProvider({
+  kind: "url",
+  issuer: "https://accounts.google.com",
+  audience: "https://my-mcp.example.com",
+  resource: httpsUrl("https://my-mcp.example.com"),
+  authorizationServers: [httpsUrl("https://accounts.google.com")],
+  jwksUri: "https://www.googleapis.com/oauth2/v3/certs",
+  scopesSupported: ["read", "write"],
+});
+
+// Opaque resource 分支（resource 是 opaque URI — metadata URL 必填）
+const provider = new JwtAuthProvider({
+  kind: "opaque",
+  issuer: "https://my-tenant.zitadel.cloud",
+  audience: "367545125829670172",
+  resource: "367545125829670172",
+  resourceMetadataUrl: httpsUrl("https://my-mcp.example.com/.well-known/oauth-protected-resource"),
+  authorizationServers: [httpsUrl("https://my-tenant.zitadel.cloud")],
 });
 ```
+
+大多数情况下应使用 preset factory 或 `buildJwtAuthProvider`，而非直接构建 `JwtAuthProvider`。
 
 ### verifyToken
 
@@ -116,6 +168,25 @@ interface AuthInfo {
 ## 配置加载器
 
 用于二进制分发 — 在运行时从 YAML 文件和环境变量加载认证配置。
+
+### AuthConfig（判别联合）
+
+`AuthConfig` 是基于 `provider` 的判别联合。每个变体在类型级别编码其必填字段：
+
+```typescript
+interface GitHubAuthConfig extends AuthConfigBase { provider: "github"; }
+interface GoogleAuthConfig extends AuthConfigBase { provider: "google"; }
+interface Auth0AuthConfig  extends AuthConfigBase { provider: "auth0"; domain: string; }
+interface OIDCAuthConfig   extends AuthConfigBase { provider: "oidc";  issuer: string; jwksUri?: string; }
+
+type AuthConfig =
+  | GitHubAuthConfig
+  | GoogleAuthConfig
+  | Auth0AuthConfig
+  | OIDCAuthConfig;
+```
+
+TypeScript 在 `config.provider` 上收窄类型，因此 `config.domain` 和 `config.issuer` 在各自分支中被类型化为必填。
 
 ### loadAuthConfig
 

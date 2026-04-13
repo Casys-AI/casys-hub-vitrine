@@ -80,11 +80,7 @@ if (config) {
   const server = new McpApp({
     name: "my-server",
     version: "1.0.0",
-    auth: {
-      provider,
-      authorizationServers: config.authorizationServers ?? [],
-      resource: config.resource,
-    },
+    auth: { provider },
   });
 }
 ```

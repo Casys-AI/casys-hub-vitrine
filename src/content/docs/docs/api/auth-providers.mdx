@@ -68,22 +68,74 @@ Generic OIDC provider. If `jwksUri` is omitted, the JWKS URI defaults to `${issu
   Not sure which preset to use? See the [Authentication guide](/docs/guides/auth) for usage examples with each provider.
 </Aside>
 
-## JwtAuthProvider
+## buildJwtAuthProvider
 
-For full control over JWT validation. Use this when the presets don't cover your identity provider:
+Public bridge function for building custom OIDC provider factories. Accepts raw strings, validates URLs, and picks the correct `JwtAuthProviderOptions` branch automatically:
 
 ```typescript
-import { JwtAuthProvider } from "@casys/mcp-server";
+import { buildJwtAuthProvider, type BuildJwtAuthProviderOptions } from "@casys/mcp-server";
 
-const provider = new JwtAuthProvider({
-  issuer: string;
+export function createKeycloakAuthProvider(options: {
+  keycloakHost: string;
+  realm: string;
   audience: string;
   resource: string;
-  authorizationServers: string[];
-  jwksUri?: string;            // Derived from issuer if omitted
+}): JwtAuthProvider {
+  const issuer = `https://${options.keycloakHost}/realms/${options.realm}`;
+  return buildJwtAuthProvider({
+    issuer,
+    audience: options.audience,
+    authorizationServers: [issuer],
+    jwksUri: `${issuer}/protocol/openid-connect/certs`,
+    resource: options.resource,
+  }, "createKeycloakAuthProvider");
+}
+```
+
+`BuildJwtAuthProviderOptions`:
+
+```typescript
+interface BuildJwtAuthProviderOptions {
+  issuer: string;
+  audience: string;
+  jwksUri?: string;
+  authorizationServers: string[];   // raw strings — bridge validates via httpsUrl()
   scopesSupported?: string[];
+  resource: string;                 // HTTP(S) URL → url branch; opaque URI → opaque branch
+  resourceMetadataUrl?: string;     // Required when resource is an opaque URI
+}
+```
+
+## JwtAuthProvider
+
+For full control over JWT validation. Use this when the presets don't cover your identity provider. Requires a `kind: "url" | "opaque"` discriminant tag:
+
+```typescript
+import { httpsUrl, JwtAuthProvider } from "@casys/mcp-server";
+
+// URL resource branch (resource is an HTTP(S) URL — metadata URL auto-derived)
+const provider = new JwtAuthProvider({
+  kind: "url",
+  issuer: "https://accounts.google.com",
+  audience: "https://my-mcp.example.com",
+  resource: httpsUrl("https://my-mcp.example.com"),
+  authorizationServers: [httpsUrl("https://accounts.google.com")],
+  jwksUri: "https://www.googleapis.com/oauth2/v3/certs",
+  scopesSupported: ["read", "write"],
+});
+
+// Opaque resource branch (resource is an opaque URI — metadata URL required)
+const provider = new JwtAuthProvider({
+  kind: "opaque",
+  issuer: "https://my-tenant.zitadel.cloud",
+  audience: "367545125829670172",          // OIDC project ID as JWT aud
+  resource: "367545125829670172",
+  resourceMetadataUrl: httpsUrl("https://my-mcp.example.com/.well-known/oauth-protected-resource"),
+  authorizationServers: [httpsUrl("https://my-tenant.zitadel.cloud")],
 });
 ```
+
+Most callers should use the preset factories or `buildJwtAuthProvider` instead of constructing `JwtAuthProvider` directly.
 
 ### verifyToken
 
@@ -116,6 +168,33 @@ interface AuthInfo {
 ## Config loader
 
 For binary distribution — load auth config from YAML files and environment variables at runtime.
+
+### AuthConfig (discriminated union)
+
+`AuthConfig` is a discriminated union on `provider`. Each variant encodes its required fields at the type level:
+
+```typescript
+// Shared base fields
+interface AuthConfigBase {
+  audience: string;
+  resource: string;
+  scopesSupported?: string[];
+  resourceMetadataUrl?: string;
+}
+
+interface GitHubAuthConfig extends AuthConfigBase { provider: "github"; }
+interface GoogleAuthConfig extends AuthConfigBase { provider: "google"; }
+interface Auth0AuthConfig  extends AuthConfigBase { provider: "auth0"; domain: string; }
+interface OIDCAuthConfig   extends AuthConfigBase { provider: "oidc";  issuer: string; jwksUri?: string; }
+
+type AuthConfig =
+  | GitHubAuthConfig
+  | GoogleAuthConfig
+  | Auth0AuthConfig
+  | OIDCAuthConfig;
+```
+
+TypeScript narrows on `config.provider`, so `config.domain` and `config.issuer` are typed as required (non-optional) in their respective branches — no runtime assertions needed.
 
 ### loadAuthConfig
 

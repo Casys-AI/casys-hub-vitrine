@@ -8,7 +8,7 @@ import Mermaid from '../../../../../components/Mermaid.astro';
 
 Le **"Hono pour MCP"** — un framework de production pour construire des serveurs MCP avec un pipeline de middleware composable, OAuth2, double transport, et tout ce qu'il faut pour passer du prototype a la production.
 
-Construit sur le SDK officiel [@modelcontextprotocol/sdk](https://github.com/modelcontextprotocol/sdk) (SDK 1.27). Publie sur [JSR](https://jsr.io/@casys/mcp-server). **Version 0.14.0 — 301 tests.**
+Construit sur le SDK officiel [@modelcontextprotocol/sdk](https://github.com/modelcontextprotocol/sdk) (SDK 1.27). Publie sur [JSR](https://jsr.io/@casys/mcp-server).
 
 <img src="/diagrams/mcp-server/mcp-architecture.svg" alt="Architecture MCP Server" style="width: 100%; max-width: 600px; margin: 24px auto; display: block;" />
 
@@ -53,8 +53,6 @@ const server = new McpApp({
       audience: "https://my-mcp.example.com",
       resource: "https://my-mcp.example.com",
     }),
-    authorizationServers: ["https://accounts.google.com"],
-    resource: "https://my-mcp.example.com",
   },
 });
 

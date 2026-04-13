@@ -85,11 +85,10 @@ interface RateLimitContext {
 ```typescript
 interface AuthOptions {
   provider: AuthProvider;              // Use presets (createGoogleAuthProvider, etc.) or JwtAuthProvider
-  authorizationServers: string[];      // Authorization server URLs (e.g., ["https://accounts.google.com"])
-  resource: string;                    // This server's resource URL (used for RFC 9728 discovery)
-  scopesSupported?: string[];          // Scopes advertised in the discovery document
 }
 ```
+
+Pass `resource`, `authorizationServers`, and `scopesSupported` to the preset factory instead — they live on the provider, not on `AuthOptions`.
 
 ## Registration methods
 
