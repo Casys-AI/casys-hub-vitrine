@@ -43,6 +43,10 @@ It currently does all of the following:
 
 It does not currently bridge the rest of the Telegram WebApp event surface.
 
+<Aside type="caution">
+  The injected `bridge.js` uses `height` (not `maxHeight`) in `containerDimensions`. The exported `TelegramPlatformAdapter` class uses `maxHeight` instead (see `getContainerDimensions()`). The `ContainerDimensions` type supports both fields. Code that reads host context from `ui/initialize` must check for the field name that matches the layer it is running against.
+</Aside>
+
 ## Authentication
 
 Telegram auth is implemented on the server, not in the browser adapter.
@@ -67,11 +71,52 @@ Auth happens on the first WebSocket message after the session already exists.
 For the auto-injected runtime, Telegram currently contributes:
 
 - `theme`
-- `styles.variables` derived from `themeParams`
-- `locale` from `initDataUnsafe.user.language_code` when available
+- `styles.variables` derived from `themeParams` (see CSS variables below)
+- `locale` from `initDataUnsafe.user.language_code` when available, falling back to `navigator.language`
 - `timeZone` from the browser environment
 - `containerDimensions.width` from `window.innerWidth`
-- `containerDimensions.height` from `viewportStableHeight`
+- `containerDimensions.height` from `viewportStableHeight` (falls back to `window.innerHeight`)
+
+The exported `TelegramPlatformAdapter` contributes the same fields but with two differences:
+
+- `locale` always comes from `navigator.language` — it does not read `initDataUnsafe.user.language_code`
+- `containerDimensions` uses `maxHeight` (not `height`) for the viewport height value
+
+## CSS variable naming
+
+The two Telegram layers produce different CSS variable schemas in `hostContext.styles.variables`.
+
+**Injected `bridge.js` runtime** — keys mirror Telegram's `themeParams` property names prefixed with `--tg-`:
+
+| Telegram `themeParams` key | CSS variable |
+| --- | --- |
+| `bg_color` | `--tg-bg-color` |
+| `secondary_bg_color` | `--tg-secondary-bg-color` |
+| `text_color` | `--tg-text-color` |
+| `button_color` | `--tg-button-color` |
+| `button_text_color` | `--tg-button-text-color` |
+| `hint_color` | `--tg-hint-color` |
+| `link_color` | `--tg-link-color` |
+| (any other `themeParams` key) | `--tg-<key-with-dashes>` |
+
+**Exported `TelegramPlatformAdapter`** — keys use a semantic naming convention:
+
+| Telegram `themeParams` key | CSS variable |
+| --- | --- |
+| `bg_color` | `--color-background-primary` |
+| `secondary_bg_color` | `--color-background-secondary` |
+| `text_color` | `--color-text-primary` |
+| `subtitle_text_color` | `--color-text-secondary` |
+| `section_separator_color` | `--color-border-primary` |
+| `accent_text_color` | `--color-ring-primary` |
+| `hint_color` | `--color-text-hint` |
+| `link_color` | `--color-text-link` |
+| `button_color` | `--color-button-primary` |
+| `button_text_color` | `--color-button-text` |
+| `header_bg_color` | `--color-background-header` |
+| `section_bg_color` | `--color-background-section` |
+
+If you are using the injected runtime, target `--tg-*` variables in your CSS. If you are using `TelegramPlatformAdapter` with a custom `BridgeClient`, target the semantic `--color-*` variables.
 
 ## Exported Telegram APIs
 

@@ -1,6 +1,6 @@
 ---
 title: Composants Standalone
-description: Utiliser RateLimiter, RequestQueue, et SchemaValidator independamment.
+description: Utiliser RateLimiter, RequestQueue, et SchemaValidator independamment de McpApp.
 next: false
 ---
 
@@ -10,7 +10,7 @@ Les briques de base de `@casys/mcp-server` sont utiles seules. Rate limiting, co
 
 ## RateLimiter
 
-Rate limiter a fenetre glissante avec suivi par cle. Leger, sans dependance externe.
+Rate limiter a fenetre glissante avec suivi par cle. Aucune dependance externe.
 
 ```typescript
 import { RateLimiter } from "@casys/mcp-server";
@@ -43,17 +43,54 @@ if (limiter.checkLimit("client-123")) {
 await limiter.waitForSlot(key: string): Promise<void>;
 ```
 
-Bloque jusqu'a ce qu'un slot se libere. Le timeout est egal a `windowMs`.
+Bloque jusqu'a ce qu'un slot se libere. Le temps d'attente maximum est egal a `windowMs`.
 
 ```typescript
 await limiter.waitForSlot("client-123");
-// Guaranteed to have a slot
+// Guaranteed to have a slot when this resolves
 ```
+
+### getRemainingRequests
+
+```typescript
+limiter.getRemainingRequests(key: string): number;
+```
+
+Retourne le nombre de requetes que la cle donnee peut encore effectuer dans la fenetre courante. Retourne `maxRequests` pour les cles sans historique.
+
+```typescript
+const remaining = limiter.getRemainingRequests("client-123");
+// e.g., 7 if 3 of 10 requests have been used
+```
+
+### getTimeUntilSlot
+
+```typescript
+limiter.getTimeUntilSlot(key: string): number;
+```
+
+Retourne le nombre de millisecondes avant l'ouverture du prochain slot pour la cle donnee. Retourne `0` si un slot est deja disponible.
+
+### clear
+
+```typescript
+limiter.clear(key: string): void;
+```
+
+Efface l'historique des requetes pour une cle specifique, liberant immediatement ses slots.
+
+### clearAll
+
+```typescript
+limiter.clearAll(): void;
+```
+
+Efface toutes les cles suivies et leur historique de requetes.
 
 ### getMetrics
 
 ```typescript
-limiter.getMetrics(): { keys: number, totalRequests: number };
+limiter.getMetrics(): { keys: number; totalRequests: number };
 ```
 
 ## RequestQueue
@@ -66,7 +103,7 @@ import { RequestQueue } from "@casys/mcp-server";
 const queue = new RequestQueue({
   maxConcurrent: 5,
   strategy: "queue",     // "sleep" | "queue" | "reject"
-  sleepMs: 10,           // For "sleep" strategy only
+  sleepMs: 10,           // For "sleep" strategy only — default: 10
 });
 ```
 
@@ -90,7 +127,7 @@ Toujours utiliser try/finally pour eviter les fuites de slots :
 ```typescript
 await queue.acquire();
 try {
-  await processRequest();  // 1 of maxConcurrent
+  await processRequest();  // 1 of maxConcurrent slots occupied
 } finally {
   queue.release();
 }
@@ -99,12 +136,12 @@ try {
 ### getMetrics
 
 ```typescript
-queue.getMetrics(): { inFlight: number, queued: number };
+queue.getMetrics(): { inFlight: number; queued: number };
 ```
 
 ## SchemaValidator
 
-Validation JSON Schema propulsee par ajv. Les schemas sont compiles une seule fois a l'enregistrement — la validation est rapide.
+Validation JSON Schema propulsee par ajv 8 avec `allErrors` et `useDefaults`. Les schemas sont compiles une seule fois a l'appel de `addSchema()` — les appels de validation sont rapides.
 
 ```typescript
 import { SchemaValidator } from "@casys/mcp-server";
@@ -115,10 +152,10 @@ const validator = new SchemaValidator();
 ### addSchema
 
 ```typescript
-validator.addSchema(toolName: string, schema: object): void;
+validator.addSchema(name: string, schema: object): void;
 ```
 
-Compile et met en cache le schema. A appeler une fois par outil au demarrage :
+Compile et met en cache le schema. A appeler une fois au demarrage :
 
 ```typescript
 validator.addSchema("my_tool", {
@@ -134,13 +171,13 @@ validator.addSchema("my_tool", {
 ### validate
 
 ```typescript
-validator.validate(toolName: string, args: unknown): ValidationResult;
+validator.validate(name: string, data: unknown): ValidationResult;
 ```
 
 ```typescript
 interface ValidationResult {
   valid: boolean;
-  errors: string[];  // Human-readable error messages
+  errors: ValidationError[];  // Structured error objects (empty if valid)
 }
 ```
 
@@ -152,11 +189,44 @@ validator.validate("my_tool", { count: 5 });
 // { valid: true, errors: [] }
 ```
 
+### hasSchema
+
+```typescript
+validator.hasSchema(name: string): boolean;
+```
+
+Retourne `true` si un schema avec le nom donne a ete ajoute.
+
+### removeSchema
+
+```typescript
+validator.removeSchema(name: string): void;
+```
+
+Supprime un schema precedemment ajoute. Les appels subsequents a `validate()` avec ce nom lanceront une erreur.
+
+### validateOrThrow
+
+```typescript
+validator.validateOrThrow(name: string, data: unknown): void;
+```
+
+Lance une `ValidationError` si les donnees sont invalides. Utile quand vous voulez echouer rapidement plutot que de gerer un objet resultat :
+
+```typescript
+try {
+  validator.validateOrThrow("my_tool", args);
+  // args are valid — proceed
+} catch (error) {
+  // error.message contains all validation errors
+}
+```
+
 <Aside type="tip">
-  Dans `ConcurrentMCPServer`, ces composants sont cables automatiquement selon vos options. L'utilisation standalone n'est necessaire que pour construire une infrastructure personnalisee en dehors du framework.
+  Dans `McpApp`, ces composants sont cables automatiquement selon vos options. L'utilisation standalone n'est necessaire que pour construire une infrastructure personnalisee en dehors du framework.
 </Aside>
 
 ## Voir aussi
 
-- [API ConcurrentMCPServer](/fr/docs/api/concurrent-mcp-server/) — Comment ces composants sont utilises en interne
+- [API McpApp](/fr/docs/api/concurrent-mcp-server/) — Comment ces composants sont utilises en interne
 - [Pipeline Middleware](/fr/docs/guides/middleware/) — Rate limiting, validation, et backpressure dans le pipeline

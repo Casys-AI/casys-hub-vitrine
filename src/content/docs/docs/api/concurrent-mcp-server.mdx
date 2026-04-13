@@ -1,11 +1,15 @@
 ---
-title: ConcurrentMCPServer
-description: Complete API reference for the ConcurrentMCPServer class.
+title: McpApp
+description: Complete API reference for the McpApp class.
 ---
 
 import { Aside } from '@astrojs/starlight/components';
 
-The main entry point for the framework. `ConcurrentMCPServer` handles tool registration, middleware composition, transport selection, and lifecycle management.
+:::note[Migration]
+This class was renamed from `ConcurrentMCPServer` to `McpApp` in v0.13. The old name is re-exported as a deprecated alias and will be removed in v1.0.
+:::
+
+The main entry point for the framework. `McpApp` handles tool registration, middleware composition, transport selection, and lifecycle management.
 
 <Aside type="note">
   Deno-first. Node.js 20+ is supported via the JSR npm compatibility layer.
@@ -14,9 +18,9 @@ The main entry point for the framework. `ConcurrentMCPServer` handles tool regis
 ## Constructor
 
 ```typescript
-import { ConcurrentMCPServer } from "@casys/mcp-server";
+import { McpApp } from "@casys/mcp-server";
 
-const server = new ConcurrentMCPServer(options: ConcurrentServerOptions);
+const server = new McpApp(options: ConcurrentServerOptions);
 ```
 
 ### ConcurrentServerOptions
@@ -53,7 +57,7 @@ interface ConcurrentServerOptions {
 
   // Customization
   instructions?: string;                // Instructions sent to clients at initialization
-  toolErrorMapper?: (error: unknown) => string;  // Custom error message formatter
+  toolErrorMapper?: (error: unknown, toolName: string) => string | null;  // Return message to surface as isError:true, or null to rethrow
   logger?: (msg: string) => void;       // Default: console.error
 }
 ```
@@ -64,6 +68,13 @@ interface ConcurrentServerOptions {
 interface RateLimitOptions {
   maxRequests: number;    // Max requests per window
   windowMs: number;       // Window size in milliseconds
+  keyExtractor?: (context: RateLimitContext) => string;  // Default: "default" (global)
+  onLimitExceeded?: "reject" | "wait";  // Default: "wait"
+}
+
+interface RateLimitContext {
+  toolName: string;
+  args: Record<string, unknown>;
 }
 ```
 
@@ -151,7 +162,7 @@ Register a tool visible to UI clients only — it does not appear in the LLM's t
 server.registerResource(resource: MCPResource, handler: ResourceHandler): void;
 ```
 
-Register a single resource. See [MCP Apps](/docs/guides/mcp-apps/) for `text/html;profile=mcp-app` resources.
+Register a single resource. See [MCP Apps](/docs/guides/mcp-apps) for `text/html;profile=mcp-app` resources.
 
 ### registerResources
 
@@ -202,7 +213,7 @@ server
   Throws if called after `start()` or `startHttp()`. The pipeline is compiled at startup.
 </Aside>
 
-See the [Middleware Pipeline guide](/docs/guides/middleware/) for patterns and recipes.
+See the [Middleware Pipeline guide](/docs/guides/middleware) for patterns and recipes.
 
 ## Transport methods
 
@@ -237,6 +248,9 @@ interface HttpServerOptions {
     keyExtractor?: (request: Request) => string;   // Custom key extraction (default: IP)
     onLimitExceeded?: (request: Request) => void;  // Called when a limit is hit
   };
+  onListen?: (info: { hostname: string; port: number }) => void;  // Called when server is ready
+  embedded?: boolean;             // Skip port binding — use getFetchHandler() instead
+  embeddedHandlerCallback?: (handler: FetchHandler) => void;  // Receives handler in embedded mode (set internally by getFetchHandler)
 }
 ```
 
@@ -261,8 +275,33 @@ await server.startHttp({
   corsOrigins: ["https://app.example.com"],
   maxBodyBytes: 1_048_576,
   ipRateLimit: { maxRequests: 60, windowMs: 60_000 },
+  onListen: ({ hostname, port }) => console.log(`Ready on ${hostname}:${port}`),
 });
 ```
+
+### getFetchHandler
+
+```typescript
+await server.getFetchHandler(
+  options?: Omit<HttpServerOptions, "port" | "hostname" | "onListen">
+): Promise<FetchHandler>;
+```
+
+Build the full HTTP middleware stack and return its Web Standard fetch handler **without binding a port**. Use this to embed the MCP HTTP layer inside an existing web framework (Fresh, Hono, Express) instead of giving up port ownership to `startHttp`.
+
+The returned handler accepts a `Request` and returns a `Response`. It exposes the same routes as `startHttp`: `POST /mcp`, `GET /mcp` (SSE), `GET /health`, `GET /metrics`, and `GET /.well-known/oauth-protected-resource`. Auth, rate limiting, session cleanup, and OTel hooks all work identically.
+
+```typescript
+import { Hono } from "hono";
+
+const app = new Hono();
+const mcpApp = new McpApp({ name: "my-app", version: "1.0.0" });
+// ... register tools ...
+const handler = await mcpApp.getFetchHandler();
+app.all("/mcp/*", (c) => handler(c.req.raw));
+```
+
+Multi-tenant SaaS pattern: instantiate one `McpApp` per tenant, call `getFetchHandler()` once per server, then dispatch each inbound request to the right handler from your router.
 
 ### stop
 
@@ -302,6 +341,21 @@ server.sendToSession(sessionId: string, message: Record<string, unknown>): void;
 Push a message to a specific SSE session by ID (HTTP transport).
 
 ## Observability methods
+
+### getMetrics
+
+```typescript
+server.getMetrics(): QueueMetrics;
+```
+
+Returns live queue metrics:
+
+```typescript
+interface QueueMetrics {
+  inFlight: number;  // Requests currently executing
+  queued: number;    // Requests waiting in the backpressure queue
+}
+```
 
 ### getServerMetrics
 
@@ -348,6 +402,14 @@ server.getRateLimitMetrics(): { keys: number; totalRequests: number } | null;
 
 Returns `null` if rate limiting is not configured.
 
+### getRateLimiter
+
+```typescript
+server.getRateLimiter(): RateLimiter | null;
+```
+
+Returns the underlying `RateLimiter` instance for advanced use cases (custom key inspection, window resets). Returns `null` if rate limiting is not configured.
+
 ### getToolCount / getToolNames
 
 ```typescript
@@ -361,6 +423,35 @@ server.getToolNames(): string[];
 server.getResourceCount(): number;
 ```
 
+### getResourceUris
+
+```typescript
+server.getResourceUris(): string[];
+```
+
+Returns an array of all registered resource URIs (e.g. `["ui://my-server/viewer", "ui://my-server/dashboard"]`).
+
+### getResourceInfo
+
+```typescript
+server.getResourceInfo(uri: string): MCPResource | undefined;
+```
+
+Returns the `MCPResource` definition (uri, name, description, mimeType) for a registered resource, or `undefined` if not found. Useful for testing and debugging.
+
+### readResourceContent
+
+```typescript
+server.readResourceContent(uri: string): Promise<ResourceContent | null>;
+```
+
+Invoke a registered resource handler directly and return its content, without going through the MCP protocol. Returns `null` if the resource is not registered. Useful for server-side rendering or integration tests.
+
+```typescript
+const content = await server.readResourceContent("ui://my-server/viewer");
+// content.text contains the HTML
+```
+
 ### isStarted
 
 ```typescript
@@ -369,16 +460,72 @@ server.isStarted(): boolean;
 
 Returns `true` after `start()` or `startHttp()` has been called.
 
+## Multi-tenant middleware
+
+For SaaS deployments where each authenticated user belongs to a tenant, use `createMultiTenantMiddleware` to inject a `tenantId` into the middleware context. It must run **after** the auth middleware (which populates `ctx.authInfo`) and before scope enforcement or tool handlers.
+
+```typescript
+import {
+  createMultiTenantMiddleware,
+  type TenantResolver,
+  type TenantResolution,
+} from "@casys/mcp-server";
+
+class SubdomainTenantResolver implements TenantResolver {
+  async resolve(ctx): Promise<TenantResolution> {
+    const host = ctx.request!.headers.get("host") ?? "";
+    const subdomain = host.split(".")[0];
+    const claim = (ctx.authInfo as any).claims?.["urn:my-app:tenant_id"];
+    if (typeof claim !== "string" || claim !== subdomain) {
+      return { ok: false, reason: `claim/subdomain mismatch` };
+    }
+    return { ok: true, tenantId: subdomain };
+  }
+}
+
+server.use(createMultiTenantMiddleware(new SubdomainTenantResolver(), {
+  onRejection: (ctx, reason) => auditLog.warn("tenant_reject", { reason }),
+}));
+```
+
+After this middleware runs, `ctx.authInfo.tenantId` is set and frozen. All downstream middlewares and tool handlers can read it to scope data access.
+
+### Types
+
+```typescript
+type TenantResolution =
+  | { ok: true; tenantId: string }
+  | { ok: false; reason: string };
+
+interface TenantResolver {
+  resolve(ctx: MiddlewareContext): Promise<TenantResolution>;
+}
+
+interface MultiTenantMiddlewareOptions {
+  /**
+   * Called on rejection before the 401 is sent.
+   * Use for audit logging. The reason is never exposed to clients.
+   * If this hook throws, the error is logged to stderr but the 401 still fires.
+   */
+  onRejection?: (ctx: MiddlewareContext, reason: string) => void | Promise<void>;
+}
+```
+
+Pipeline behaviour:
+- **STDIO transport** (no `ctx.request`): passes through unchanged — STDIO has no tenant concept.
+- **HTTP without `ctx.authInfo`**: throws a configuration error. The auth middleware must precede this one.
+- **HTTP with rejected resolution**: calls `onRejection`, then throws `AuthError("invalid_token")` — a generic 401 with no tenant details leaked to the client.
+
 ## Sampling bridge
 
 When `enableSampling: true` is set, the server can delegate LLM calls back through the client connection. A `samplingClient` must also be provided to handle the actual requests:
 
 ```typescript
-import { ConcurrentMCPServer, createSamplingClient } from "@casys/mcp-server";
+import { McpApp, createSamplingClient } from "@casys/mcp-server";
 
 const samplingClient = createSamplingClient(/* client config */);
 
-const server = new ConcurrentMCPServer({
+const server = new McpApp({
   name: "my-server",
   version: "1.0.0",
   enableSampling: true,
@@ -406,8 +553,8 @@ Set `OTEL_DENO=true` to enable OpenTelemetry tracing. Spans are emitted for tool
 
 ## See Also
 
-- [Quick Start](/docs/getting-started/quickstart/) — Server setup with both transports
-- [Middleware Pipeline](/docs/guides/middleware/) — `use()` guide and pipeline order
-- [Authentication (OAuth2)](/docs/guides/auth/) — `auth` option and scope enforcement
-- [MCP Apps](/docs/guides/mcp-apps/) — `registerViewers()`, `registerAppOnlyTool()`, and UI resources
-- [Standalone Components](/docs/api/standalone-components/) — Use RateLimiter, RequestQueue independently
+- [Quick Start](/docs/getting-started/quickstart) — Server setup with both transports
+- [Middleware Pipeline](/docs/guides/middleware) — `use()` guide and pipeline order
+- [Authentication (OAuth2)](/docs/guides/auth) — `auth` option and scope enforcement
+- [MCP Apps](/docs/guides/mcp-apps) — `registerViewers()`, `registerAppOnlyTool()`, and UI resources
+- [Standalone Components](/docs/api/standalone-components) — Use RateLimiter, RequestQueue independently

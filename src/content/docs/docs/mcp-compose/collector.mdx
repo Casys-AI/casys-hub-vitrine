@@ -110,3 +110,54 @@ interface CollectedUiResource {
 ## SDK collector
 
 If your inputs already match `@modelcontextprotocol/sdk` `CallToolResult` shape, use `createMcpSdkCollector()` from `@casys/mcp-compose/sdk`. It delegates to the same core collector and adds one behavior: `isError: true` results are skipped automatically.
+
+### `McpSdkCollector` interface
+
+```typescript
+import { createMcpSdkCollector } from "@casys/mcp-compose/sdk";
+
+interface McpSdkCollector {
+  /**
+   * Collect a UI resource from an MCP SDK CallToolResult.
+   * Returns null if the result has isError: true or no _meta.ui.resourceUri.
+   */
+  collectFromSdk(
+    toolName: string,
+    result: McpSdkCallToolResult,
+    context?: Record<string, unknown>,
+  ): CollectedUiResource | null;
+
+  /** Get all collected resources in slot order. */
+  getResources(): CollectedUiResource[];
+
+  /** Reset collected resources. */
+  clear(): void;
+
+  /** Access the underlying core collector. */
+  readonly inner: UiCollector;
+}
+```
+
+The method is `collectFromSdk()`, not `collect()`. The `inner` property exposes the underlying `UiCollector` if you need direct access to the core API.
+
+### Example
+
+```typescript
+import { createMcpSdkCollector } from "@casys/mcp-compose/sdk";
+import { buildCompositeUi, renderComposite } from "@casys/mcp-compose";
+
+const collector = createMcpSdkCollector();
+
+// sdkResult matches the @modelcontextprotocol/sdk CallToolResult shape
+for (const [toolName, sdkResult] of toolCallResults) {
+  collector.collectFromSdk(toolName, sdkResult, { workflowId: "wf-1" });
+}
+
+// Error results (isError: true) are automatically skipped
+// Proceed with the standard pipeline
+const resources = collector.getResources();
+const descriptor = buildCompositeUi(resources, { layout: "split" });
+const html = renderComposite(descriptor);
+```
+
+Note: `createMcpSdkCollector()` wraps a standard `createCollector()`. The `inner` property gives you access to that underlying collector if you need to mix SDK and non-SDK results.

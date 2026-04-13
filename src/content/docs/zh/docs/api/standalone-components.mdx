@@ -10,7 +10,7 @@ import { Aside } from '@astrojs/starlight/components';
 
 ## RateLimiter
 
-滑动窗口速率限制器，支持按键追踪。轻量级，无外部依赖。
+滑动窗口速率限制器，支持按键追踪。无外部依赖。
 
 ```typescript
 import { RateLimiter } from "@casys/mcp-server";
@@ -43,17 +43,54 @@ if (limiter.checkLimit("client-123")) {
 await limiter.waitForSlot(key: string): Promise<void>;
 ```
 
-阻塞直到有可用槽位。超时等于 `windowMs`。
+阻塞直到有可用槽位。最大等待时间等于 `windowMs`。
 
 ```typescript
 await limiter.waitForSlot("client-123");
-// Guaranteed to have a slot
+// Guaranteed to have a slot when this resolves
 ```
+
+### getRemainingRequests
+
+```typescript
+limiter.getRemainingRequests(key: string): number;
+```
+
+返回给定键在当前窗口内还可以发出的请求数。对于没有历史记录的键返回 `maxRequests`。
+
+```typescript
+const remaining = limiter.getRemainingRequests("client-123");
+// e.g., 7 if 3 of 10 requests have been used
+```
+
+### getTimeUntilSlot
+
+```typescript
+limiter.getTimeUntilSlot(key: string): number;
+```
+
+返回给定键下一个槽位开放前的毫秒数。如果槽位已可用，返回 `0`。
+
+### clear
+
+```typescript
+limiter.clear(key: string): void;
+```
+
+清除特定键的请求历史，立即释放其槽位。
+
+### clearAll
+
+```typescript
+limiter.clearAll(): void;
+```
+
+清除所有追踪的键及其请求历史。
 
 ### getMetrics
 
 ```typescript
-limiter.getMetrics(): { keys: number, totalRequests: number };
+limiter.getMetrics(): { keys: number; totalRequests: number };
 ```
 
 ## RequestQueue
@@ -66,7 +103,7 @@ import { RequestQueue } from "@casys/mcp-server";
 const queue = new RequestQueue({
   maxConcurrent: 5,
   strategy: "queue",     // "sleep" | "queue" | "reject"
-  sleepMs: 10,           // For "sleep" strategy only
+  sleepMs: 10,           // For "sleep" strategy only — default: 10
 });
 ```
 
@@ -75,7 +112,7 @@ const queue = new RequestQueue({
 | 策略 | 行为 | 适用场景 |
 |------|------|---------|
 | `sleep` | 以 `sleepMs` 间隔自旋等待直到槽位释放 | 低延迟，可容忍 CPU |
-| `queue` | FIFO 队列 — 请求按顺序等待 | 公平调度，可预测 |
+| `queue` | FIFO 队列 — 请求按顺序等待 | 公平调度，可预测延迟 |
 | `reject` | 满载时立即拒绝 | 快速失败，断路器风格 |
 
 ### acquire / release
@@ -90,7 +127,7 @@ queue.release(): void;
 ```typescript
 await queue.acquire();
 try {
-  await processRequest();  // 1 of maxConcurrent
+  await processRequest();  // 1 of maxConcurrent slots occupied
 } finally {
   queue.release();
 }
@@ -99,12 +136,12 @@ try {
 ### getMetrics
 
 ```typescript
-queue.getMetrics(): { inFlight: number, queued: number };
+queue.getMetrics(): { inFlight: number; queued: number };
 ```
 
 ## SchemaValidator
 
-基于 ajv 的 JSON Schema 验证。Schema 在注册时一次性编译 — 验证速度快。
+基于 ajv 8 的 JSON Schema 验证，带 `allErrors` 和 `useDefaults`。Schema 在 `addSchema()` 时一次性编译 — 验证速度快。
 
 ```typescript
 import { SchemaValidator } from "@casys/mcp-server";
@@ -115,10 +152,10 @@ const validator = new SchemaValidator();
 ### addSchema
 
 ```typescript
-validator.addSchema(toolName: string, schema: object): void;
+validator.addSchema(name: string, schema: object): void;
 ```
 
-编译并缓存 schema。在启动时每个工具调用一次：
+编译并缓存 schema。在启动时调用一次：
 
 ```typescript
 validator.addSchema("my_tool", {
@@ -134,13 +171,13 @@ validator.addSchema("my_tool", {
 ### validate
 
 ```typescript
-validator.validate(toolName: string, args: unknown): ValidationResult;
+validator.validate(name: string, data: unknown): ValidationResult;
 ```
 
 ```typescript
 interface ValidationResult {
   valid: boolean;
-  errors: string[];  // Human-readable error messages
+  errors: ValidationError[];  // Structured error objects (empty if valid)
 }
 ```
 
@@ -152,11 +189,44 @@ validator.validate("my_tool", { count: 5 });
 // { valid: true, errors: [] }
 ```
 
+### hasSchema
+
+```typescript
+validator.hasSchema(name: string): boolean;
+```
+
+如果已添加给定名称的 schema，返回 `true`。
+
+### removeSchema
+
+```typescript
+validator.removeSchema(name: string): void;
+```
+
+移除之前添加的 schema。之后以该名称调用 `validate()` 将抛出错误。
+
+### validateOrThrow
+
+```typescript
+validator.validateOrThrow(name: string, data: unknown): void;
+```
+
+数据无效时抛出 `ValidationError`。在希望快速失败而非处理结果对象时很有用：
+
+```typescript
+try {
+  validator.validateOrThrow("my_tool", args);
+  // args are valid — proceed
+} catch (error) {
+  // error.message contains all validation errors
+}
+```
+
 <Aside type="tip">
-  在 `ConcurrentMCPServer` 内部，这些组件根据你的选项自动装配。独立使用仅在框架之外构建自定义基础设施时需要。
+  在 `McpApp` 内部，这些组件根据你的选项自动装配。独立使用仅在框架之外构建自定义基础设施时需要。
 </Aside>
 
 ## 另请参阅
 
-- [ConcurrentMCPServer API](/zh/docs/api/concurrent-mcp-server/) — 这些组件在内部的使用方式
+- [McpApp API](/zh/docs/api/concurrent-mcp-server/) — 这些组件在内部的使用方式
 - [中间件管道](/zh/docs/guides/middleware/) — 管道中的速率限制、验证和背压

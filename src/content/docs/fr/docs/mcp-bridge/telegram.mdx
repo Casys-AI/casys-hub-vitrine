@@ -1,52 +1,133 @@
 ---
-title: Adaptateur Telegram
-description: Guide complet pour integrer des MCP Apps en tant que Telegram Mini Apps.
+title: Telegram
+description: Ce que l'intégration Telegram implémente réellement dans @casys/mcp-bridge 0.2.0.
 ---
 
 import { Aside } from '@astrojs/starlight/components';
 
-## Vue d'ensemble
+## Configuration du serveur
 
-L'adaptateur Telegram mappe le SDK Telegram WebApp vers le protocole MCP Apps, fournissant :
+```ts
+import { JsonRpcMcpBackend, startResourceServer } from "@casys/mcp-bridge";
 
-- Synchronisation des themes (clair/sombre)
-- Viewport et marges de zone securisee (safe area insets)
-- Authentification via `initData` (HMAC-SHA256)
-- Evenements de cycle de vie (activation, desactivation)
-- Ouverture native des liens
-
-## Mise en place
-
-```typescript
-import { TelegramPlatformAdapter } from "@casys/mcp-bridge";
-
-const adapter = new TelegramPlatformAdapter();
+const server = startResourceServer({
+  assetDirectories: {
+    "my-app": "./ui-dist",
+  },
+  platform: "telegram",
+  telegramBotToken: Deno.env.get("TELEGRAM_BOT_TOKEN")!,
+  backend: new JsonRpcMcpBackend({
+    endpointUrl: "https://my-mcp.example.com/mcp",
+  }),
+});
 ```
 
-## Mapping des themes
+Pour `platform: "telegram"`, le serveur échoue immédiatement si vous ne fournissez pas :
 
-Les themes Telegram sont automatiquement mappes vers le contexte hote MCP :
+- `telegramBotToken`
+- ou un handler `auth` personnalisé
 
-| Telegram | MCP Host Context |
-|----------|-----------------|
-| `colorScheme: "dark"` | `{ theme: "dark" }` |
-| `colorScheme: "light"` | `{ theme: "light" }` |
-| `themeParams.bg_color` | `backgroundColor` |
-| `themeParams.text_color` | `textColor` |
+## Ce qui se passe dans le navigateur
+
+Quand le runtime injecté détecte `platform=telegram`, il utilise `window.Telegram.WebApp` si disponible.
+
+Il effectue actuellement toutes les opérations suivantes :
+
+- appelle `Telegram.WebApp.ready()`
+- appelle `Telegram.WebApp.expand()` si l'app n'est pas déjà étendue
+- envoie `initData` sur le canal WebSocket d'authentification si l'auth est requise
+- utilise `Telegram.WebApp.openLink()` pour `ui/open-link`
+- construit `hostContext.theme` à partir de `colorScheme`
+- construit `hostContext.containerDimensions.height` à partir de `viewportStableHeight`
+- écoute les événements `themeChanged` et `viewportChanged`
+
+Il ne bridge pas actuellement le reste de la surface d'événements de Telegram WebApp.
+
+<Aside type="caution">
+  Le `bridge.js` injecté utilise `height` (pas `maxHeight`) dans `containerDimensions`. La classe exportée `TelegramPlatformAdapter` utilise `maxHeight` à la place (voir `getContainerDimensions()`). Le type `ContainerDimensions` supporte les deux champs. Le code qui lit le contexte hôte depuis `ui/initialize` doit vérifier le nom du champ correspondant à la couche utilisée.
+</Aside>
 
 ## Authentification
 
-L'adaptateur valide le `initData` de Telegram via HMAC-SHA256 :
+L'auth Telegram est implémentée côté serveur, pas dans l'adaptateur navigateur.
 
-1. Telegram envoie la chaine de requete `initData` avec les infos utilisateur
-2. L'adaptateur verifie la signature avec votre token de bot
-3. Les sessions valides recoivent un token de session crypto-securise
-4. Les requetes invalides sont rejetees avec un 401
+Le handler intégré :
+
+1. analyse le `initData` de la Mini App
+2. supprime `hash`
+3. trie les paires `key=value` restantes
+4. dérive le secret avec HMAC-SHA256 en utilisant la clé `"WebAppData"`
+5. vérifie la signature avec `crypto.subtle.verify`
+6. rejette les valeurs `auth_date` antérieures à 24 heures ou postérieures de plus de 60 secondes
+
+L'authentification se produit sur le premier message WebSocket après que la session existe déjà.
 
 <Aside type="caution">
-  N'exposez jamais votre token de bot cote client. L'adaptateur gere la validation cote serveur.
+  Conservez le token de bot côté serveur. Le client envoie uniquement le `initData` fourni par Telegram ; la vérification de signature se fait côté serveur.
 </Aside>
 
-## Viewport et zones securisees
+## Détails du contexte hôte
 
-L'adaptateur rapporte les dimensions du viewport Telegram et les marges de zone securisee, que votre MCP App recoit via des notifications `host-context-changed`.
+Pour le runtime auto-injecté, Telegram fournit actuellement :
+
+- `theme`
+- `styles.variables` dérivés de `themeParams` (voir Variables CSS ci-dessous)
+- `locale` depuis `initDataUnsafe.user.language_code` si disponible, avec repli sur `navigator.language`
+- `timeZone` depuis l'environnement navigateur
+- `containerDimensions.width` depuis `window.innerWidth`
+- `containerDimensions.height` depuis `viewportStableHeight` (repli sur `window.innerHeight`)
+
+Le `TelegramPlatformAdapter` exporté fournit les mêmes champs mais avec deux différences :
+
+- `locale` provient toujours de `navigator.language` — il ne lit pas `initDataUnsafe.user.language_code`
+- `containerDimensions` utilise `maxHeight` (pas `height`) pour la valeur de hauteur du viewport
+
+## Nommage des variables CSS
+
+Les deux couches Telegram produisent des schémas de variables CSS différents dans `hostContext.styles.variables`.
+
+**Runtime `bridge.js` injecté** — les clés reflètent les noms de propriétés `themeParams` de Telegram préfixés par `--tg-` :
+
+| Clé `themeParams` Telegram | Variable CSS |
+| --- | --- |
+| `bg_color` | `--tg-bg-color` |
+| `secondary_bg_color` | `--tg-secondary-bg-color` |
+| `text_color` | `--tg-text-color` |
+| `button_color` | `--tg-button-color` |
+| `button_text_color` | `--tg-button-text-color` |
+| `hint_color` | `--tg-hint-color` |
+| `link_color` | `--tg-link-color` |
+| (toute autre clé `themeParams`) | `--tg-<clé-avec-tirets>` |
+
+**`TelegramPlatformAdapter` exporté** — les clés utilisent une convention de nommage sémantique :
+
+| Clé `themeParams` Telegram | Variable CSS |
+| --- | --- |
+| `bg_color` | `--color-background-primary` |
+| `secondary_bg_color` | `--color-background-secondary` |
+| `text_color` | `--color-text-primary` |
+| `subtitle_text_color` | `--color-text-secondary` |
+| `section_separator_color` | `--color-border-primary` |
+| `accent_text_color` | `--color-ring-primary` |
+| `hint_color` | `--color-text-hint` |
+| `link_color` | `--color-text-link` |
+| `button_color` | `--color-button-primary` |
+| `button_text_color` | `--color-button-text` |
+| `header_bg_color` | `--color-background-header` |
+| `section_bg_color` | `--color-background-section` |
+
+Si vous utilisez le runtime injecté, ciblez les variables `--tg-*` dans votre CSS. Si vous utilisez `TelegramPlatformAdapter` avec un `BridgeClient` personnalisé, ciblez les variables sémantiques `--color-*`.
+
+## APIs Telegram exportées
+
+Le package exporte également deux classes spécifiques à Telegram :
+
+- `TelegramAdapter` : un adaptateur `postMessage` bas niveau
+- `TelegramPlatformAdapter` : un adaptateur de plateforme de plus haut niveau pour une utilisation personnalisée avec `BridgeClient`
+
+`TelegramPlatformAdapter` expose un contexte hôte plus structuré que le runtime injecté, incluant `safeAreaInsets`, `getAuthData()`, et `sendMessage()`. Sa méthode `sendMessage()` appelle `Telegram.WebApp.sendData()`, ce qui ferme la Mini App après l'envoi.
+
+## Ce qu'il ne faut pas supposer
+
+- Les insets de zone sécurisée sont disponibles depuis `TelegramPlatformAdapter`, mais le runtime auto-injecté `bridge.js` ne les inclut pas actuellement dans le contexte hôte envoyé à l'app.
+- `MainButton`, `BackButton`, et la longue liste d'événements du SDK Telegram sont typés dans le code source, mais ils ne sont pas actuellement connectés au flux de bridge.

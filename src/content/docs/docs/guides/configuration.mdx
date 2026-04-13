@@ -77,7 +77,7 @@ const config = await loadAuthConfig();
 
 if (config) {
   const provider = createAuthProviderFromConfig(config);
-  const server = new ConcurrentMCPServer({
+  const server = new McpApp({
     name: "my-server",
     version: "1.0.0",
     auth: {
@@ -114,6 +114,6 @@ CMD ["./server", "--http", "--port", "3000"]
 
 ## See Also
 
-- [Authentication (OAuth2)](/docs/guides/auth/) — Programmatic auth setup with presets
-- [Auth Providers API](/docs/api/auth-providers/) — `loadAuthConfig` and `createAuthProviderFromConfig` reference
-- [Quick Start](/docs/getting-started/quickstart/) — YAML config example in context
+- [Authentication (OAuth2)](/docs/guides/auth) — Programmatic auth setup with presets
+- [Auth Providers API](/docs/api/auth-providers) — `loadAuthConfig` and `createAuthProviderFromConfig` reference
+- [Quick Start](/docs/getting-started/quickstart) — YAML config example in context

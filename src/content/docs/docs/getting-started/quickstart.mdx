@@ -13,9 +13,9 @@ Let's build a working MCP server. By the end of this page you'll have a server r
 1. **Create `server.ts`**:
 
     ```typescript
-    import { ConcurrentMCPServer } from "@casys/mcp-server";
+    import { McpApp } from "@casys/mcp-server";
 
-    const server = new ConcurrentMCPServer({
+    const server = new McpApp({
       name: "my-server",
       version: "1.0.0",
     });
@@ -55,11 +55,11 @@ For remote deployment, swap `start()` for `startHttp()` and turn on the features
 
 ```typescript
 import {
-  ConcurrentMCPServer,
+  McpApp,
   createGoogleAuthProvider,
 } from "@casys/mcp-server";
 
-const server = new ConcurrentMCPServer({
+const server = new McpApp({
   name: "my-api",
   version: "1.0.0",
   maxConcurrent: 10,                                    // 10 concurrent tool calls max
@@ -138,8 +138,8 @@ Real signature: `launchInspector(serverCommand, serverArgs, options?)`. The firs
 
 You've got a running server. Now make it yours:
 
-- **[Middleware Pipeline](/docs/guides/middleware/)** — Add logging, caching, metrics, or any custom logic to the request chain
-- **[Authentication](/docs/guides/auth/)** — Deep dive into OAuth2 presets for Google, Auth0, GitHub, and OIDC
-- **[Configuration](/docs/guides/configuration/)** — YAML + env var configuration for binary distribution
-- **[MCP Apps](/docs/guides/mcp-apps/)** — Serve interactive HTML UIs alongside your tools
-- **[API Reference](/docs/api/concurrent-mcp-server/)** — Every method and option, documented
+- **[Middleware Pipeline](/docs/guides/middleware)** — Add logging, caching, metrics, or any custom logic to the request chain
+- **[Authentication](/docs/guides/auth)** — Deep dive into OAuth2 presets for Google, Auth0, GitHub, and OIDC
+- **[Configuration](/docs/guides/configuration)** — YAML + env var configuration for binary distribution
+- **[MCP Apps](/docs/guides/mcp-apps)** — Serve interactive HTML UIs alongside your tools
+- **[API Reference](/docs/api/concurrent-mcp-server)** — Every method and option, documented

@@ -285,9 +285,9 @@ export const zh_TW: Translations = {
             id: "mcp-server",
             name: "@casys/mcp-server",
             tagline: "生產級 MCP 伺服器框架",
-            status: "v0.7.0",
+            status: "v0.14.0",
             tech: "Deno",
-            links: { website: "/zh-TW/mcp-server", github: "https://github.com/Casys-AI/casys-pml/tree/main/lib/server", jsr: "https://jsr.io/@casys/mcp-server" },
+            links: { website: "/zh-TW/mcp-server", github: "https://github.com/Casys-AI/mcp-server", jsr: "https://jsr.io/@casys/mcp-server" },
           },
           {
             id: "mcp-std",
@@ -622,19 +622,18 @@ export const zh_TW: Translations = {
       { step: "3", title: "渲染", desc: "Renderer 輸出帶有 JSON-RPC 事件匯流排的獨立 HTML，用於跨 UI 同步" },
     ],
     composeCodeTitle: "compose.ts",
-    composeCode: `import { createCollector, buildCompositeUi, renderComposite } from "@casys/mcp-compose/core";
+    composeCode: `import { createCollector, buildCompositeUi, renderComposite } from "@casys/mcp-compose";
 
 // 1. Collect UI resources from tool results
 const collector = createCollector();
-collector.add(invoiceResult);  // has _meta.ui
-collector.add(statusResult);   // has _meta.ui
+collector.collect("postgres:query", pgResult);   // has _meta.ui
+collector.collect("viz:render", vizResult);       // has _meta.ui
 
 // 2. Compose with layout + sync rules
-const descriptor = buildCompositeUi({
-  resources: collector.resources(),
+const descriptor = buildCompositeUi(collector.getResources(), {
   layout: "split",
   sync: [
-    { from: "invoice-viewer", event: "status-change", to: "status-timeline", action: "refresh" },
+    { from: "postgres:query", event: "filter", to: "viz:render", action: "update" },
   ],
 });
 
@@ -659,7 +658,7 @@ const html = renderComposite(descriptor);`,
       { icon: "sync_alt", name: "Declarative sync", desc: "Cross-UI event routing via { from, event, to, action }" },
       { icon: "grid_view", name: "Layout modes", desc: "Split, tabs, grid, or stack — configurable per composition" },
       { icon: "share", name: "Shared context", desc: "Propagate values (workflowId, userId) across all UIs" },
-      { icon: "verified", name: "Fail-fast validation", desc: "Structured error codes, no silent fallbacks" },
+      { icon: "verified", name: "明確驗證", desc: "validateSyncRules() 在渲染前捕捉無效規則 — buildCompositeUi() 會靜默忽略未知參照" },
       { icon: "package_2", name: "Zero dependencies", desc: "Pure functions, deterministic outputs, Deno standard library only" },
     ],
     architectureTitle: "Pipeline",
@@ -670,14 +669,22 @@ const html = renderComposite(descriptor);`,
     ],
     quickstartTitle: "Quick start",
     quickstartCode: `import { createCollector, buildCompositeUi, renderComposite } from "@casys/mcp-compose/core";
+
+// 1. 從工具結果收集 UI 資源
 const collector = createCollector();
-collector.add(invoiceResult);
-collector.add(statusResult);
-const descriptor = buildCompositeUi({
-  resources: collector.resources(),
+collector.collect("invoice-viewer", invoiceResult);  // has _meta.ui
+collector.collect("status-timeline", statusResult);  // has _meta.ui
+
+// 2. 使用版面配置 + 同步規則進行合成
+const resources = collector.getResources();
+const descriptor = buildCompositeUi(resources, {
   layout: "split",
-  sync: [{ from: "invoice-viewer", event: "status-change", to: "status-timeline", action: "refresh" }],
+  sync: [
+    { from: "invoice-viewer", event: "status-change", to: "status-timeline", action: "refresh" },
+  ],
 });
+
+// 3. 渲染為自包含 HTML
 const html = renderComposite(descriptor);`,
     installTitle: "Install",
     installDeno: "deno add jsr:@casys/mcp-compose",
@@ -1321,7 +1328,7 @@ const html = renderComposite(descriptor);`,
     titleAccent: "Telegram",
     subtitle: "三步將您的 MCP App 執行在 Telegram 中。無需更改現有程式碼。",
     tabTelegram: "Telegram",
-    tabLine: "即將推出",
+    tabLine: "LINE",
   },
   mcpBridgeInstall: {
     title: "隨時",

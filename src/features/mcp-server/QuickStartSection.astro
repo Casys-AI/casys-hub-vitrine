@@ -4,9 +4,9 @@ const locale = (Astro as any).currentLocale ?? 'en';
 const t = useTranslations(locale).mcpServerQuickStart;
 
 // Code examples stored in frontmatter to avoid Astro JSX expression parsing of curly braces
-const codeBasic = `<span class="c-keyword">import</span> { ConcurrentMCPServer } <span class="c-keyword">from</span> <span class="c-string">"@casys/mcp-server"</span>;
+const codeBasic = `<span class="c-keyword">import</span> { McpApp } <span class="c-keyword">from</span> <span class="c-string">"@casys/mcp-server"</span>;
 
-<span class="c-keyword">const</span> server = <span class="c-keyword">new</span> <span class="c-type">ConcurrentMCPServer</span>({
+<span class="c-keyword">const</span> server = <span class="c-keyword">new</span> <span class="c-type">McpApp</span>({
   name: <span class="c-string">"my-server"</span>,
   version: <span class="c-string">"1.0.0"</span>,
 });
@@ -21,9 +21,9 @@ server.<span class="c-fn">registerTool</span>(
 
 <span class="c-keyword">await</span> server.<span class="c-fn">start</span>();`;
 
-const codeHttp = `<span class="c-keyword">import</span> { ConcurrentMCPServer, createGoogleAuthProvider } <span class="c-keyword">from</span> <span class="c-string">"@casys/mcp-server"</span>;
+const codeHttp = `<span class="c-keyword">import</span> { McpApp, createGoogleAuthProvider } <span class="c-keyword">from</span> <span class="c-string">"@casys/mcp-server"</span>;
 
-<span class="c-keyword">const</span> server = <span class="c-keyword">new</span> <span class="c-type">ConcurrentMCPServer</span>({
+<span class="c-keyword">const</span> server = <span class="c-keyword">new</span> <span class="c-type">McpApp</span>({
   name: <span class="c-string">"my-api"</span>, version: <span class="c-string">"1.0.0"</span>,
   auth: {
     provider: <span class="c-fn">createGoogleAuthProvider</span>({

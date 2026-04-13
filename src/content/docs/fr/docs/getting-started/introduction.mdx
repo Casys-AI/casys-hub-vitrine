@@ -4,12 +4,28 @@ description: Framework MCP server de production pour Deno. Le "Hono pour MCP".
 ---
 
 import { Card, CardGrid, LinkCard, Aside } from '@astrojs/starlight/components';
+import Mermaid from '../../../../../components/Mermaid.astro';
 
 Le **"Hono pour MCP"** — un framework de production pour construire des serveurs MCP avec un pipeline de middleware composable, OAuth2, double transport, et tout ce qu'il faut pour passer du prototype a la production.
 
-Construit sur le SDK officiel [@modelcontextprotocol/sdk](https://github.com/modelcontextprotocol/sdk). Publie sur [JSR](https://jsr.io/@casys/mcp-server).
+Construit sur le SDK officiel [@modelcontextprotocol/sdk](https://github.com/modelcontextprotocol/sdk) (SDK 1.27). Publie sur [JSR](https://jsr.io/@casys/mcp-server). **Version 0.14.0 — 301 tests.**
 
 <img src="/diagrams/mcp-server/mcp-architecture.svg" alt="Architecture MCP Server" style="width: 100%; max-width: 600px; margin: 24px auto; display: block;" />
+
+<Mermaid chart={`graph TB
+  CLIENT[MCP Client] -->|JSON-RPC| TRANSPORT[Transport Layer]
+  TRANSPORT --> MW[Middleware Pipeline]
+  MW --> TOOLS[Tool Handlers]
+  MW --> RES[Resources]
+  TRANSPORT -->|SSE| NOTIFY[Notifications]
+  subgraph Middleware
+    AUTH[Auth] --> RATE[Rate Limit]
+    RATE --> CUSTOM[Custom]
+    CUSTOM --> VALID[Validation]
+  end
+  MW --> Middleware
+  style TRANSPORT fill:#6750A4,color:#fff
+  style MW fill:#FFB86F,color:#000`} />
 
 ## Le probleme
 
@@ -24,8 +40,8 @@ Il faut de l'authentification. Du rate limiting. De la validation d'entrees. Du 
 `@casys/mcp-server` vous offre un framework batteries-included ou tout cela est gere nativement — avec un pipeline de middleware composable inspire de [Hono](https://hono.dev) et [Koa](https://koajs.com).
 
 ```typescript
-// This is a production-ready MCP server. Really.
-const server = new ConcurrentMCPServer({
+// This is a production-ready MCP server.
+const server = new McpApp({
   name: "my-api",
   version: "1.0.0",
   maxConcurrent: 10,
@@ -37,6 +53,8 @@ const server = new ConcurrentMCPServer({
       audience: "https://my-mcp.example.com",
       resource: "https://my-mcp.example.com",
     }),
+    authorizationServers: ["https://accounts.google.com"],
+    resource: "https://my-mcp.example.com",
   },
 });
 
@@ -71,10 +89,10 @@ await server.startHttp({ port: 3000 });
     Validation JSON Schema (ajv) compilee a l'enregistrement. Les entrees invalides sont rejetees avant meme que votre handler ne s'execute.
   </Card>
   <Card title="MCP Apps" icon="laptop">
-    Servez des interfaces HTML interactives a cote de vos outils via le scheme `ui://` (SEP-1865). Dashboards, formulaires, visualiseurs — directement dans le client.
+    Servez des interfaces HTML interactives a cote de vos outils via le type MIME `text/html;profile=mcp-app` (SDK 1.27). Dashboards, formulaires, visualiseurs — directement dans le client.
   </Card>
   <Card title="Sampling Bridge" icon="random">
-    Delegation LLM bidirectionnelle (SEP-1577). Votre serveur peut appeler des LLMs via la connexion client.
+    Delegation LLM bidirectionnelle. Votre serveur peut appeler des LLMs via la connexion client avec `enableSampling: true`.
   </Card>
 </CardGrid>
 

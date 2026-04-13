@@ -325,11 +325,11 @@ export const fr: Translations = {
             id: "mcp-server",
             name: "@casys/mcp-server",
             tagline: "Framework serveur MCP production",
-            status: "v0.7.0",
+            status: "v0.14.0",
             tech: "Deno",
             links: {
               website: "/fr/mcp-server",
-              github: "https://github.com/Casys-AI/casys-pml/tree/main/lib/server",
+              github: "https://github.com/Casys-AI/mcp-server",
               jsr: "https://jsr.io/@casys/mcp-server",
             },
           },
@@ -689,19 +689,18 @@ export const fr: Translations = {
       { step: "3", title: "Rendre", desc: "Le Renderer génère du HTML autonome avec un bus d'événements JSON-RPC pour la sync cross-UI" },
     ],
     composeCodeTitle: "compose.ts",
-    composeCode: `import { createCollector, buildCompositeUi, renderComposite } from "@casys/mcp-compose/core";
+    composeCode: `import { createCollector, buildCompositeUi, renderComposite } from "@casys/mcp-compose";
 
 // 1. Collect UI resources from tool results
 const collector = createCollector();
-collector.add(invoiceResult);  // has _meta.ui
-collector.add(statusResult);   // has _meta.ui
+collector.collect("postgres:query", pgResult);   // has _meta.ui
+collector.collect("viz:render", vizResult);       // has _meta.ui
 
 // 2. Compose with layout + sync rules
-const descriptor = buildCompositeUi({
-  resources: collector.resources(),
+const descriptor = buildCompositeUi(collector.getResources(), {
   layout: "split",
   sync: [
-    { from: "invoice-viewer", event: "status-change", to: "status-timeline", action: "refresh" },
+    { from: "postgres:query", event: "filter", to: "viz:render", action: "update" },
   ],
 });
 
@@ -758,8 +757,8 @@ const html = renderComposite(descriptor);`,
       },
       {
         icon: "verified",
-        name: "Validation fail-fast",
-        desc: "Codes d'erreur structures, pas de fallbacks silencieux",
+        name: "Validation explicite",
+        desc: "validateSyncRules() detecte les regles invalides avant le rendu — buildCompositeUi() ignore silencieusement les references inconnues",
       },
       {
         icon: "package_2",
@@ -793,12 +792,12 @@ const html = renderComposite(descriptor);`,
 
 // 1. Collecter les ressources UI des resultats d'outils
 const collector = createCollector();
-collector.add(invoiceResult);  // has _meta.ui
-collector.add(statusResult);   // has _meta.ui
+collector.collect("invoice-viewer", invoiceResult);  // has _meta.ui
+collector.collect("status-timeline", statusResult);  // has _meta.ui
 
 // 2. Composer avec layout + regles de sync
-const descriptor = buildCompositeUi({
-  resources: collector.resources(),
+const resources = collector.getResources();
+const descriptor = buildCompositeUi(resources, {
   layout: "split",
   sync: [
     { from: "invoice-viewer", event: "status-change", to: "status-timeline", action: "refresh" },
@@ -1517,7 +1516,7 @@ const html = renderComposite(descriptor);`,
     subtitle:
       "Votre MCP App dans Telegram en trois etapes. Aucun changement a votre code existant.",
     tabTelegram: "Telegram",
-    tabLine: "Bientôt",
+    tabLine: "LINE",
   },
   mcpBridgeInstall: {
     title: "Pret",

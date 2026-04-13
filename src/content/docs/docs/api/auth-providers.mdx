@@ -5,7 +5,7 @@ description: API reference for authentication presets and JwtAuthProvider.
 
 import { Aside } from '@astrojs/starlight/components';
 
-Factory functions for common identity providers, plus the low-level `JwtAuthProvider` for full control. All return an `AuthProvider` compatible with `ConcurrentServerOptions.auth.provider`.
+Factory functions for common identity providers, plus the low-level `JwtAuthProvider` for full control. All return an `AuthProvider` compatible with `McpAppOptions.auth.provider`.
 
 ## Factory functions (presets)
 
@@ -65,7 +65,7 @@ const provider = createOIDCAuthProvider({
 Generic OIDC provider. If `jwksUri` is omitted, the JWKS URI defaults to `${issuer}/.well-known/jwks.json`. The provider does not fetch `.well-known/openid-configuration`.
 
 <Aside type="tip">
-  Not sure which preset to use? See the [Authentication guide](/docs/guides/auth/) for usage examples with each provider.
+  Not sure which preset to use? See the [Authentication guide](/docs/guides/auth) for usage examples with each provider.
 </Aside>
 
 ## JwtAuthProvider
@@ -101,6 +101,7 @@ interface AuthInfo {
   scopes: string[];                    // Parsed from "scope" claim (space-separated)
   claims?: Record<string, unknown>;    // All token claims
   expiresAt?: number;                  // Token expiry as Unix epoch seconds
+  tenantId?: string;                   // Set by createMultiTenantMiddleware — undefined on single-tenant servers
 }
 ```
 
@@ -147,33 +148,33 @@ Dispatches to the correct preset based on `config.provider`:
 
 ## Client OAuth
 
-For building MCP clients that authenticate against protected servers:
+For building MCP clients that authenticate against protected servers. These utilities are not exported from the main `@casys/mcp-server` entry point — use the deep import path:
 
 ```typescript
-import {
-  prepareOAuthProvider,
-  FileTokenStore,
-  MemoryTokenStore,
-} from "@casys/mcp-server";
+import { prepareOAuthProvider } from "@casys/mcp-server/client-auth/connect";
+import { FileTokenStore } from "@casys/mcp-server/client-auth/token-store/file-store";
+import { MemoryTokenStore } from "@casys/mcp-server/client-auth/token-store/memory-store";
 
-const oauthProvider = await prepareOAuthProvider(
+const { provider, callbackServer } = await prepareOAuthProvider(
   "https://my-mcp.example.com",
   {
     clientId: "my-client-id",
     scopes: ["read", "write"],
     tokenStore: new FileTokenStore("./.tokens"),  // or new MemoryTokenStore()
-    openBrowser: (url) => {
+    openBrowser: async (url) => {
       // Open the authorization URL in the user's browser
       console.log(`Open this URL to authorize: ${url}`);
     },
   },
 );
+// Pass provider as authProvider to StreamableHTTPClientTransport
+// Close callbackServer when done
 ```
 
 `FileTokenStore(path)` persists tokens to disk between restarts. `MemoryTokenStore()` is in-memory only.
 
 ## See Also
 
-- [Authentication (OAuth2)](/docs/guides/auth/) — Usage guide with presets, scope enforcement, and RFC 9728
-- [Configuration (YAML)](/docs/guides/configuration/) — File-based auth config with env var overrides
-- [ConcurrentMCPServer API](/docs/api/concurrent-mcp-server/) — `AuthOptions` in constructor
+- [Authentication (OAuth2)](/docs/guides/auth) — Usage guide with presets, scope enforcement, and RFC 9728
+- [Configuration (YAML)](/docs/guides/configuration) — File-based auth config with env var overrides
+- [McpApp API](/docs/api/concurrent-mcp-server) — `AuthOptions` in constructor

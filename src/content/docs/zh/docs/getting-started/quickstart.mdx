@@ -13,9 +13,9 @@ import { Tabs, TabItem, Steps, Aside } from '@astrojs/starlight/components';
 1. **创建 `server.ts`**：
 
     ```typescript
-    import { ConcurrentMCPServer } from "@casys/mcp-server";
+    import { McpApp } from "@casys/mcp-server";
 
-    const server = new ConcurrentMCPServer({
+    const server = new McpApp({
       name: "my-server",
       version: "1.0.0",
     });
@@ -55,22 +55,24 @@ import { Tabs, TabItem, Steps, Aside } from '@astrojs/starlight/components';
 
 ```typescript
 import {
-  ConcurrentMCPServer,
+  McpApp,
   createGoogleAuthProvider,
 } from "@casys/mcp-server";
 
-const server = new ConcurrentMCPServer({
+const server = new McpApp({
   name: "my-api",
   version: "1.0.0",
-  maxConcurrent: 10,                                    // 10 concurrent tool calls
+  maxConcurrent: 10,                                    // 10 concurrent tool calls max
   backpressureStrategy: "queue",                         // FIFO queue when at capacity
-  validateSchema: true,                                  // Reject bad input automatically
+  validateSchema: true,                                  // Reject bad input via ajv
   rateLimit: { maxRequests: 100, windowMs: 60_000 },    // 100 req/min per client
   auth: {
     provider: createGoogleAuthProvider({
       audience: "https://my-mcp.example.com",
       resource: "https://my-mcp.example.com",
     }),
+    authorizationServers: ["https://accounts.google.com"],
+    resource: "https://my-mcp.example.com",
   },
 });
 
@@ -81,8 +83,9 @@ server.registerTool(
     inputSchema: {
       type: "object",
       properties: { sql: { type: "string" } },
+      required: ["sql"],
     },
-    requiredScopes: ["db:read"],  // Token must have this scope
+    requiredScopes: ["db:read"],  // Token must include this scope
   },
   async ({ sql }) => ({ rows: await db.query(sql) }),
 );
@@ -119,6 +122,18 @@ MCP_AUTH_AUDIENCE=https://prod.example.com ./my-server --http --port 3000
 
 优先级：`程序化配置 > 环境变量 > YAML > 无认证`
 
+## 使用 Inspector 调试
+
+启动 MCP Inspector 调试你的服务器：
+
+```typescript
+import { launchInspector } from "@casys/mcp-server";
+
+await launchInspector("deno", ["run", "--allow-all", "server.ts"], { port: 6274 });
+```
+
+实际签名：`launchInspector(serverCommand, serverArgs, options?)`。第一个参数是运行时命令，第二个是其参数数组，`options.port` 设置 Inspector UI 端口。
+
 ## 接下来
 
 你已有一个运行的服务器。现在让它更强大：
@@ -126,4 +141,5 @@ MCP_AUTH_AUDIENCE=https://prod.example.com ./my-server --http --port 3000
 - **[中间件管道](/zh/docs/guides/middleware/)** — 为请求链添加日志、缓存、指标或任何自定义逻辑
 - **[认证](/zh/docs/guides/auth/)** — 深入了解 Google、Auth0、GitHub 和 OIDC 的 OAuth2 配置
 - **[配置](/zh/docs/guides/configuration/)** — 用于二进制分发的 YAML + 环境变量配置
+- **[MCP Apps](/zh/docs/guides/mcp-apps/)** — 在工具旁提供交互式 HTML 界面
 - **[API 参考](/zh/docs/api/concurrent-mcp-server/)** — 每个方法和选项，完整文档

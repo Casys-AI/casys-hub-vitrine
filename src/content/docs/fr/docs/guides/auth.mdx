@@ -17,11 +17,11 @@ Choisissez votre fournisseur d'identite. Chaque preset gere automatiquement les 
   <TabItem label="Google">
     ```typescript
     import {
-      ConcurrentMCPServer,
+      McpApp,
       createGoogleAuthProvider,
     } from "@casys/mcp-server";
 
-    const server = new ConcurrentMCPServer({
+    const server = new McpApp({
       name: "my-api",
       version: "1.0.0",
       auth: {
@@ -29,6 +29,8 @@ Choisissez votre fournisseur d'identite. Chaque preset gere automatiquement les 
           audience: "https://my-mcp.example.com",
           resource: "https://my-mcp.example.com",
         }),
+        authorizationServers: ["https://accounts.google.com"],
+        resource: "https://my-mcp.example.com",
       },
     });
     ```
@@ -36,11 +38,11 @@ Choisissez votre fournisseur d'identite. Chaque preset gere automatiquement les 
   <TabItem label="Auth0">
     ```typescript
     import {
-      ConcurrentMCPServer,
+      McpApp,
       createAuth0AuthProvider,
     } from "@casys/mcp-server";
 
-    const server = new ConcurrentMCPServer({
+    const server = new McpApp({
       name: "my-api",
       version: "1.0.0",
       auth: {
@@ -50,6 +52,9 @@ Choisissez votre fournisseur d'identite. Chaque preset gere automatiquement les 
           resource: "https://my-mcp.example.com",
           scopesSupported: ["read", "write"],
         }),
+        authorizationServers: ["https://my-tenant.auth0.com"],
+        resource: "https://my-mcp.example.com",
+        scopesSupported: ["read", "write"],
       },
     });
     ```
@@ -57,11 +62,11 @@ Choisissez votre fournisseur d'identite. Chaque preset gere automatiquement les 
   <TabItem label="GitHub Actions">
     ```typescript
     import {
-      ConcurrentMCPServer,
+      McpApp,
       createGitHubAuthProvider,
     } from "@casys/mcp-server";
 
-    const server = new ConcurrentMCPServer({
+    const server = new McpApp({
       name: "my-api",
       version: "1.0.0",
       auth: {
@@ -69,6 +74,8 @@ Choisissez votre fournisseur d'identite. Chaque preset gere automatiquement les 
           audience: "https://my-mcp.example.com",
           resource: "https://my-mcp.example.com",
         }),
+        authorizationServers: ["https://token.actions.githubusercontent.com"],
+        resource: "https://my-mcp.example.com",
       },
     });
     ```
@@ -80,11 +87,11 @@ Choisissez votre fournisseur d'identite. Chaque preset gere automatiquement les 
   <TabItem label="OIDC generique">
     ```typescript
     import {
-      ConcurrentMCPServer,
+      McpApp,
       createOIDCAuthProvider,
     } from "@casys/mcp-server";
 
-    const server = new ConcurrentMCPServer({
+    const server = new McpApp({
       name: "my-api",
       version: "1.0.0",
       auth: {
@@ -92,8 +99,9 @@ Choisissez votre fournisseur d'identite. Chaque preset gere automatiquement les 
           issuer: "https://my-idp.example.com",
           audience: "https://my-mcp.example.com",
           resource: "https://my-mcp.example.com",
-          authorizationServers: ["https://my-idp.example.com"],
         }),
+        authorizationServers: ["https://my-idp.example.com"],
+        resource: "https://my-mcp.example.com",
       },
     });
     ```
@@ -128,6 +136,16 @@ server.registerTool(
   La verification des scopes est **basee sur le AND** — le token doit posseder *tous* les scopes listes. Besoin d'une logique OR ? Implementez-la dans un [middleware personnalise](/fr/docs/guides/middleware/).
 </Aside>
 
+## Cache de tokens
+
+`JwtAuthProvider` inclut un cache en memoire pour eviter des appels JWKS repetes :
+
+- Cle de cache : hash SHA-256 de la chaine de token brute
+- TTL : 5 minutes
+- Taille max : 1000 entrees
+
+Cela signifie qu'un token est verifie une seule fois contre l'endpoint JWKS, puis servi depuis le cache pour les appels subsequents dans la fenetre TTL.
+
 ## Avance : JwtAuthProvider
 
 Pour un controle total sur les parametres de validation, utilisez `JwtAuthProvider` directement :
@@ -145,7 +163,19 @@ const provider = new JwtAuthProvider({
 });
 
 const authInfo = await provider.verifyToken(token);
-// { subject, clientId, scopes, claims, expiresAt } — or null if invalid
+// AuthInfo | null
+```
+
+Champs de `AuthInfo` :
+
+```typescript
+interface AuthInfo {
+  subject: string;                     // Token "sub" claim
+  clientId?: string;                   // Token "client_id" or "azp" claim
+  scopes: string[];                    // Parsed from "scope" claim (space-separated)
+  claims?: Record<string, unknown>;    // All token claims
+  expiresAt?: number;                  // Token expiry as Unix epoch seconds
+}
 ```
 
 ## Decouverte automatique (RFC 9728)
@@ -168,6 +198,35 @@ GET /.well-known/oauth-protected-resource
 <Aside type="tip">
   Pas besoin de configurer cela manuellement. C'est derive de votre configuration d'auth provider et servi automatiquement.
 </Aside>
+
+## Flux OAuth client
+
+Pour construire des clients MCP qui s'authentifient contre un serveur protege :
+
+```typescript
+import {
+  prepareOAuthProvider,
+  FileTokenStore,
+} from "@casys/mcp-server";
+
+const oauthProvider = await prepareOAuthProvider(
+  "https://my-mcp.example.com",
+  {
+    clientId: "my-client-id",
+    scopes: ["read", "write"],
+    tokenStore: new FileTokenStore("./.tokens"),
+    openBrowser: (url) => {
+      // Open the authorization URL in the user's browser
+      console.log(`Open this URL to authorize: ${url}`);
+    },
+  },
+);
+```
+
+Deux implementations de token store sont fournies :
+
+- `FileTokenStore(path)` — persiste les tokens sur disque
+- `MemoryTokenStore()` — en memoire, tokens perdus au redemarrage
 
 ## Auth via YAML
 

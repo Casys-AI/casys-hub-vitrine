@@ -1,40 +1,64 @@
 ---
-title: ConcurrentMCPServer
-description: ConcurrentMCPServer 类的完整 API 参考。
+title: McpApp
+description: McpApp 类的完整 API 参考。
 ---
 
 import { Aside } from '@astrojs/starlight/components';
 
-框架的主入口。`ConcurrentMCPServer` 处理工具注册、中间件组合、传输选择和生命周期管理。
+:::note[迁移说明]
+此类已在 v0.13 中从 `ConcurrentMCPServer` 重命名为 `McpApp`。旧名称作为已弃用的别名重新导出，将在 v1.0 中移除。
+:::
+
+框架的主入口。`McpApp` 处理工具注册、中间件组合、传输选择和生命周期管理。
 
 <Aside type="note">
-  支持 **Deno** 和 **Node.js** (18+)。框架使用运行时适配器 (`RuntimePort`)，同一 API 在两个平台上均可运行。`maxBodyBytes` 在 Deno 和 Node.js HTTP 层均有实现。
+  Deno 优先。Node.js 20+ 通过 JSR npm 兼容层支持。
 </Aside>
 
 ## 构造函数
 
 ```typescript
-import { ConcurrentMCPServer } from "@casys/mcp-server";
+import { McpApp } from "@casys/mcp-server";
 
-const server = new ConcurrentMCPServer(options: ConcurrentServerOptions);
+const server = new McpApp(options: ConcurrentServerOptions);
 ```
 
 ### ConcurrentServerOptions
 
 ```typescript
 interface ConcurrentServerOptions {
+  // Required
   name: string;                          // Server name (shown to clients)
-  version: string;                       // Semver version
+  version: string;                       // Semver version string
+
+  // Concurrency
   maxConcurrent?: number;                // Default: 10
   backpressureStrategy?: "sleep" | "queue" | "reject";  // Default: "sleep"
-  backpressureSleepMs?: number;          // Default: 10
-  rateLimit?: RateLimitOptions;          // Optional rate limiting
-  validateSchema?: boolean;              // Default: false
-  enableSampling?: boolean;              // Enable LLM sampling bridge
-  samplingClient?: SamplingClient;       // Custom sampling client
-  logger?: (msg: string) => void;        // Default: console.error
+  backpressureSleepMs?: number;          // Sleep interval for "sleep" strategy (ms)
+
+  // Rate limiting
+  rateLimit?: RateLimitOptions;
+
+  // Schema validation
+  validateSchema?: boolean;              // Default: false — enables ajv 8
+
+  // Sampling
+  enableSampling?: boolean;              // Enable bidirectional LLM delegation
+  samplingClient?: SamplingClient;       // External sampling client (alternative to bridge)
+
+  // Resources
+  expectResources?: boolean;             // Enable dynamic resource support
+
+  // Auth
   auth?: AuthOptions;                    // OAuth2/Bearer config
-  resourceCsp?: CspOptions;              // 为 MCP Apps HTML 注入 CSP meta 标签
+
+  // MCP Apps
+  resourceCsp?: CspOptions;             // CSP options for HTML resource injection
+
+  // Customization
+  instructions?: string;                // Instructions sent to clients at initialization
+  toolErrorMapper?: (error: unknown, toolName: string) => string | null;  // Return message to surface as isError:true, or null to rethrow
+  logger?: (msg: string) => void;       // Default: console.error
 }
 ```
 
@@ -44,6 +68,13 @@ interface ConcurrentServerOptions {
 interface RateLimitOptions {
   maxRequests: number;    // Max requests per window
   windowMs: number;       // Window size in milliseconds
+  keyExtractor?: (context: RateLimitContext) => string;  // Default: "default" (global)
+  onLimitExceeded?: "reject" | "wait";  // Default: "wait"
+}
+
+interface RateLimitContext {
+  toolName: string;
+  args: Record<string, unknown>;
 }
 ```
 
@@ -51,13 +82,16 @@ interface RateLimitOptions {
 
 ```typescript
 interface AuthOptions {
-  provider: AuthProvider;   // Use presets (createGoogleAuthProvider, etc.) or JwtAuthProvider
+  provider: AuthProvider;              // Use presets (createGoogleAuthProvider, etc.) or JwtAuthProvider
+  authorizationServers: string[];      // Authorization server URLs (e.g., ["https://accounts.google.com"])
+  resource: string;                    // This server's resource URL (used for RFC 9728 discovery)
+  scopesSupported?: string[];          // Scopes advertised in the discovery document
 }
 ```
 
 ## 注册方法
 
-所有注册必须在调用 `start()` 或 `startHttp()` **之前**完成。
+所有注册必须在调用 `start()` 或 `startHttp()` **之前**完成。例外：`registerToolLive()` 专为启动后注册设计。设置 `expectResources: true` 也可在启动后动态注册资源。
 
 ### registerTool
 
@@ -77,15 +111,18 @@ server.registerTool(
       properties: { name: { type: "string" } },
       required: ["name"],
     },
-    requiredScopes: ["read"],  // Optional — requires this scope if auth is configured
+    requiredScopes: ["read"],   // Optional — requires this scope if auth is configured
+    outputSchema: {             // Optional — for structured tool results (SDK 1.27)
+      type: "object",
+      properties: { message: { type: "string" } },
+    },
+    annotations: {              // Optional — hints for clients
+      readOnlyHint: true,
+    },
   },
   ({ name }) => `Hello, ${name}!`,
 );
 ```
-
-<Aside type="tip">
-  handler 可以返回任何 JSON 可序列化的值。字符串、对象、数组 — 都可以。
-</Aside>
 
 ### registerTools
 
@@ -95,13 +132,37 @@ server.registerTools(tools: MCPTool[], handlers: Map<string, ToolHandler>): void
 
 批量注册工具。Map 的键必须与工具名称完全匹配。
 
+### registerToolLive
+
+```typescript
+server.registerToolLive(tool: MCPTool, handler: ToolHandler): void;
+```
+
+在服务器启动后注册工具。客户端在下次 `tools/list` 请求时会看到新工具。
+
+### unregisterTool
+
+```typescript
+server.unregisterTool(toolName: string): void;
+```
+
+移除已注册的工具。客户端在后续 `tools/list` 请求中将不再看到它。
+
+### registerAppOnlyTool
+
+```typescript
+server.registerAppOnlyTool(tool: MCPTool, handler: ToolHandler): void;
+```
+
+注册仅对 UI 客户端可见的工具 — 不出现在 LLM 的工具列表中。
+
 ### registerResource
 
 ```typescript
 server.registerResource(resource: MCPResource, handler: ResourceHandler): void;
 ```
 
-注册单个资源。参见 [MCP Apps](/zh/docs/guides/mcp-apps/) 了解 `ui://` 资源。
+注册单个资源。参见 [MCP Apps](/zh/docs/guides/mcp-apps/) 了解 `text/html;profile=mcp-app` 资源。
 
 ### registerResources
 
@@ -113,6 +174,25 @@ server.registerResources(
 ```
 
 批量注册资源。
+
+### registerViewers
+
+```typescript
+server.registerViewers(config: RegisterViewersConfig): void;
+```
+
+批量注册基于文件的查看器资源。每个条目将 URI 前缀映射到模块配置：
+
+```typescript
+server.registerViewers({
+  prefix: "ui://my-server/",
+  moduleUrl: import.meta.url,
+  exists: async (path) => /* check if path exists */,
+  readFile: async (path) => /* return file contents as string */,
+});
+```
+
+`prefix` 是所有注册资源的基础 URI。`moduleUrl` 用于解析相对路径。`exists` 和 `readFile` 由框架调用以提供查看器文件。
 
 ### use
 
@@ -143,48 +223,50 @@ server
 await server.start(): Promise<void>;
 ```
 
-使用 STDIO 传输启动。用于本地工具 (Claude Desktop、Cursor 等)。阻塞直到服务器停止。
+使用 STDIO 传输启动。用于本地工具 (Claude Desktop、Cursor 等)。阻塞直到客户端断开连接。
 
 ### startHttp
 
 ```typescript
-await server.startHttp(options: HttpServerOptions): Promise<HttpServerInstance>;
+server.startHttp(options: HttpServerOptions): HttpServerInstance;
 ```
 
-使用 Streamable HTTP 传输启动。包含 SSE 流、会话管理和 RFC 9728 发现。
-
-返回 `HttpServerInstance`，包含 `shutdown()` 和 `addr`：
-
-```typescript
-interface HttpServerInstance {
-  shutdown(): Promise<void>;   // 优雅关闭
-  addr: { hostname: string; port: number };
-}
-```
+使用 Streamable HTTP 传输启动。包含 SSE 流、会话管理和 RFC 9728 发现。返回 `HttpServerInstance`（非 Promise）。
 
 ```typescript
 interface HttpServerOptions {
   port: number;
-  hostname?: string;              // 默认: "0.0.0.0"
-  cors?: boolean;                 // 默认: true
-  corsOrigins?: "*" | string[];   // 默认: "*" — 生产环境请使用白名单
-  maxBodyBytes?: number | null;   // 默认: 1_000_000 (1 MB)。null = 无限制
-  requireAuth?: boolean;          // 默认: false — 为 true 但无 auth 时启动即报错
+  hostname?: string;              // Default: "0.0.0.0"
+  cors?: boolean;                 // Default: true
+  corsOrigins?: "*" | string[];   // Default: "*" — use allowlist in production
+  maxBodyBytes?: number | null;   // Default: 1_000_000 (1 MB). null = no limit
+  requireAuth?: boolean;          // Default: false — throws at startup if true without auth
+  customRoutes?: RouteConfig[];   // Additional HTTP routes
   ipRateLimit?: {
-    maxRequests: number;          // 每个窗口每 IP 最大请求数
-    windowMs: number;             // 窗口时长（毫秒）
-    keyExtractor?: (ctx) => string;
-    onLimitExceeded?: "reject" | "wait";  // 默认: "reject"
+    maxRequests: number;
+    windowMs: number;
+    keyExtractor?: (request: Request) => string;   // Custom key extraction (default: IP)
+    onLimitExceeded?: (request: Request) => void;  // Called when a limit is hit
   };
-  onListen?: (info: { hostname: string; port: number }) => void;
+  onListen?: (info: { hostname: string; port: number }) => void;  // Called when server is ready
+  embedded?: boolean;             // Skip port binding — use getFetchHandler() instead
+  embeddedHandlerCallback?: (handler: FetchHandler) => void;  // Receives handler in embedded mode (set internally by getFetchHandler)
 }
 ```
 
-<Aside type="tip">
-  安全优先默认值：`maxBodyBytes` 将负载限制为 1 MB（返回 413），`ipRateLimit` 返回 429 并带 `Retry-After` 头，`corsOrigins` 设为 `"*"` 时会记录警告，`requireAuth: true` 在未配置 auth 时启动即失败。
-</Aside>
+自动提供的 HTTP 路由：
 
-**包含所有安全选项的示例：**
+| 方法 | 路径 | 描述 |
+|------|------|------|
+| `POST` | `/mcp` | JSON-RPC 工具调用 |
+| `GET` | `/mcp` | SSE 流（用于通知） |
+| `GET` | `/health` | 健康检查 |
+| `GET` | `/metrics` | Prometheus 指标 |
+| `GET` | `/.well-known/oauth-protected-resource` | RFC 9728 发现（如已配置认证） |
+
+会话：32 字符十六进制 ID，30 分钟 TTL，最多 10,000 个活跃会话，每 IP 每 60 秒 10 次 `initialize` 调用的速率限制。
+
+**包含安全选项的示例：**
 
 ```typescript
 await server.startHttp({
@@ -193,8 +275,33 @@ await server.startHttp({
   corsOrigins: ["https://app.example.com"],
   maxBodyBytes: 1_048_576,
   ipRateLimit: { maxRequests: 60, windowMs: 60_000 },
+  onListen: ({ hostname, port }) => console.log(`Ready on ${hostname}:${port}`),
 });
 ```
+
+### getFetchHandler
+
+```typescript
+await server.getFetchHandler(
+  options?: Omit<HttpServerOptions, "port" | "hostname" | "onListen">
+): Promise<FetchHandler>;
+```
+
+构建完整的 HTTP 中间件栈并返回其 Web 标准 fetch handler，**不绑定端口**。用于将 MCP HTTP 层嵌入现有 web 框架（Fresh、Hono、Express），而不是将端口所有权交给 `startHttp`。
+
+返回的 handler 接受 `Request` 并返回 `Response`。它暴露与 `startHttp` 相同的路由：`POST /mcp`、`GET /mcp`（SSE）、`GET /health`、`GET /metrics` 和 `GET /.well-known/oauth-protected-resource`。认证、速率限制、会话清理和 OTel 钩子的工作方式完全相同。
+
+```typescript
+import { Hono } from "hono";
+
+const app = new Hono();
+const mcpApp = new McpApp({ name: "my-app", version: "1.0.0" });
+// ... register tools ...
+const handler = await mcpApp.getFetchHandler();
+app.all("/mcp/*", (c) => handler(c.req.raw));
+```
+
+多租户 SaaS 模式：每个租户实例化一个 `McpApp`，每台服务器调用一次 `getFetchHandler()`，然后从路由器将每个入站请求分发到正确的 handler。
 
 ### stop
 
@@ -204,46 +311,15 @@ await server.stop(): Promise<void>;
 
 优雅关闭。等待进行中的请求完成后再关闭。
 
-## 监控方法
+## 通知方法
 
-### getMetrics
-
-```typescript
-server.getMetrics(): QueueMetrics;
-// { inFlight: number, queued: number }
-```
-
-### getRateLimitMetrics
+### sendNotification
 
 ```typescript
-server.getRateLimitMetrics(): { keys: number, totalRequests: number } | null;
+server.sendNotification(method: string, params?: Record<string, unknown>): void;
 ```
 
-未配置速率限制时返回 `null`。
-
-### getToolCount / getToolNames
-
-```typescript
-server.getToolCount(): number;
-server.getToolNames(): string[];
-```
-
-### getResourceCount / getResourceUris
-
-```typescript
-server.getResourceCount(): number;
-server.getResourceUris(): string[];
-```
-
-## SSE 方法 (仅 HTTP 传输)
-
-### sendToSession
-
-```typescript
-server.sendToSession(sessionId: string, message: Record<string, unknown>): void;
-```
-
-向特定 SSE 会话推送消息。
+向当前会话发送通知（STDIO 传输）。
 
 ### broadcastNotification
 
@@ -254,17 +330,231 @@ server.broadcastNotification(
 ): void;
 ```
 
-向**所有**已连接的 SSE 客户端推送通知。
+向**所有**已连接的 SSE 客户端推送通知（HTTP 传输）。
 
-### getSSEClientCount
+### sendToSession
 
 ```typescript
-server.getSSEClientCount(): number;
+server.sendToSession(sessionId: string, message: Record<string, unknown>): void;
 ```
+
+通过 ID 向特定 SSE 会话推送消息（HTTP 传输）。
+
+## 可观测性方法
+
+### getMetrics
+
+```typescript
+server.getMetrics(): QueueMetrics;
+```
+
+返回实时队列指标：
+
+```typescript
+interface QueueMetrics {
+  inFlight: number;  // Requests currently executing
+  queued: number;    // Requests waiting in the backpressure queue
+}
+```
+
+### getServerMetrics
+
+```typescript
+server.getServerMetrics(): ServerMetricsSnapshot;
+```
+
+返回当前服务器指标快照，包括进行中请求、排队请求和活跃会话。
+
+### getPrometheusMetrics
+
+```typescript
+server.getPrometheusMetrics(): string;
+```
+
+以 Prometheus 文本格式返回指标。与 `GET /metrics` 提供的数据相同。所有指标名称使用 `mcp_server_` 前缀：
+
+```
+# HELP mcp_server_tool_calls_total Total number of tool calls
+# TYPE mcp_server_tool_calls_total counter
+mcp_server_tool_calls_total{tool="greet",status="success"} 42
+
+# HELP mcp_server_tool_call_duration_ms Tool call duration in milliseconds
+# TYPE mcp_server_tool_call_duration_ms histogram
+mcp_server_tool_call_duration_ms_bucket{tool="greet",le="100"} 40
+...
+
+# HELP mcp_server_active_requests Currently active requests
+# TYPE mcp_server_active_requests gauge
+mcp_server_active_requests 3
+
+# HELP mcp_server_active_sessions Currently active SSE sessions
+# TYPE mcp_server_active_sessions gauge
+mcp_server_active_sessions 7
+```
+
+可用计数器：`mcp_server_tool_calls_total`、`mcp_server_auth_success_total`、`mcp_server_auth_failed_total`。
+
+### getRateLimitMetrics
+
+```typescript
+server.getRateLimitMetrics(): { keys: number; totalRequests: number } | null;
+```
+
+未配置速率限制时返回 `null`。
+
+### getRateLimiter
+
+```typescript
+server.getRateLimiter(): RateLimiter | null;
+```
+
+返回底层 `RateLimiter` 实例，用于高级用例（自定义键检查、窗口重置）。未配置速率限制时返回 `null`。
+
+### getToolCount / getToolNames
+
+```typescript
+server.getToolCount(): number;
+server.getToolNames(): string[];
+```
+
+### getResourceCount
+
+```typescript
+server.getResourceCount(): number;
+```
+
+### getResourceUris
+
+```typescript
+server.getResourceUris(): string[];
+```
+
+返回所有已注册资源 URI 的数组（例如 `["ui://my-server/viewer", "ui://my-server/dashboard"]`）。
+
+### getResourceInfo
+
+```typescript
+server.getResourceInfo(uri: string): MCPResource | undefined;
+```
+
+返回已注册资源的 `MCPResource` 定义（uri、name、description、mimeType），未找到时返回 `undefined`。用于测试和调试。
+
+### readResourceContent
+
+```typescript
+server.readResourceContent(uri: string): Promise<ResourceContent | null>;
+```
+
+直接调用已注册的资源 handler 并返回其内容，不经过 MCP 协议。资源未注册时返回 `null`。用于服务端渲染或集成测试。
+
+```typescript
+const content = await server.readResourceContent("ui://my-server/viewer");
+// content.text contains the HTML
+```
+
+### isStarted
+
+```typescript
+server.isStarted(): boolean;
+```
+
+在 `start()` 或 `startHttp()` 调用后返回 `true`。
+
+## 多租户中间件
+
+对于每个认证用户属于某个租户的 SaaS 部署，使用 `createMultiTenantMiddleware` 将 `tenantId` 注入中间件上下文。它必须在认证中间件（填充 `ctx.authInfo`）之后运行，在 scope 验证或工具 handler 之前。
+
+```typescript
+import {
+  createMultiTenantMiddleware,
+  type TenantResolver,
+  type TenantResolution,
+} from "@casys/mcp-server";
+
+class SubdomainTenantResolver implements TenantResolver {
+  async resolve(ctx): Promise<TenantResolution> {
+    const host = ctx.request!.headers.get("host") ?? "";
+    const subdomain = host.split(".")[0];
+    const claim = (ctx.authInfo as any).claims?.["urn:my-app:tenant_id"];
+    if (typeof claim !== "string" || claim !== subdomain) {
+      return { ok: false, reason: `claim/subdomain mismatch` };
+    }
+    return { ok: true, tenantId: subdomain };
+  }
+}
+
+server.use(createMultiTenantMiddleware(new SubdomainTenantResolver(), {
+  onRejection: (ctx, reason) => auditLog.warn("tenant_reject", { reason }),
+}));
+```
+
+此中间件运行后，`ctx.authInfo.tenantId` 被设置并冻结。所有下游中间件和工具 handler 可以读取它来限定数据访问范围。
+
+### 类型
+
+```typescript
+type TenantResolution =
+  | { ok: true; tenantId: string }
+  | { ok: false; reason: string };
+
+interface TenantResolver {
+  resolve(ctx: MiddlewareContext): Promise<TenantResolution>;
+}
+
+interface MultiTenantMiddlewareOptions {
+  /**
+   * Called on rejection before the 401 is sent.
+   * Use for audit logging. The reason is never exposed to clients.
+   * If this hook throws, the error is logged to stderr but the 401 still fires.
+   */
+  onRejection?: (ctx: MiddlewareContext, reason: string) => void | Promise<void>;
+}
+```
+
+管道行为：
+- **STDIO 传输**（无 `ctx.request`）：不变通过 — STDIO 没有租户概念。
+- **HTTP 无 `ctx.authInfo`**：抛出配置错误。认证中间件必须在此之前。
+- **HTTP 解析被拒绝**：调用 `onRejection`，然后抛出 `AuthError("invalid_token")` — 通用 401，不向客户端泄露租户详情。
+
+## Sampling Bridge
+
+设置 `enableSampling: true` 后，服务器可以通过客户端连接委托 LLM 调用。还必须提供 `samplingClient` 来处理实际请求：
+
+```typescript
+import { McpApp, createSamplingClient } from "@casys/mcp-server";
+
+const samplingClient = createSamplingClient(/* client config */);
+
+const server = new McpApp({
+  name: "my-server",
+  version: "1.0.0",
+  enableSampling: true,
+  samplingClient,
+});
+
+server.registerTool(
+  { name: "summarize", description: "Summarize text", inputSchema: { type: "object", properties: { text: { type: "string" } } } },
+  async (args) => {
+    const result = await samplingClient.requestSampling({
+      messages: [{ role: "user", content: args.text as string }],
+      maxTokens: 500,
+      maxIterations: 3,
+    });
+    return result.content;
+  },
+);
+```
+
+注意：`ToolHandler` 只接收 `args` — 没有 `{ bridge }` 第二个参数。
+
+## OpenTelemetry
+
+设置 `OTEL_DENO=true` 启用 OpenTelemetry 追踪。为工具调用和认证事件发出 span。
 
 ## 另请参阅
 
 - [快速开始](/zh/docs/getting-started/quickstart/) — 使用两种传输的服务器配置
 - [中间件管道](/zh/docs/guides/middleware/) — `use()` 指南和管道顺序
 - [认证 (OAuth2)](/zh/docs/guides/auth/) — `auth` 选项和 scope 验证
+- [MCP Apps](/zh/docs/guides/mcp-apps/) — `registerViewers()`、`registerAppOnlyTool()` 和 UI 资源
 - [独立组件](/zh/docs/api/standalone-components/) — 独立使用 RateLimiter、RequestQueue

@@ -4,6 +4,7 @@ description: Middleware composable en modele oignon pour les appels d'outils MCP
 ---
 
 import { Aside, Steps } from '@astrojs/starlight/components';
+import Mermaid from '../../../../../components/Mermaid.astro';
 
 Chaque appel d'outil dans `@casys/mcp-server` traverse une chaine de middleware composable — le meme modele oignon que vous connaissez de Hono, Koa, ou Express. C'est ainsi que l'auth, le rate limiting, la validation, et votre logique personnalisee se composent ensemble sans s'emmeler.
 
@@ -11,10 +12,21 @@ Chaque appel d'outil dans `@casys/mcp-server` traverse une chaine de middleware 
 
 <img src="/diagrams/mcp-server/mcp-middleware-pipeline.svg" alt="Pipeline Middleware MCP" style="width: 100%; max-width: 600px; margin: 24px auto; display: block;" />
 
+<Mermaid chart={`graph LR
+  REQ[Request] --> AUTH[Auth]
+  AUTH --> RL[Rate Limit]
+  RL --> CUSTOM[Your Code]
+  CUSTOM --> VAL[Validation]
+  VAL --> BP[Backpressure]
+  BP --> HANDLER[Handler]
+  HANDLER --> RES[Response]
+  style CUSTOM fill:#FFB86F,color:#000,stroke:#e6a050
+  style HANDLER fill:#6750A4,color:#fff,stroke:#4a3880`} />
+
 ```
-Request → Rate Limit → Auth → Custom Middlewares → Scope Check → Validation → Backpressure → Handler
-                                                                                              ↓
-Response ← Rate Limit ← Auth ← Custom Middlewares ← Scope Check ← Validation ← Backpressure ← Result
+Request → Rate Limit → Auth → [Custom] → Scope Check → Validation → Backpressure → Handler
+                                                                                    ↓
+Response ← Rate Limit ← Auth ← [Custom] ← Scope Check ← Validation ← Backpressure ← Result
 ```
 
 Chaque middleware recoit un objet `context` et une fonction `next()`. Appelez `next()` pour passer le controle en aval. La reponse remonte a travers la meme chaine en sens inverse — un seul middleware peut agir a la fois sur la requete et la reponse.
@@ -45,7 +57,7 @@ C'est tout. Pas de classe de base, pas de decorateurs, pas de boilerplate d'enre
 Utilisez `server.use()` pour ajouter vos middlewares. Ils se placent entre les couches integrees (rate limit, auth) et les verifications integrees (validation, backpressure) :
 
 ```typescript
-const server = new ConcurrentMCPServer({
+const server = new McpApp({
   name: "my-server",
   version: "1.0.0",
 });
@@ -56,6 +68,12 @@ server.use(caching);
 
 server.registerTool(/* ... */);
 await server.startHttp({ port: 3000 });
+```
+
+`use()` est chainable :
+
+```typescript
+server.use(logging).use(metrics).use(caching);
 ```
 
 <Aside type="caution">
@@ -90,7 +108,20 @@ interface MiddlewareContext {
   args: Record<string, unknown>;     // The tool's input arguments
   request?: Request;                 // HTTP Request (HTTP transport only)
   sessionId?: string;                // Session ID (HTTP transport only)
+  authInfo?: AuthInfo;               // Populated by auth middleware (if configured)
   [key: string]: unknown;            // Extensible — add your own fields
+}
+```
+
+`authInfo` est disponible apres la couche d'auth :
+
+```typescript
+interface AuthInfo {
+  subject: string;                     // Token "sub" claim
+  clientId?: string;                   // Token "client_id" or "azp" claim
+  scopes: string[];                    // Parsed from "scope" claim
+  claims?: Record<string, unknown>;    // All token claims
+  expiresAt?: number;                  // Token expiry as Unix epoch seconds
 }
 ```
 
@@ -140,7 +171,9 @@ const errorHandler: Middleware = async (ctx, next) => {
     return await next();
   } catch (error) {
     console.error(`Tool ${ctx.toolName} failed:`, error);
-    return { error: true, message: String(error) };
+    // Re-throw so the framework converts it to an MCP error response.
+    // Returning a plain object here produces a normal (non-error) result.
+    throw error;
   }
 };
 
@@ -149,6 +182,10 @@ server.use(errorHandler);
 server.use(logging);
 server.use(caching);
 ```
+
+<Aside type="caution">
+  Retourner `{ error: true, message }` depuis un middleware se serialise comme un resultat d'outil **normal**, pas une reponse MCP `isError`. Pour signaler une erreur d'outil, lancez une `Error` (ou laissez-la se propager) — le `toolErrorMapper` du framework la convertira au format d'erreur MCP correct.
+</Aside>
 
 ## Recettes
 
@@ -199,5 +236,5 @@ const sanitizer: Middleware = async (ctx, next) => {
 ## Voir aussi
 
 - [Authentification (OAuth2)](/fr/docs/guides/auth/) — Le middleware d'auth integre et les presets OIDC
-- [API ConcurrentMCPServer](/fr/docs/api/concurrent-mcp-server/) — Reference complete de `use()` et `registerTool()`
+- [API McpApp](/fr/docs/api/concurrent-mcp-server/) — Reference complete de `use()` et `registerTool()`
 - [Composants Standalone](/fr/docs/api/standalone-components/) — Utiliser RateLimiter, RequestQueue comme utilitaires independants

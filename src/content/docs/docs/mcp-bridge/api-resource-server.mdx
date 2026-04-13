@@ -98,6 +98,14 @@ const backend = new JsonRpcMcpBackend({
 });
 ```
 
+### `JsonRpcMcpBackendOptions`
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `endpointUrl` | `string` | Required. Full HTTP URL accepting JSON-RPC POST requests. Trailing slash is stripped. |
+| `headers` | `Record<string, string>` | Optional. Static headers added to every request (e.g. `Authorization`). |
+| `fetchFn` | `typeof fetch` | Optional. Custom fetch implementation. Useful for tests or custom runtime environments. Defaults to global `fetch`. |
+
 It:
 
 - POSTs JSON-RPC messages to `endpointUrl`

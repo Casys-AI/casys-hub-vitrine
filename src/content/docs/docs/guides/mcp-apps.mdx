@@ -19,9 +19,9 @@ Use `MCP_APP_MIME_TYPE` (the exported constant) as the MIME type for any resourc
 ## Registering a UI resource
 
 ```typescript
-import { ConcurrentMCPServer, MCP_APP_MIME_TYPE } from "@casys/mcp-server";
+import { McpApp, MCP_APP_MIME_TYPE } from "@casys/mcp-server";
 
-const server = new ConcurrentMCPServer({
+const server = new McpApp({
   name: "my-server",
   version: "1.0.0",
 });
@@ -198,7 +198,7 @@ const secureHtml = injectCspMetaTag(html, csp);
 You can also set CSP globally via `resourceCsp` in the server options:
 
 ```typescript
-const server = new ConcurrentMCPServer({
+const server = new McpApp({
   name: "my-server",
   version: "1.0.0",
   resourceCsp: {
@@ -226,10 +226,70 @@ const html = injectChannelAuth(rawHtml, secret);
 
 The injected script handles HMAC signing of postMessage events, so the host can verify that messages originate from your UI.
 
+## Detecting client MCP Apps support
+
+Before registering UI-rendering tools, you can check whether the connected client advertised MCP Apps support. Clients that don't support the extension silently drop the `_meta.ui` field, but an explicit check lets you serve a richer text response when the UI path is unavailable.
+
+### Instance method: `getClientMcpAppsCapability()`
+
+```typescript
+const cap = server.getClientMcpAppsCapability();
+if (cap?.mimeTypes?.includes(MCP_APP_MIME_TYPE)) {
+  // Client can render MCP Apps — return a resource URI
+  return {
+    content: [{ type: "text", text: summary }],
+    _meta: { ui: { resourceUri: "ui://my-server/dashboard" } },
+  };
+}
+// Fallback: rich text for clients without UI support
+return { content: [{ type: "text", text: detailedText }] };
+```
+
+This reads `clientCapabilities.extensions["io.modelcontextprotocol/ui"]` from the SDK's post-initialize state. Returns `undefined` if called before initialize or if the client did not advertise support.
+
+### Standalone function: `getMcpAppsCapability(capabilities)`
+
+```typescript
+import {
+  getMcpAppsCapability,
+  MCP_APP_MIME_TYPE,
+  MCP_APPS_EXTENSION_ID,
+  MCP_APPS_PROTOCOL_VERSION,
+} from "@casys/mcp-server";
+
+// Read from any ClientCapabilities object (e.g. from a custom MCP SDK handler)
+const cap = getMcpAppsCapability(client.getClientCapabilities());
+```
+
+This is the same defensive reader used internally by `getClientMcpAppsCapability()`. It returns `undefined` for `null`/`undefined` input, missing `extensions` field, missing extension key, or a non-object extension value. Malformed `mimeTypes` entries (non-strings) are silently filtered rather than thrown.
+
+### Constants and types
+
+```typescript
+import type { McpAppsClientCapability } from "@casys/mcp-server";
+import {
+  MCP_APPS_EXTENSION_ID,      // "io.modelcontextprotocol/ui"
+  MCP_APPS_PROTOCOL_VERSION,  // "2026-01-26"
+  MCP_APP_MIME_TYPE,          // "text/html;profile=mcp-app"
+} from "@casys/mcp-server";
+
+interface McpAppsClientCapability {
+  /**
+   * MIME types the client can render as MCP Apps.
+   * Typically includes "text/html;profile=mcp-app".
+   * An empty or absent array means the client advertised support but listed no mime types.
+   */
+  mimeTypes?: string[];
+}
+```
+
+`MCP_APPS_EXTENSION_ID` is the key clients must include in `clientCapabilities.extensions` to advertise support. `MCP_APPS_PROTOCOL_VERSION` identifies the dated spec version this package targets — it is bumped in the same commit that adopts a newer spec revision.
+
 ## Checking registered resources
 
 ```typescript
 server.getResourceCount();  // 2
+server.getResourceUris();   // ["ui://my-server/viewer", ...]
 ```
 
 <Aside>
@@ -238,5 +298,5 @@ server.getResourceCount();  // 2
 
 ## See Also
 
-- [ConcurrentMCPServer API](/docs/api/concurrent-mcp-server/) — `registerResource()`, `registerViewers()`, `registerAppOnlyTool()` reference
-- [Quick Start](/docs/getting-started/quickstart/) — Server setup basics
+- [McpApp API](/docs/api/concurrent-mcp-server) — `registerResource()`, `registerViewers()`, `registerAppOnlyTool()` reference
+- [Quick Start](/docs/getting-started/quickstart) — Server setup basics

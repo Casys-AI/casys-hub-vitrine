@@ -37,14 +37,14 @@ Publie sur [JSR](https://jsr.io/@casys/mcp-server), le registre JavaScript moder
 Creez un fichier `server.ts` :
 
 ```typescript
-import { ConcurrentMCPServer } from "@casys/mcp-server";
+import { McpApp } from "@casys/mcp-server";
 
-const server = new ConcurrentMCPServer({
+const server = new McpApp({
   name: "test",
   version: "0.0.1",
 });
 
-console.log("Ready — 0 tools registered, all systems go.");
+console.log(`Ready — ${server.getToolCount()} tools registered.`);
 ```
 
 Lancez-le :
@@ -63,7 +63,7 @@ Lancez-le :
 </Tabs>
 
 <Aside type="tip">
-  Si vous voyez le message "Ready", tout est pret. Passez au Demarrage rapide pour construire quelque chose de concret.
+  Si vous voyez "Ready — 0 tools registered.", tout est pret. Passez au Demarrage rapide pour construire quelque chose de concret.
 </Aside>
 
 ## Et ensuite

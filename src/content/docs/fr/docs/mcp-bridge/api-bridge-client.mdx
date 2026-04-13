@@ -1,53 +1,127 @@
 ---
 title: API Bridge Client
-description: Reference API du Bridge Client cote navigateur.
+description: Le runtime navigateur injecté et la classe BridgeClient exportée.
 ---
 
-## Vue d'ensemble
+import { Aside } from '@astrojs/starlight/components';
 
-Le Bridge Client (`bridge.js`) est automatiquement injecte dans les reponses HTML par le Resource Server. Vous n'interagissez generalement pas directement avec lui, mais comprendre son API aide au debogage.
+## Deux couches côté navigateur
 
-## Initialisation
+`@casys/mcp-bridge` expose deux éléments côté navigateur liés :
 
-Le bridge s'auto-initialise au chargement de la page :
+1. Le runtime `bridge.js` injecté que `startResourceServer()` sert sur `/bridge.js`
+2. La classe `BridgeClient` exportée dans `src/core/bridge-client.ts`
 
-1. Detecte la plateforme (Telegram, LINE ou generique)
-2. Etablit la connexion WebSocket vers le Resource Server
-3. Monkey-patche `window.parent.postMessage`
-4. Envoie le handshake `ui/initialize`
-5. Commence a transmettre les messages JSON-RPC
+Ils résolvent le même problème, mais ce ne sont pas des implémentations identiques.
 
-## Methodes JSON-RPC
+## `bridge.js` injecté
 
-### Sortantes (App vers Host)
+Le Resource Server injecte une URL de script de la forme :
 
-| Methode | Description |
-|---------|-------------|
-| `tools/call` | Executer un outil MCP |
-| `resources/read` | Lire une ressource MCP |
-| `ui/open-link` | Ouvrir une URL externe |
-| `ui/ready` | Signaler que l'interface est prete |
-
-### Entrantes (Host vers App)
-
-| Methode | Description |
-|---------|-------------|
-| `host-context-changed` | Le theme, le viewport ou la locale a change |
-| `tools/call` (reponse) | Resultat d'execution d'outil |
-| `resources/read` (reponse) | Contenu de la ressource |
-
-## Routage des messages
-
-Le `MessageRouter` suit les requetes en attente avec un timeout de 30 secondes :
-
-```typescript
-// Internal flow (simplified)
-app.postMessage(request)
-  -> bridge.js intercepts
-  -> router.send(request)
-  -> WebSocket.send(JSON.stringify(request))
-  -> ... server processes ...
-  -> WebSocket.onmessage(response)
-  -> router.resolve(response.id, response)
-  -> window.dispatchEvent(MessageEvent)
+```text
+/bridge.js?platform=<platform>&session=<sessionId>[&auth=1][&debug=1]
 ```
+
+Ce runtime :
+
+- lit ses propres paramètres de requête depuis `document.currentScript`
+- patche `window.parent.postMessage` en mode iframe, ou `window.postMessage` en mode standalone
+- gère `ui/initialize` localement
+- gère `ui/open-link` localement
+- transfère tout le reste via WebSocket
+- émet `mcp-bridge-ready`
+- émet `mcp-bridge-auth-error`
+
+### Comportement du runtime
+
+- `ui/initialize` retourne la version de protocole `2025-11-25`
+- les infos hôte sont `{ name: "@casys/mcp-bridge", version: "0.2.0" }`
+- les IDs de requêtes en attente expirent après 30 secondes
+- les notifications entrantes précoces sont mises en buffer jusqu'à la fin de `ui/initialize`
+- la reconnexion WebSocket est tentée jusqu'à 5 fois avec backoff exponentiel plafonné à 10 secondes
+- les messages sortants sont abandonnés si le socket est fermé ou que l'auth n'est pas encore complétée
+
+## `BridgeClient` exporté
+
+Utilisez la classe exportée si vous composez votre propre runtime de plateforme plutôt que de vous appuyer sur le script injecté.
+
+```ts
+import {
+  BridgeClient,
+  TelegramPlatformAdapter,
+  WebSocketTransport,
+} from "@casys/mcp-bridge";
+
+const client = new BridgeClient({
+  serverUrl: "https://bridge.example.com",
+  sessionId: "session-id",
+  platform: new TelegramPlatformAdapter(),
+  transport: new WebSocketTransport(),
+});
+
+await client.start();
+```
+
+## `BridgeClientOptions`
+
+| Champ | Type | Notes |
+| --- | --- | --- |
+| `serverUrl` | `string` | URL de base du serveur. `BridgeClient` ajoute `/bridge?session=<id>`. |
+| `platform` | `PlatformAdapter` | Requis. Fournit le contexte hôte, les événements de cycle de vie et `openLink()`. |
+| `transport` | `BridgeTransport` | Requis dans le code. Le package exporte `WebSocketTransport`. |
+| `sessionId` | `string` | Requis. Passé à l'URL WebSocket. |
+| `bridgeInfo` | `{ name: string; version: string }` | Remplacement optionnel des infos hôte rapportées. |
+| `requestTimeoutMs` | `number` | Optionnel. Par défaut `30000`. |
+
+## Comportement de `BridgeClient`
+
+La classe :
+
+- initialise l'adaptateur de plateforme
+- connecte le transport
+- intercepte `window.parent.postMessage`
+- gère `ui/initialize` localement
+- gère `ui/open-link` localement
+- transfère le reste via le transport
+- traduit les événements de cycle de vie `theme-changed` et `viewport-changed` en `ui/notifications/host-context-changed`
+- envoie `ui/resource-teardown` sur un événement de cycle de vie `teardown`
+
+<Aside type="caution">
+  Le `BridgeClient` exporté patche uniquement `window.parent.postMessage` (mode iframe). Il ne supporte pas le mode standalone (patcher `window.postMessage` quand `window.parent === window`). Le mode standalone n'est disponible que via le script `bridge.js` injecté.
+</Aside>
+
+## Différences importantes avec le runtime injecté
+
+- Le `BridgeClient` exporté n'implémente pas la boucle de reconnexion du runtime injecté.
+- Le `BridgeClient` exporté n'implémente pas le protocole de message d'auth du runtime injecté.
+- Le `BridgeClient` exporté ne supporte que le mode iframe (`window.parent.postMessage`). Le mode standalone est réservé au runtime injecté.
+- Seul `WebSocketTransport` est implémenté dans le package aujourd'hui.
+
+## Constantes `McpAppsMethod`
+
+Le package exporte un objet `McpAppsMethod` contenant toutes les chaînes de noms de méthodes JSON-RPC bien connues utilisées dans le protocole MCP Apps. Importez-le quand vous devez référencer des noms de méthodes sans coder les chaînes en dur.
+
+```ts
+import { McpAppsMethod } from "@casys/mcp-bridge";
+```
+
+| Constante | Chaîne de méthode | Direction |
+| --- | --- | --- |
+| `UI_INITIALIZE` | `ui/initialize` | App → Host |
+| `UI_NOTIFICATIONS_INITIALIZED` | `ui/notifications/initialized` | App → Host |
+| `TOOLS_CALL` | `tools/call` | App → Host |
+| `RESOURCES_READ` | `resources/read` | App → Host |
+| `UI_OPEN_LINK` | `ui/open-link` | App → Host |
+| `UI_MESSAGE` | `ui/message` | App → Host |
+| `UI_UPDATE_MODEL_CONTEXT` | `ui/update-model-context` | App → Host |
+| `UI_REQUEST_DISPLAY_MODE` | `ui/request-display-mode` | App → Host |
+| `NOTIFICATIONS_MESSAGE` | `notifications/message` | App → Host |
+| `UI_TOOL_INPUT` | `ui/notifications/tool-input` | Host → App |
+| `UI_TOOL_INPUT_PARTIAL` | `ui/notifications/tool-input-partial` | Host → App |
+| `UI_TOOL_RESULT` | `ui/notifications/tool-result` | Host → App |
+| `UI_TOOL_CANCELLED` | `ui/notifications/tool-cancelled` | Host → App |
+| `UI_HOST_CONTEXT_CHANGED` | `ui/notifications/host-context-changed` | Host → App |
+| `UI_SIZE_CHANGED` | `ui/notifications/size-changed` | Host → App |
+| `UI_RESOURCE_TEARDOWN` | `ui/resource-teardown` | Host → App |
+
+`BridgeClient` gère `UI_INITIALIZE` et `UI_OPEN_LINK` localement. Toutes les autres méthodes App → Host sont transmises au resource server via le transport.

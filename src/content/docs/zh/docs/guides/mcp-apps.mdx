@@ -1,18 +1,27 @@
 ---
 title: MCP Apps (UI 资源)
-description: 通过 ui:// scheme 在 MCP 工具旁提供交互式 UI。
+description: 使用 MCP App MIME 类型 (SDK 1.27) 在 MCP 工具旁提供交互式 HTML 界面。
 ---
 
 import { Aside } from '@astrojs/starlight/components';
 
-MCP 工具返回数据。MCP Apps 渲染数据。将 HTML UI 注册为资源，支持 SEP-1865 的客户端会内联渲染 — 仪表盘、数据查看器、表单、配置面板，就在你的工具旁边。
+MCP Apps 让你以资源形式在工具旁提供交互式 HTML 界面。支持 `text/html;profile=mcp-app` MIME 类型 (MCP SDK 1.27) 的客户端会内联渲染它们 — 仪表盘、数据查看器、表单、配置面板，就在你的工具旁边。
+
+## MIME 类型
+
+```typescript
+import { MCP_APP_MIME_TYPE } from "@casys/mcp-server";
+// "text/html;profile=mcp-app"
+```
+
+将 `MCP_APP_MIME_TYPE`（导出常量）用作所有应渲染为交互界面的资源的 MIME 类型。
 
 ## 注册 UI 资源
 
 ```typescript
-import { ConcurrentMCPServer, MCP_APP_MIME_TYPE } from "@casys/mcp-server";
+import { McpApp, MCP_APP_MIME_TYPE } from "@casys/mcp-server";
 
-const server = new ConcurrentMCPServer({
+const server = new McpApp({
   name: "my-server",
   version: "1.0.0",
 });
@@ -31,9 +40,6 @@ server.registerResource(
         <body>
           <h1>Data Viewer</h1>
           <div id="app"></div>
-          <script>
-            // Your interactive UI code here
-          </script>
         </body>
       </html>
     `,
@@ -43,21 +49,9 @@ server.registerResource(
 await server.start();
 ```
 
-## `ui://` scheme
-
-`ui://` URI scheme 告知 MCP 客户端这个资源是一个交互式 HTML 应用，而非原始数据。
-
-- **URI 格式**：`ui://{server-name}/{path}`
-- **MIME 类型**：使用 `MCP_APP_MIME_TYPE` (导出常量)
-- **内容**：完整 HTML 文档字符串
-
-<Aside>
-  并非所有 MCP 客户端都支持 `ui://` 资源。在不支持 SEP-1865 的客户端中，资源不会显示 — 不会报错，不会出现损坏的界面。
-</Aside>
-
 ## 动态 UI 资源
 
-handler 接收 URI，可以根据状态、获取的数据或其他条件返回不同内容：
+handler 接收 URI，可以根据获取的数据或其他状态返回不同内容：
 
 ```typescript
 server.registerResource(
@@ -77,18 +71,232 @@ server.registerResource(
 );
 ```
 
-<Aside type="tip">
-  由于 handler 在每次资源读取时执行，你的 UI 始终反映最新状态。无需轮询或 websocket — MCP 客户端管理刷新生命周期。
-</Aside>
+## 工具 `_meta.ui` — 将工具链接到 UI 视图
+
+SDK 1.27 在工具定义中增加了 `_meta.ui`，描述工具输出如何与 UI 关联：
+
+```typescript
+server.registerTool(
+  {
+    name: "get_report",
+    description: "Fetch a sales report",
+    inputSchema: {
+      type: "object",
+      properties: { reportId: { type: "string" } },
+      required: ["reportId"],
+    },
+    _meta: {
+      ui: {
+        resourceUri: "ui://my-server/viewer",       // Which viewer renders this tool's output
+        visibility: ["model", "app"],               // Visible to both LLM and UI
+        emits: ["report:loaded"],                   // Events this tool emits to the UI
+        accepts: ["filter:changed"],                // Events this tool accepts from the UI
+      },
+    },
+  },
+  async ({ reportId }) => fetchReport(reportId),
+);
+```
+
+## 仅限 App 的工具
+
+注册仅对 UI 客户端可见、LLM 工具列表中不显示的工具：
+
+```typescript
+server.registerAppOnlyTool(
+  {
+    name: "update_filter",
+    description: "Update dashboard filter",
+    inputSchema: {
+      type: "object",
+      properties: { filter: { type: "string" } },
+    },
+  },
+  async ({ filter }) => applyFilter(filter),
+);
+```
+
+## 批量查看器注册
+
+`registerViewers()` 使用 `RegisterViewersConfig` 对象注册基于文件的查看器资源：
+
+```typescript
+server.registerViewers({
+  prefix: "ui://my-server/",
+  moduleUrl: import.meta.url,
+  exists: async (path) => {
+    try {
+      await Deno.stat(path);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  readFile: async (path) => await Deno.readTextFile(path),
+});
+```
+
+框架使用 `exists` 和 `readFile` 在给定 `prefix` 下提供查看器文件。`moduleUrl` 将相对路径解析为绝对文件系统路径。
+
+## 结构化工具结果
+
+工具可以同时返回文本响应（供 LLM 使用）和结构化数据（供 UI 使用）：
+
+```typescript
+import type { StructuredToolResult } from "@casys/mcp-server";
+
+server.registerTool(
+  {
+    name: "get_data",
+    description: "Fetch data",
+    inputSchema: { type: "object", properties: {} },
+    outputSchema: {
+      type: "object",
+      properties: {
+        rows: { type: "array" },
+        total: { type: "number" },
+      },
+    },
+  },
+  async (): Promise<StructuredToolResult> => {
+    const data = await fetchData();
+    return {
+      content: `Found ${data.rows.length} rows`,   // LLM-readable string
+      structuredContent: {                          // Machine-readable for UI
+        rows: data.rows,
+        total: data.rows.length,
+      },
+    };
+  },
+);
+```
+
+## 内容安全策略
+
+提供 HTML 资源时，注入 CSP 头以控制 iframe 可以加载的内容：
+
+```typescript
+import {
+  buildCspHeader,
+  injectCspMetaTag,
+} from "@casys/mcp-server";
+
+// Build a CSP header string
+const csp = buildCspHeader({
+  scriptSources: ["'self'", "'unsafe-inline'"],
+  connectSources: ["'self'"],
+  imgSources: ["'self'", "data:"],
+  frameAncestors: ["'self'"],
+  allowInline: false,
+});
+
+// Or inject a <meta> CSP tag directly into HTML
+const html = `<html><head></head><body>...</body></html>`;
+const secureHtml = injectCspMetaTag(html, csp);
+```
+
+也可以通过服务器选项中的 `resourceCsp` 全局设置 CSP：
+
+```typescript
+const server = new McpApp({
+  name: "my-server",
+  version: "1.0.0",
+  resourceCsp: {
+    scriptSources: ["'self'"],
+    connectSources: ["'self'"],
+  },
+});
+```
+
+## PostMessage 认证 (HMAC)
+
+要验证 UI iframe 和宿主之间发送的消息，使用 `MessageSigner` 和 `injectChannelAuth`：
+
+```typescript
+import {
+  injectChannelAuth,
+} from "@casys/mcp-server";
+
+// secret must be a 64-character hex string
+const secret = "a1b2c3..."; // 64 hex chars
+
+// In your UI HTML, inject auth credentials before serving
+const html = injectChannelAuth(rawHtml, secret);
+```
+
+注入的脚本处理 postMessage 事件的 HMAC 签名，让宿主能验证消息来自你的 UI。
+
+## 检测客户端 MCP Apps 支持
+
+注册 UI 渲染工具之前，可以检查已连接的客户端是否声明了 MCP Apps 支持。不支持该扩展的客户端会静默丢弃 `_meta.ui` 字段，但显式检查可以让你在 UI 路径不可用时提供更丰富的文本响应。
+
+### 实例方法：`getClientMcpAppsCapability()`
+
+```typescript
+const cap = server.getClientMcpAppsCapability();
+if (cap?.mimeTypes?.includes(MCP_APP_MIME_TYPE)) {
+  // Client can render MCP Apps — return a resource URI
+  return {
+    content: [{ type: "text", text: summary }],
+    _meta: { ui: { resourceUri: "ui://my-server/dashboard" } },
+  };
+}
+// Fallback: rich text for clients without UI support
+return { content: [{ type: "text", text: detailedText }] };
+```
+
+这会从 SDK 初始化后状态中读取 `clientCapabilities.extensions["io.modelcontextprotocol/ui"]`。在 initialize 之前调用或客户端未声明支持时返回 `undefined`。
+
+### 独立函数：`getMcpAppsCapability(capabilities)`
+
+```typescript
+import {
+  getMcpAppsCapability,
+  MCP_APP_MIME_TYPE,
+  MCP_APPS_EXTENSION_ID,
+  MCP_APPS_PROTOCOL_VERSION,
+} from "@casys/mcp-server";
+
+// Read from any ClientCapabilities object (e.g. from a custom MCP SDK handler)
+const cap = getMcpAppsCapability(client.getClientCapabilities());
+```
+
+这是 `getClientMcpAppsCapability()` 内部使用的同一防御性读取器。对于 `null`/`undefined` 输入、缺少 `extensions` 字段、缺少扩展键或非对象扩展值，返回 `undefined`。格式错误的 `mimeTypes` 条目（非字符串）会被静默过滤而非抛出。
+
+### 常量和类型
+
+```typescript
+import type { McpAppsClientCapability } from "@casys/mcp-server";
+import {
+  MCP_APPS_EXTENSION_ID,      // "io.modelcontextprotocol/ui"
+  MCP_APPS_PROTOCOL_VERSION,  // "2026-01-26"
+  MCP_APP_MIME_TYPE,          // "text/html;profile=mcp-app"
+} from "@casys/mcp-server";
+
+interface McpAppsClientCapability {
+  /**
+   * MIME types the client can render as MCP Apps.
+   * Typically includes "text/html;profile=mcp-app".
+   * An empty or absent array means the client advertised support but listed no mime types.
+   */
+  mimeTypes?: string[];
+}
+```
+
+`MCP_APPS_EXTENSION_ID` 是客户端必须在 `clientCapabilities.extensions` 中包含的键，以声明支持。`MCP_APPS_PROTOCOL_VERSION` 标识此包所针对的规范版本，在采用更新规范修订的同一提交中更新。
 
 ## 查看已注册资源
 
 ```typescript
 server.getResourceCount();  // 2
-server.getResourceUris();   // ["ui://my-server/viewer", "ui://my-server/dashboard"]
+server.getResourceUris();   // ["ui://my-server/viewer", ...]
 ```
+
+<Aside>
+  并非所有 MCP 客户端都会渲染 `text/html;profile=mcp-app` 资源。不支持的客户端不会显示 UI — 不会报错，工具调用也不会中断。
+</Aside>
 
 ## 另请参阅
 
-- [ConcurrentMCPServer API](/zh/docs/api/concurrent-mcp-server/) — `registerResource()` 和 `registerResources()` 参考
+- [McpApp API](/zh/docs/api/concurrent-mcp-server/) — `registerResource()`、`registerViewers()`、`registerAppOnlyTool()` 参考
 - [快速开始](/zh/docs/getting-started/quickstart/) — 服务器配置基础

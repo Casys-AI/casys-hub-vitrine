@@ -1,58 +1,114 @@
 ---
 title: Resource Server API
-description: Resource Server 组件的 API 参考。
+description: startResourceServer() 和内置后端助手的已验证 API 接口。
 ---
 
-## `startResourceServer(options)`
+## `startResourceServer(config)`
 
-创建并启动 Resource Server。
+`startResourceServer()` 是同步的，立即返回一个正在运行的服务器对象。
 
-```typescript
-import { startResourceServer } from "@casys/mcp-bridge";
+```ts
+import { JsonRpcMcpBackend, startResourceServer } from "@casys/mcp-bridge";
 
 const server = startResourceServer({
-  assetDirectories: { "my-app": "./ui-dist" },
+  assetDirectories: {
+    "my-app": "./ui-dist",
+  },
   platform: "telegram",
-  telegramBotToken: Deno.env.get("TELEGRAM_BOT_TOKEN"),
-  onMessage: async (session, message) => { return null; },
-  options: { resourceServerPort: 4000, debug: true },
+  telegramBotToken: Deno.env.get("TELEGRAM_BOT_TOKEN")!,
+  backend: new JsonRpcMcpBackend({
+    endpointUrl: "https://my-mcp.example.com/mcp",
+  }),
+  options: {
+    resourceServerPort: 4000,
+    debug: true,
+  },
+  csp: {
+    frameAncestors: ["https://web.telegram.org"],
+  },
+});
+
+console.log(server.baseUrl);
+```
+
+## `ResourceServerConfig`
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `assetDirectories` | `Record<string, string>` | 必需。将 `ui://` 服务器名称映射到 `/app/<server>/...` 的本地目录。 |
+| `platform` | `string` | 必需。用于注入的 `/bridge.js?...` 查询参数。 |
+| `options` | `BridgeOptions` | `resourceServerPort`、`allowedOrigins` 和 `debug`。 |
+| `csp` | `CspOptions` | 额外的 CSP 来源和 `allowInline` 行为。 |
+| `auth` | `BridgeAuthHandler` | 可选的通用认证钩子，用于 WebSocket 首条消息认证。 |
+| `telegramBotToken` | `string` | Telegram 认证的便捷路径。`platform: "telegram"` 时必需，除非传入 `auth`。 |
+| `backend` | `McpBackend` | 处理普通 JSON-RPC 调用和可选的 `readResource()` 调用。 |
+| `uiPath` | `string \| null` | 内置后端 UI 路由。默认为 `"/ui"`。设为 `null` 可禁用。 |
+| `onMessage` | `(session, message) => Promise<McpAppsMessage \| null>` | 在 `backend.handleMessage()` 之前运行。 |
+| `onHttpRequest` | `(request) => Promise<Response \| { html: string; pendingNotifications?: PendingNotification[] } \| null>` | 非内置路由的自定义 HTTP 钩子。 |
+
+## 内置路由
+
+服务器暴露以下路由：
+
+- `GET /health`
+- `POST /session`
+- `GET /bridge.js`
+- `GET/WS /bridge?session=<id>`
+- `GET /app/<server>/<path>`
+- 当 `uiPath` 启用且后端实现了 `readResource()` 时：`GET /ui?uri=ui://...`
+
+## 返回值
+
+```ts
+interface ResourceServer {
+  readonly baseUrl: string;
+  readonly sessions: SessionStore;
+  storeToolResult(result: ToolResultData): string;
+  consumeToolResult(ref: string): ToolResultData | undefined;
+  stop(): Promise<void>;
+}
+```
+
+## 工具结果交接
+
+`storeToolResult()` 允许你在 WebSocket 打开之前暂存 `ui/notifications/tool-result` 通知。
+
+```ts
+const ref = server.storeToolResult({
+  content: [{ type: "text", text: "done" }],
+});
+
+const url = `https://your-domain.com/some-page?ref=${ref}`;
+```
+
+如果该页面通过代理 HTML 提供，服务器会消费存储的结果，将通知缓冲到会话中，并在 socket 打开时刷新。存储的结果是一次性的，5 分钟后过期。
+
+## `JsonRpcMcpBackend`
+
+`JsonRpcMcpBackend` 是用于 HTTP JSON-RPC MCP 服务器的内置通用后端。
+
+```ts
+import { JsonRpcMcpBackend } from "@casys/mcp-bridge";
+
+const backend = new JsonRpcMcpBackend({
+  endpointUrl: "https://my-mcp.example.com/mcp",
+  headers: {
+    Authorization: "Bearer token",
+  },
 });
 ```
 
-### 选项
+### `JsonRpcMcpBackendOptions`
 
-| 参数 | 类型 | 必需 | 描述 |
-|------|------|------|------|
-| `assetDirectories` | `Record<string, string>` | 是 | UI 资源目录，按服务器名称索引 (来自 `ui://` URI) |
-| `platform` | `"telegram" \| "line"` | 是 | 平台名称 |
-| `telegramBotToken` | `string` | 当 platform="telegram" 时必需 | 用于 HMAC-SHA256 验证 initData 的 Telegram Bot 令牌 |
-| `onMessage` | `(session, message) => Promise<McpAppsMessage \| null>` | 否 | 收到 JSON-RPC 消息时的回调处理器 |
-| `options` | `BridgeOptions` | 否 | 桥接选项 (端口、CORS、调试) |
-| `csp` | `CspOptions` | 否 | 与默认值合并的自定义 CSP 选项 |
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `endpointUrl` | `string` | 必需。接受 JSON-RPC POST 请求的完整 HTTP URL。末尾斜杠会被去除。 |
+| `headers` | `Record<string, string>` | 可选。添加到每个请求的静态头部（例如 `Authorization`）。 |
+| `fetchFn` | `typeof fetch` | 可选。自定义 fetch 实现。适用于测试或自定义运行时环境。默认使用全局 `fetch`。 |
 
-### 返回值
+它：
 
-```typescript
-interface ResourceServer {
-  baseUrl: string;          // 服务器基础 URL
-  sessions: SessionStore;   // 会话存储 (用于检查/测试)
-  stop(): Promise<void>;    // 停止服务器并释放资源
-}
-```
-
-## `PlatformAdapter` 接口
-
-实现此接口以添加新平台支持。
-
-```typescript
-interface PlatformAdapter {
-  readonly name: string;
-  initialize(): Promise<HostContext>;
-  getTheme(): "light" | "dark";
-  getContainerDimensions(): ContainerDimensions;
-  onLifecycleEvent(handler: LifecycleEventHandler): void;
-  openLink(url: string): Promise<void>;
-  sendMessage?(text: string): Promise<void>;
-  getAuthData?(): Record<string, unknown>;
-}
-```
+- 向 `endpointUrl` POST JSON-RPC 消息
+- 将传输失败转换为请求消息的 JSON-RPC `-32603` 错误
+- 通过发送 `resources/read` 请求来实现 `readResource()`
+- 仅返回第一个 `contents[0].text` 字段作为 HTML

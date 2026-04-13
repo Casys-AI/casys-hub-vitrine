@@ -45,7 +45,7 @@ const logging: Middleware = async (ctx, next) => {
 使用 `server.use()` 添加中间件。它们被插入到内置层 (rate limit、auth) 和内置检查 (validation、backpressure) 之间：
 
 ```typescript
-const server = new ConcurrentMCPServer({
+const server = new McpApp({
   name: "my-server",
   version: "1.0.0",
 });
@@ -90,7 +90,20 @@ interface MiddlewareContext {
   args: Record<string, unknown>;     // The tool's input arguments
   request?: Request;                 // HTTP Request (HTTP transport only)
   sessionId?: string;                // Session ID (HTTP transport only)
+  authInfo?: AuthInfo;               // Populated by auth middleware (if configured)
   [key: string]: unknown;            // Extensible — add your own fields
+}
+```
+
+`authInfo` 在认证层之后可用：
+
+```typescript
+interface AuthInfo {
+  subject: string;                     // Token "sub" claim
+  clientId?: string;                   // Token "client_id" or "azp" claim
+  scopes: string[];                    // Parsed from "scope" claim
+  claims?: Record<string, unknown>;    // All token claims
+  expiresAt?: number;                  // Token expiry as Unix epoch seconds
 }
 ```
 
@@ -140,7 +153,9 @@ const errorHandler: Middleware = async (ctx, next) => {
     return await next();
   } catch (error) {
     console.error(`Tool ${ctx.toolName} failed:`, error);
-    return { error: true, message: String(error) };
+    // Re-throw so the framework converts it to an MCP error response.
+    // Returning a plain object here produces a normal (non-error) result.
+    throw error;
   }
 };
 
@@ -149,6 +164,10 @@ server.use(errorHandler);
 server.use(logging);
 server.use(caching);
 ```
+
+<Aside type="caution">
+  从中间件返回 `{ error: true, message }` 会序列化为**普通**工具结果，而非 MCP `isError` 响应。要发出工具错误信号，应抛出 `Error`（或让其传播）— 框架的 `toolErrorMapper` 会将其转换为正确的 MCP 错误格式。
+</Aside>
 
 ## 实用示例
 
@@ -199,5 +218,5 @@ const sanitizer: Middleware = async (ctx, next) => {
 ## 另请参阅
 
 - [认证 (OAuth2)](/zh/docs/guides/auth/) — 内置认证中间件和 OIDC 配置
-- [ConcurrentMCPServer API](/zh/docs/api/concurrent-mcp-server/) — `use()` 和 `registerTool()` 完整参考
+- [McpApp API](/zh/docs/api/concurrent-mcp-server/) — `use()` 和 `registerTool()` 完整参考
 - [独立组件](/zh/docs/api/standalone-components/) — 将 RateLimiter、RequestQueue 作为独立工具使用

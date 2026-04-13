@@ -1,6 +1,6 @@
 ---
 title: Standalone Components
-description: Use RateLimiter, RequestQueue, and SchemaValidator independently of ConcurrentMCPServer.
+description: Use RateLimiter, RequestQueue, and SchemaValidator independently of McpApp.
 next: false
 ---
 
@@ -223,10 +223,10 @@ try {
 ```
 
 <Aside type="tip">
-  Inside `ConcurrentMCPServer`, these components are wired up automatically based on your options. You only need standalone usage when building custom infrastructure outside the framework.
+  Inside `McpApp`, these components are wired up automatically based on your options. You only need standalone usage when building custom infrastructure outside the framework.
 </Aside>
 
 ## See Also
 
-- [ConcurrentMCPServer API](/docs/api/concurrent-mcp-server/) — How these components are used internally
-- [Middleware Pipeline](/docs/guides/middleware/) — Rate limiting, validation, and backpressure in the pipeline
+- [McpApp API](/docs/api/concurrent-mcp-server) — How these components are used internally
+- [Middleware Pipeline](/docs/guides/middleware) — Rate limiting, validation, and backpressure in the pipeline

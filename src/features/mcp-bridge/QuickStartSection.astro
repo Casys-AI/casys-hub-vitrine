@@ -18,12 +18,21 @@ const codeTelegram = `<span class="c-keyword">import</span> { startResourceServe
 
 console.<span class="c-fn">log</span>(<span class="c-string">\`Bridge ready at \${server.baseUrl}\`</span>);`;
 
-const codeLine = `<span class="c-comment">// LINE LIFF adapter — coming soon</span>
-<span class="c-comment">//</span>
-<span class="c-comment">// import { LineAdapter } from "@casys/mcp-bridge";</span>
-<span class="c-comment">//</span>
-<span class="c-comment">// const adapter = new LineAdapter();</span>
-<span class="c-comment">// await adapter.init({ resourceBaseUrl: "https://..." });</span>`;
+const codeLine = `<span class="c-keyword">import</span> { LineAdapter } <span class="c-keyword">from</span> <span class="c-string">"@casys/mcp-bridge"</span>;
+
+<span class="c-keyword">const</span> adapter = <span class="c-keyword">new</span> <span class="c-type">LineAdapter</span>();
+
+<span class="c-keyword">await</span> adapter.<span class="c-fn">init</span>({
+  resourceBaseUrl: <span class="c-string">"https://your-domain.com"</span>,
+});
+
+<span class="c-comment">// Or use startResourceServer with platform: "line"</span>
+<span class="c-keyword">import</span> { startResourceServer } <span class="c-keyword">from</span> <span class="c-string">"@casys/mcp-bridge"</span>;
+
+<span class="c-keyword">const</span> server = <span class="c-fn">startResourceServer</span>({
+  assetDirectories: { <span class="c-string">"my-app"</span>: <span class="c-string">"./ui-dist"</span> },
+  platform: <span class="c-string">"line"</span>,
+});`;
 ---
 
 <section id="quickstart">

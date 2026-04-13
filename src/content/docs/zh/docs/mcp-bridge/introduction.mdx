@@ -1,73 +1,62 @@
 ---
 title: 简介
-description: 将 MCP Apps 桥接到 Telegram 和 LINE 等消息平台。无需修改代码。
+description: "@casys/mcp-bridge 0.2.0 当前提供的功能。"
 ---
 
 import { Card, CardGrid, LinkCard, Aside } from '@astrojs/starlight/components';
 
-**@casys/mcp-bridge** 将 MCP Apps 从开发者工具 (Claude Desktop、VS Code) 带到拥有 20 亿以上用户的消息平台 — 无需修改 MCP App 的任何一行代码。
+<Aside type="note">
+  本文档已根据 `@casys/mcp-bridge` 源代码树和 `deno.json` 版本 `0.2.0` 进行验证。
+</Aside>
 
-## 问题
+`@casys/mcp-bridge` 将 MCP App UI 转换为可在消息平台 webview 中运行的 HTTP 页面。在当前包中，这意味着：
 
-MCP Apps (通过 `ui://` 资源提供的交互式界面) 只能在开发者工具中运行。Telegram、LINE 和其他消息平台上的用户无法访问它们。
+1. Resource Server 从本地资源目录或后端 `ui://` 解析器提供 HTML。
+2. 服务器将 `/bridge.js?...` 注入到 HTML 响应中。
+3. 注入的运行时通过 `/bridge?session=...` 在页面和服务器之间传递 MCP JSON-RPC 消息。
 
-为每个平台构建自定义集成意味着：
-- 为每个平台的 SDK 重写 UI 代码
-- 从零开始实现认证、会话管理和安全机制
-- 为每个平台维护独立的代码库
-- 失去 MCP 协议内置的工具执行能力
+如果你的 UI 已经通过 `postMessage` 使用 MCP Apps JSON-RPC 与宿主通信，桥接层会保持该契约并处理其周围的 webview 传输。
 
-## 解决方案
-
-`@casys/mcp-bridge` 是一个透明的桥接层：
-
-1. **拦截** MCP App 的 `postMessage` 调用 (通过注入的 `bridge.js`)
-2. **路由** JSON-RPC 消息通过 WebSocket 到 Resource Server
-3. **转发** 工具调用到你未修改的 MCP Server
-4. **映射** 平台特定功能 (主题、认证、视口) 自动完成
-
-```typescript
-import { startResourceServer } from "@casys/mcp-bridge";
-
-const server = startResourceServer({
-  assetDirectories: { "my-app": "./ui-dist" },
-  platform: "telegram",
-  telegramBotToken: Deno.env.get("TELEGRAM_BOT_TOKEN"),
-});
-// Your MCP App now works inside Telegram!
-```
-
-## 架构
+## 已实现的功能
 
 <CardGrid>
-  <Card title="Bridge Client" icon="puzzle">
-    浏览器端 IIFE 脚本，注入到服务的 HTML 中。Monkey-patch `postMessage` 以拦截 MCP JSON-RPC 调用。
-  </Card>
   <Card title="Resource Server" icon="server">
-    HTTP + WebSocket 服务器。提供 `ui://` 资源、注入 bridge.js、管理会话、转发工具调用。
+    `startResourceServer()` 提供 `/app`、`/bridge.js`、`/bridge`、`/health`、`/session`，以及可选的 `/ui`。
   </Card>
-  <Card title="平台适配器" icon="setting">
-    Telegram 和 LINE 适配器处理认证、主题映射、视口和生命周期事件。
+  <Card title="浏览器运行时" icon="puzzle">
+    注入的 `bridge.js` 在本地处理 `ui/initialize` 和 `ui/open-link`，然后通过 WebSocket 转发其余内容。
   </Card>
-  <Card title="MCP Server" icon="rocket">
-    你现有的 MCP 服务器完全不需要修改。桥接层作为 MCP 客户端运行。
+  <Card title="Telegram" icon="rocket">
+    Telegram 是唯一具有基于 Mini App `initData` 内置服务端认证的端到端平台路径。
+  </Card>
+  <Card title="LINE" icon="setting">
+    LINE 目前是部分实现：有底层适配器和浏览器运行时分支，但没有内置的 LIFF 初始化或令牌验证。
   </Card>
 </CardGrid>
 
-## 核心功能
+## 包的实际功能
 
-- **零代码修改** — 现有 MCP Apps 直接可用
-- **Telegram Mini Apps** — 完整的 WebApp SDK 集成 (主题、视口、安全区域、认证)
-- **LINE LIFF** — 即将推出
-- **默认安全** — CSP 策略、HMAC-SHA256 认证、加密安全会话
-- **107 个测试** — 全面的测试覆盖
-- **可扩展** — 通过适配器模式添加 Discord、WhatsApp 或任何平台
+- `assetDirectories` 下的本地 HTML 在 `/app/<server>/<path>` 提供服务。
+- 当你的后端实现了 `readResource()` 时，后端解析的 `ui://` 资源可通过 `/ui?uri=ui://...` 暴露。
+- 每个提供的 HTML 页面获得一个新的内存会话 ID 和注入的桥接脚本。
+- 桥接脚本自行处理 `ui/initialize` 并报告协议版本 `2025-11-25`。
+- 所有其他 JSON-RPC 流量通过 WebSocket 发送到服务器，`onMessage()` 先运行，`backend.handleMessage()` 后运行。
+
+## 重要限制
+
+- 注入的脚本被引用为 `/bridge.js?...`，浏览器运行时始终连接到同源根路径的 `/bridge?session=...`。将桥接挂载在源根路径，或添加根级重写规则。
+- 包仅导出 `WebSocketTransport`。没有已实现的 HTTP 回退传输。
+- 会话状态仅在内存中。
+- LINE 与 Telegram 的功能不对等。
 
 ## 下一步
 
 <CardGrid>
-  <LinkCard title="快速开始" href="/zh/docs/mcp-bridge/quickstart/" description="5 分钟内在 Telegram 中运行你的第一个 MCP App" />
-  <LinkCard title="架构" href="/zh/docs/mcp-bridge/architecture/" description="深入了解三层桥接设计" />
-  <LinkCard title="Telegram 适配器" href="/zh/docs/mcp-bridge/telegram/" description="Telegram Mini App 集成完整指南" />
-  <LinkCard title="安全模型" href="/zh/docs/mcp-bridge/security/" description="CSP、认证和会话管理详情" />
+  <LinkCard title="快速开始" href="/zh/docs/mcp-bridge/quickstart" description="运行 Resource Server 并打开你的第一个 Telegram Mini App" />
+  <LinkCard title="架构" href="/zh/docs/mcp-bridge/architecture" description="了解确切的路由、会话流程和浏览器/运行时分离" />
+  <LinkCard title="Telegram" href="/zh/docs/mcp-bridge/telegram" description="Telegram 路径今天实际实现的内容" />
+  <LinkCard title="LINE" href="/zh/docs/mcp-bridge/line" description="LINE 适配器提供的功能及未实现的内容" />
+  <LinkCard title="Resource Server API" href="/zh/docs/mcp-bridge/api-resource-server" description="startResourceServer() 配置、内置路由和 JsonRpcMcpBackend" />
+  <LinkCard title="Bridge Client API" href="/zh/docs/mcp-bridge/api-bridge-client" description="注入的 bridge.js 运行时和导出的 BridgeClient 类" />
+  <LinkCard title="安全" href="/zh/docs/mcp-bridge/security" description="CSP、会话 TTL、Telegram 认证和当前信任边界" />
 </CardGrid>

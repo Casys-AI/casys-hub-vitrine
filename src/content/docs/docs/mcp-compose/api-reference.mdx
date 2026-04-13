@@ -3,7 +3,7 @@ title: 'API Reference'
 description: 'Import paths, exported functions, types, and current module boundaries.'
 ---
 
-These docs describe the API surface present in `mcp-compose` `0.3.0`.
+These docs describe the API surface present in `mcp-compose` `0.4.0`.
 
 ## Root package
 
@@ -127,7 +127,7 @@ Exports:
 - template helpers: `validateTemplate`, `parseTemplate`, `loadTemplate`, `injectArgs`
 - cluster helpers: `connectHttp`, `startServer`, `createCluster`
 - compose entrypoints: `composeDashboard`, `composeDashboardFromFiles`
-- runtime types: `ComposeRequest`, `ComposeResult`, `DashboardTemplate`, `McpManifest`, `RuntimeErrorCode`, and related transport/cluster types
+- runtime types: `ComposeRequest`, `ComposeResult`, `DashboardTemplate`, `McpManifest`, `TemplateSource`, `TemplateToolCall`, `RuntimeErrorCode`, and related transport/cluster types
 
 Important runtime behavior from the source:
 
@@ -136,6 +136,26 @@ Important runtime behavior from the source:
 - tool calls go to `POST <baseUrl>/mcp`
 - `composeDashboard()` resolves `ui://server/...` URIs into `${uiBaseUrl}/ui?uri=...`
 - `composeDashboardFromFiles()` does not expose the `keepAlive` option that `composeDashboard()` supports
+
+Key template types:
+
+```typescript
+interface TemplateToolCall {
+  /** Tool name (bare, scoped to the source's manifest). */
+  tool: string;
+  /** Static arguments. {{key}} placeholders are replaced at compose time. */
+  args?: Record<string, unknown>;
+}
+
+interface TemplateSource {
+  /** Short ID for use in layout areas grid. */
+  id?: string;
+  /** Manifest name (must match an McpManifest.name). */
+  manifest: string;
+  /** Tools to call on this server. */
+  calls: TemplateToolCall[];
+}
+```
 
 ## `@casys/mcp-compose/deploy`
 
@@ -156,7 +176,18 @@ Current state:
 - `deploy` exports types and `DeployErrorCode`
 - there are no deploy functions implemented or exported yet
 
-The repo's deploy readme describes planned APIs such as `deployDashboard()` and `createTunnel()`, but those functions are not present in `0.3.0`.
+The repo's deploy readme describes planned APIs such as `deployDashboard()` and `createTunnel()`, but those functions are not present in `0.4.0`.
+
+`DeployError` is a structured error type exported alongside `DeployErrorCode`:
+
+```typescript
+interface DeployError {
+  code: DeployErrorCode;
+  message: string;
+  project?: string;
+  cause?: unknown;
+}
+```
 
 ## Key types
 

@@ -1,18 +1,27 @@
 ---
 title: MCP Apps (Ressources UI)
-description: Servez des interfaces interactives a cote de vos outils MCP via le scheme ui://.
+description: Servez des interfaces HTML interactives a cote de vos outils MCP via le type MIME MCP App (SDK 1.27).
 ---
 
 import { Aside } from '@astrojs/starlight/components';
 
-Les outils MCP retournent des donnees. Les MCP Apps les affichent. Enregistrez des interfaces HTML comme ressources, et les clients supportant SEP-1865 les rendront directement — dashboards, visualiseurs de donnees, formulaires, panneaux de configuration, a cote de vos outils.
+Les MCP Apps vous permettent de servir des interfaces HTML interactives comme ressources a cote de vos outils. Les clients qui supportent le type MIME `text/html;profile=mcp-app` (MCP SDK 1.27) les afficheront en ligne — dashboards, visualiseurs de donnees, formulaires, panneaux de configuration, directement a cote de vos outils.
+
+## Le type MIME
+
+```typescript
+import { MCP_APP_MIME_TYPE } from "@casys/mcp-server";
+// "text/html;profile=mcp-app"
+```
+
+Utilisez `MCP_APP_MIME_TYPE` (la constante exportee) comme type MIME pour toute ressource devant etre rendue comme interface interactive.
 
 ## Enregistrer une ressource UI
 
 ```typescript
-import { ConcurrentMCPServer, MCP_APP_MIME_TYPE } from "@casys/mcp-server";
+import { McpApp, MCP_APP_MIME_TYPE } from "@casys/mcp-server";
 
-const server = new ConcurrentMCPServer({
+const server = new McpApp({
   name: "my-server",
   version: "1.0.0",
 });
@@ -31,9 +40,6 @@ server.registerResource(
         <body>
           <h1>Data Viewer</h1>
           <div id="app"></div>
-          <script>
-            // Your interactive UI code here
-          </script>
         </body>
       </html>
     `,
@@ -42,18 +48,6 @@ server.registerResource(
 
 await server.start();
 ```
-
-## Le scheme `ui://`
-
-Le scheme d'URI `ui://` indique aux clients MCP que cette ressource est une application HTML interactive, pas des donnees brutes.
-
-- **Format d'URI** : `ui://{server-name}/{path}`
-- **Type MIME** : Utilisez `MCP_APP_MIME_TYPE` (constante exportee)
-- **Contenu** : Document HTML complet sous forme de chaine
-
-<Aside>
-  Tous les clients MCP ne supportent pas encore les ressources `ui://`. La ressource n'apparaitra simplement pas dans les clients sans support SEP-1865 — pas d'erreurs, pas d'interfaces cassees.
-</Aside>
 
 ## Ressources UI dynamiques
 
@@ -77,18 +71,232 @@ server.registerResource(
 );
 ```
 
-<Aside type="tip">
-  Puisque le handler s'execute a chaque lecture de ressource, votre interface reflete toujours l'etat le plus recent. Pas besoin de polling ou de websockets — le client MCP gere le cycle de rafraichissement.
-</Aside>
+## Tool `_meta.ui` — lier les outils aux vues UI
+
+SDK 1.27 ajoute `_meta.ui` aux definitions d'outils pour decrire comment la sortie d'un outil se connecte a une interface :
+
+```typescript
+server.registerTool(
+  {
+    name: "get_report",
+    description: "Fetch a sales report",
+    inputSchema: {
+      type: "object",
+      properties: { reportId: { type: "string" } },
+      required: ["reportId"],
+    },
+    _meta: {
+      ui: {
+        resourceUri: "ui://my-server/viewer",       // Which viewer renders this tool's output
+        visibility: ["model", "app"],               // Visible to both LLM and UI
+        emits: ["report:loaded"],                   // Events this tool emits to the UI
+        accepts: ["filter:changed"],                // Events this tool accepts from the UI
+      },
+    },
+  },
+  async ({ reportId }) => fetchReport(reportId),
+);
+```
+
+## Outils app-only
+
+Enregistrez des outils visibles uniquement par les clients UI, pas par le LLM :
+
+```typescript
+server.registerAppOnlyTool(
+  {
+    name: "update_filter",
+    description: "Update dashboard filter",
+    inputSchema: {
+      type: "object",
+      properties: { filter: { type: "string" } },
+    },
+  },
+  async ({ filter }) => applyFilter(filter),
+);
+```
+
+## Enregistrement en masse de viewers
+
+`registerViewers()` enregistre des ressources viewer basees sur des fichiers via un objet `RegisterViewersConfig` :
+
+```typescript
+server.registerViewers({
+  prefix: "ui://my-server/",
+  moduleUrl: import.meta.url,
+  exists: async (path) => {
+    try {
+      await Deno.stat(path);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  readFile: async (path) => await Deno.readTextFile(path),
+});
+```
+
+Le framework utilise `exists` et `readFile` pour servir les fichiers viewer sous le `prefix` donne. `moduleUrl` resout les chemins relatifs en chemins absolus.
+
+## Resultats d'outils structures
+
+Les outils peuvent retourner a la fois une reponse textuelle (pour le LLM) et des donnees structurees (pour l'UI) simultanement :
+
+```typescript
+import type { StructuredToolResult } from "@casys/mcp-server";
+
+server.registerTool(
+  {
+    name: "get_data",
+    description: "Fetch data",
+    inputSchema: { type: "object", properties: {} },
+    outputSchema: {
+      type: "object",
+      properties: {
+        rows: { type: "array" },
+        total: { type: "number" },
+      },
+    },
+  },
+  async (): Promise<StructuredToolResult> => {
+    const data = await fetchData();
+    return {
+      content: `Found ${data.rows.length} rows`,   // LLM-readable string
+      structuredContent: {                          // Machine-readable for UI
+        rows: data.rows,
+        total: data.rows.length,
+      },
+    };
+  },
+);
+```
+
+## Content Security Policy
+
+Quand vous servez des ressources HTML, injectez un header CSP pour controler ce que l'iframe peut charger :
+
+```typescript
+import {
+  buildCspHeader,
+  injectCspMetaTag,
+} from "@casys/mcp-server";
+
+// Build a CSP header string
+const csp = buildCspHeader({
+  scriptSources: ["'self'", "'unsafe-inline'"],
+  connectSources: ["'self'"],
+  imgSources: ["'self'", "data:"],
+  frameAncestors: ["'self'"],
+  allowInline: false,
+});
+
+// Or inject a <meta> CSP tag directly into HTML
+const html = `<html><head></head><body>...</body></html>`;
+const secureHtml = injectCspMetaTag(html, csp);
+```
+
+Vous pouvez aussi definir le CSP globalement via `resourceCsp` dans les options du serveur :
+
+```typescript
+const server = new McpApp({
+  name: "my-server",
+  version: "1.0.0",
+  resourceCsp: {
+    scriptSources: ["'self'"],
+    connectSources: ["'self'"],
+  },
+});
+```
+
+## Authentification PostMessage (HMAC)
+
+Pour verifier les messages envoyes entre l'iframe UI et l'hote, utilisez `MessageSigner` et `injectChannelAuth` :
+
+```typescript
+import {
+  injectChannelAuth,
+} from "@casys/mcp-server";
+
+// secret must be a 64-character hex string
+const secret = "a1b2c3..."; // 64 hex chars
+
+// In your UI HTML, inject auth credentials before serving
+const html = injectChannelAuth(rawHtml, secret);
+```
+
+Le script injecte gere la signature HMAC des evenements postMessage, permettant a l'hote de verifier que les messages proviennent bien de votre UI.
+
+## Detecter le support MCP Apps du client
+
+Avant d'enregistrer des outils de rendu UI, vous pouvez verifier si le client connecte a declare le support des MCP Apps. Les clients qui ne supportent pas l'extension ignorent silencieusement le champ `_meta.ui`, mais une verification explicite permet de servir une reponse texte plus riche quand le chemin UI n'est pas disponible.
+
+### Methode d'instance : `getClientMcpAppsCapability()`
+
+```typescript
+const cap = server.getClientMcpAppsCapability();
+if (cap?.mimeTypes?.includes(MCP_APP_MIME_TYPE)) {
+  // Client can render MCP Apps — return a resource URI
+  return {
+    content: [{ type: "text", text: summary }],
+    _meta: { ui: { resourceUri: "ui://my-server/dashboard" } },
+  };
+}
+// Fallback: rich text for clients without UI support
+return { content: [{ type: "text", text: detailedText }] };
+```
+
+Lit `clientCapabilities.extensions["io.modelcontextprotocol/ui"]` depuis l'etat post-initialisation du SDK. Retourne `undefined` si appele avant l'initialisation ou si le client n'a pas declare le support.
+
+### Fonction standalone : `getMcpAppsCapability(capabilities)`
+
+```typescript
+import {
+  getMcpAppsCapability,
+  MCP_APP_MIME_TYPE,
+  MCP_APPS_EXTENSION_ID,
+  MCP_APPS_PROTOCOL_VERSION,
+} from "@casys/mcp-server";
+
+// Read from any ClientCapabilities object (e.g. from a custom MCP SDK handler)
+const cap = getMcpAppsCapability(client.getClientCapabilities());
+```
+
+C'est le meme lecteur defensif utilise en interne par `getClientMcpAppsCapability()`. Il retourne `undefined` pour une entree `null`/`undefined`, un champ `extensions` absent, une cle d'extension absente, ou une valeur d'extension non-objet. Les entrees `mimeTypes` malformees (non-chaines) sont filtrees silencieusement plutot que levees.
+
+### Constantes et types
+
+```typescript
+import type { McpAppsClientCapability } from "@casys/mcp-server";
+import {
+  MCP_APPS_EXTENSION_ID,      // "io.modelcontextprotocol/ui"
+  MCP_APPS_PROTOCOL_VERSION,  // "2026-01-26"
+  MCP_APP_MIME_TYPE,          // "text/html;profile=mcp-app"
+} from "@casys/mcp-server";
+
+interface McpAppsClientCapability {
+  /**
+   * MIME types the client can render as MCP Apps.
+   * Typically includes "text/html;profile=mcp-app".
+   * An empty or absent array means the client advertised support but listed no mime types.
+   */
+  mimeTypes?: string[];
+}
+```
+
+`MCP_APPS_EXTENSION_ID` est la cle que les clients doivent inclure dans `clientCapabilities.extensions` pour declarer le support. `MCP_APPS_PROTOCOL_VERSION` identifie la version datee de la spec que ce package cible — il est incremente dans le meme commit qui adopte une revision de spec plus recente.
 
 ## Verifier les ressources enregistrees
 
 ```typescript
 server.getResourceCount();  // 2
-server.getResourceUris();   // ["ui://my-server/viewer", "ui://my-server/dashboard"]
+server.getResourceUris();   // ["ui://my-server/viewer", ...]
 ```
+
+<Aside>
+  Tous les clients MCP ne renderisent pas les ressources `text/html;profile=mcp-app`. Les clients sans support n'afficheront simplement pas l'UI — pas d'erreurs, pas d'appels d'outils casses.
+</Aside>
 
 ## Voir aussi
 
-- [API ConcurrentMCPServer](/fr/docs/api/concurrent-mcp-server/) — Reference `registerResource()` et `registerResources()`
+- [API McpApp](/fr/docs/api/concurrent-mcp-server/) — Reference `registerResource()`, `registerViewers()`, `registerAppOnlyTool()`
 - [Demarrage rapide](/fr/docs/getting-started/quickstart/) — Bases de configuration du serveur

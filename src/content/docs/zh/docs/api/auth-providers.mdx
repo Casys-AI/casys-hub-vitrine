@@ -5,7 +5,7 @@ description: 认证预设和 JwtAuthProvider 的 API 参考。
 
 import { Aside } from '@astrojs/starlight/components';
 
-常见身份提供商的工厂函数，以及用于完全控制的底层 `JwtAuthProvider`。所有函数返回与 `ConcurrentServerOptions.auth.provider` 兼容的 `AuthProvider`。
+常见身份提供商的工厂函数，以及用于完全控制的底层 `JwtAuthProvider`。所有函数返回与 `McpAppOptions.auth.provider` 兼容的 `AuthProvider`。
 
 ## 工厂函数 (预设)
 
@@ -20,7 +20,7 @@ const provider = createGoogleAuthProvider({
 });
 ```
 
-使用 Google 的 OIDC issuer (`https://accounts.google.com`) 和公共 JWKS 端点。
+使用 Google 的 OIDC issuer (`https://accounts.google.com`) 和公共 JWKS 端点。JWKS URI 为 `https://www.googleapis.com/oauth2/v3/certs`。
 
 ### createAuth0AuthProvider
 
@@ -62,7 +62,7 @@ const provider = createOIDCAuthProvider({
 });
 ```
 
-通用 OIDC 提供商。JWKS URI 从 issuer 的 `.well-known/openid-configuration` 自动派生。
+通用 OIDC 提供商。如果省略 `jwksUri`，JWKS URI 默认为 `${issuer}/.well-known/jwks.json`。该提供商不获取 `.well-known/openid-configuration`。
 
 <Aside type="tip">
   不确定使用哪个预设？参见[认证指南](/zh/docs/guides/auth/)了解每个提供商的使用示例。
@@ -89,19 +89,29 @@ const provider = new JwtAuthProvider({
 
 ```typescript
 const authInfo = await provider.verifyToken(token: string);
+// AuthInfo | null
 ```
 
-成功时返回 `AuthInfo` 对象，token 无效时返回 `null`：
+成功时返回 `AuthInfo` 对象，token 无效或已过期时返回 `null`。
 
 ```typescript
 interface AuthInfo {
   subject: string;                     // Token "sub" claim
   clientId?: string;                   // Token "client_id" or "azp" claim
   scopes: string[];                    // Parsed from "scope" claim (space-separated)
-  claims: Record<string, unknown>;     // All token claims
-  expiresAt: Date;                     // Token expiry
+  claims?: Record<string, unknown>;    // All token claims
+  expiresAt?: number;                  // Token expiry as Unix epoch seconds
+  tenantId?: string;                   // Set by createMultiTenantMiddleware — undefined on single-tenant servers
 }
 ```
+
+### Token 缓存
+
+`JwtAuthProvider` 维护内存缓存以避免重复 JWKS 往返：
+
+- 缓存键：原始 token 字符串的 SHA-256 哈希
+- TTL：5 分钟
+- 最大条目：1000
 
 ## 配置加载器
 
@@ -116,7 +126,7 @@ const config = await loadAuthConfig();
 // AuthConfig | null
 ```
 
-自动从 `mcp-server.yaml` + `MCP_AUTH_*` 环境变量加载。未找到配置时返回 `null` (认证保持禁用)。
+自动从 `mcp-server.yaml` + `MCP_AUTH_*` 环境变量加载。未找到配置时返回 `null`（认证保持禁用）。
 
 ### createAuthProviderFromConfig
 
@@ -127,8 +137,44 @@ const provider = createAuthProviderFromConfig(config: AuthConfig);
 // Returns the appropriate AuthProvider based on config.provider
 ```
 
+根据 `config.provider` 分发到正确的预设：
+
+| `config.provider` | 使用的预设 |
+|-------------------|-----------|
+| `"google"` | `createGoogleAuthProvider` |
+| `"auth0"` | `createAuth0AuthProvider` |
+| `"github"` | `createGitHubAuthProvider` |
+| `"oidc"` | `createOIDCAuthProvider` |
+
+## 客户端 OAuth
+
+用于构建需要对受保护服务器进行认证的 MCP 客户端。这些工具不从主 `@casys/mcp-server` 入口导出 — 使用深层导入路径：
+
+```typescript
+import { prepareOAuthProvider } from "@casys/mcp-server/client-auth/connect";
+import { FileTokenStore } from "@casys/mcp-server/client-auth/token-store/file-store";
+import { MemoryTokenStore } from "@casys/mcp-server/client-auth/token-store/memory-store";
+
+const { provider, callbackServer } = await prepareOAuthProvider(
+  "https://my-mcp.example.com",
+  {
+    clientId: "my-client-id",
+    scopes: ["read", "write"],
+    tokenStore: new FileTokenStore("./.tokens"),  // or new MemoryTokenStore()
+    openBrowser: async (url) => {
+      // Open the authorization URL in the user's browser
+      console.log(`Open this URL to authorize: ${url}`);
+    },
+  },
+);
+// Pass provider as authProvider to StreamableHTTPClientTransport
+// Close callbackServer when done
+```
+
+`FileTokenStore(path)` 在重启之间将 token 持久化到磁盘。`MemoryTokenStore()` 仅内存存储。
+
 ## 另请参阅
 
 - [认证 (OAuth2)](/zh/docs/guides/auth/) — 使用预设、scope 验证和 RFC 9728 的指南
 - [配置 (YAML)](/zh/docs/guides/configuration/) — 基于文件的认证配置与环境变量覆盖
-- [ConcurrentMCPServer API](/zh/docs/api/concurrent-mcp-server/) — 构造函数中的 `AuthOptions`
+- [McpApp API](/zh/docs/api/concurrent-mcp-server/) — 构造函数中的 `AuthOptions`

@@ -17,11 +17,11 @@ Pick your identity provider. Each preset handles issuer URLs, JWKS endpoints, an
   <TabItem label="Google">
     ```typescript
     import {
-      ConcurrentMCPServer,
+      McpApp,
       createGoogleAuthProvider,
     } from "@casys/mcp-server";
 
-    const server = new ConcurrentMCPServer({
+    const server = new McpApp({
       name: "my-api",
       version: "1.0.0",
       auth: {
@@ -38,11 +38,11 @@ Pick your identity provider. Each preset handles issuer URLs, JWKS endpoints, an
   <TabItem label="Auth0">
     ```typescript
     import {
-      ConcurrentMCPServer,
+      McpApp,
       createAuth0AuthProvider,
     } from "@casys/mcp-server";
 
-    const server = new ConcurrentMCPServer({
+    const server = new McpApp({
       name: "my-api",
       version: "1.0.0",
       auth: {
@@ -62,11 +62,11 @@ Pick your identity provider. Each preset handles issuer URLs, JWKS endpoints, an
   <TabItem label="GitHub Actions">
     ```typescript
     import {
-      ConcurrentMCPServer,
+      McpApp,
       createGitHubAuthProvider,
     } from "@casys/mcp-server";
 
-    const server = new ConcurrentMCPServer({
+    const server = new McpApp({
       name: "my-api",
       version: "1.0.0",
       auth: {
@@ -87,11 +87,11 @@ Pick your identity provider. Each preset handles issuer URLs, JWKS endpoints, an
   <TabItem label="Generic OIDC">
     ```typescript
     import {
-      ConcurrentMCPServer,
+      McpApp,
       createOIDCAuthProvider,
     } from "@casys/mcp-server";
 
-    const server = new ConcurrentMCPServer({
+    const server = new McpApp({
       name: "my-api",
       version: "1.0.0",
       auth: {
@@ -133,7 +133,7 @@ server.registerTool(
 ```
 
 <Aside>
-  Scope checking is **AND-based** — the token must have *all* listed scopes. Need OR-based logic? Implement it in a [custom middleware](/docs/guides/middleware/).
+  Scope checking is **AND-based** — the token must have *all* listed scopes. Need OR-based logic? Implement it in a [custom middleware](/docs/guides/middleware).
 </Aside>
 
 ## Token caching
@@ -230,10 +230,10 @@ Two token store implementations are provided:
 
 ## YAML-based auth
 
-Shipping a compiled binary? Your users can configure auth without touching code — see the [Configuration guide](/docs/guides/configuration/).
+Shipping a compiled binary? Your users can configure auth without touching code — see the [Configuration guide](/docs/guides/configuration).
 
 ## See Also
 
-- [Auth Providers API](/docs/api/auth-providers/) — Full API reference for presets and `JwtAuthProvider`
-- [Middleware Pipeline](/docs/guides/middleware/) — How auth fits in the middleware chain
-- [Configuration (YAML)](/docs/guides/configuration/) — File-based auth configuration for binary distribution
+- [Auth Providers API](/docs/api/auth-providers) — Full API reference for presets and `JwtAuthProvider`
+- [Middleware Pipeline](/docs/guides/middleware) — How auth fits in the middleware chain
+- [Configuration (YAML)](/docs/guides/configuration) — File-based auth configuration for binary distribution

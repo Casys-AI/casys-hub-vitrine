@@ -77,7 +77,15 @@ const config = await loadAuthConfig();
 
 if (config) {
   const provider = createAuthProviderFromConfig(config);
-  // Pass to ConcurrentMCPServer options
+  const server = new McpApp({
+    name: "my-server",
+    version: "1.0.0",
+    auth: {
+      provider,
+      authorizationServers: config.authorizationServers ?? [],
+      resource: config.resource,
+    },
+  });
 }
 ```
 

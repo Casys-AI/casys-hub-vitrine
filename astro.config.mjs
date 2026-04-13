@@ -23,7 +23,7 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'Casys Docs',
-      description: 'Documentation for Casys open-source packages: @casys/mcp-server and @casys/mcp-bridge.',
+      description: 'Documentation for Casys open-source packages: @casys/mcp-server, @casys/mcp-bridge, and @casys/mcp-compose.',
       logo: {
         light: './src/assets/casys-logo-light.svg',
         dark: './src/assets/casys-logo-dark.svg',
@@ -65,7 +65,7 @@ export default defineConfig({
             {
               label: 'API Reference',
               items: [
-                { label: 'ConcurrentMCPServer', slug: 'docs/api/concurrent-mcp-server' },
+                { label: 'McpApp', slug: 'docs/api/concurrent-mcp-server' },
                 { label: 'Auth Providers', slug: 'docs/api/auth-providers' },
                 { label: 'Standalone Components', slug: 'docs/api/standalone-components' },
               ],
@@ -88,7 +88,7 @@ export default defineConfig({
               items: [
                 { label: 'Architecture', slug: 'docs/mcp-bridge/architecture' },
                 { label: 'Telegram Adapter', slug: 'docs/mcp-bridge/telegram' },
-                { label: 'LINE Adapter (Soon)', slug: 'docs/mcp-bridge/line' },
+                { label: 'LINE Adapter', slug: 'docs/mcp-bridge/line', badge: { text: 'Partial', variant: 'caution' } },
                 { label: 'Security Model', slug: 'docs/mcp-bridge/security' },
               ],
             },

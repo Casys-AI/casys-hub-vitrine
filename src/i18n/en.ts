@@ -322,11 +322,11 @@ export const en = {
             id: "mcp-server",
             name: "@casys/mcp-server",
             tagline: "Production MCP server framework",
-            status: "v0.7.0",
+            status: "v0.14.0",
             tech: "Deno",
             links: {
               website: "/mcp-server",
-              github: "https://github.com/Casys-AI/casys-pml/tree/main/lib/server",
+              github: "https://github.com/Casys-AI/mcp-server",
               jsr: "https://jsr.io/@casys/mcp-server",
             },
           },
@@ -757,8 +757,8 @@ const html = renderComposite(descriptor);`,
       },
       {
         icon: "verified",
-        name: "Fail-fast validation",
-        desc: "Structured error codes, no silent fallbacks",
+        name: "Explicit validation",
+        desc: "validateSyncRules() catches invalid rules before render — buildCompositeUi() silently drops unknown references",
       },
       {
         icon: "package_2",
@@ -792,12 +792,12 @@ const html = renderComposite(descriptor);`,
 
 // 1. Collect UI resources from tool results
 const collector = createCollector();
-collector.add(invoiceResult);  // has _meta.ui
-collector.add(statusResult);   // has _meta.ui
+collector.collect("invoice-viewer", invoiceResult);  // has _meta.ui
+collector.collect("status-timeline", statusResult);  // has _meta.ui
 
 // 2. Compose with layout + sync rules
-const descriptor = buildCompositeUi({
-  resources: collector.resources(),
+const resources = collector.getResources();
+const descriptor = buildCompositeUi(resources, {
   layout: "split",
   sync: [
     { from: "invoice-viewer", event: "status-change", to: "status-timeline", action: "refresh" },
@@ -1509,7 +1509,7 @@ const html = renderComposite(descriptor);`,
     subtitle:
       "Your MCP App running inside Telegram in three steps. No changes to your existing code.",
     tabTelegram: "Telegram",
-    tabLine: "Coming Soon",
+    tabLine: "LINE",
   },
   mcpBridgeInstall: {
     title: "Ready",

@@ -1,60 +1,114 @@
 ---
 title: API Resource Server
-description: Reference API du composant Resource Server.
+description: Surface API vérifiée pour startResourceServer() et les helpers backend intégrés.
 ---
 
-## `startResourceServer(options)`
+## `startResourceServer(config)`
 
-Cree et demarre le Resource Server.
+`startResourceServer()` est synchrone et retourne immédiatement un objet serveur en cours d'exécution.
 
-```typescript
-import { startResourceServer } from "@casys/mcp-bridge";
+```ts
+import { JsonRpcMcpBackend, startResourceServer } from "@casys/mcp-bridge";
 
 const server = startResourceServer({
-  assetDirectories: { "my-app": "./ui-dist" },
+  assetDirectories: {
+    "my-app": "./ui-dist",
+  },
   platform: "telegram",
-  telegramBotToken: Deno.env.get("TELEGRAM_BOT_TOKEN"),
-  onMessage: async (session, message) => { return null; },
-  options: { resourceServerPort: 4000, debug: true },
+  telegramBotToken: Deno.env.get("TELEGRAM_BOT_TOKEN")!,
+  backend: new JsonRpcMcpBackend({
+    endpointUrl: "https://my-mcp.example.com/mcp",
+  }),
+  options: {
+    resourceServerPort: 4000,
+    debug: true,
+  },
+  csp: {
+    frameAncestors: ["https://web.telegram.org"],
+  },
+});
+
+console.log(server.baseUrl);
+```
+
+## `ResourceServerConfig`
+
+| Champ | Type | Notes |
+| --- | --- | --- |
+| `assetDirectories` | `Record<string, string>` | Requis. Mappe le nom du serveur `ui://` vers un répertoire local pour `/app/<server>/...`. |
+| `platform` | `string` | Requis. Utilisé dans les paramètres de requête `/bridge.js?...` injectés. |
+| `options` | `BridgeOptions` | `resourceServerPort`, `allowedOrigins`, et `debug`. |
+| `csp` | `CspOptions` | Sources CSP supplémentaires et comportement `allowInline`. |
+| `auth` | `BridgeAuthHandler` | Hook d'auth générique optionnel pour l'auth WebSocket sur le premier message. |
+| `telegramBotToken` | `string` | Chemin de commodité pour l'auth Telegram. Requis pour `platform: "telegram"` sauf si vous passez `auth`. |
+| `backend` | `McpBackend` | Gère les appels JSON-RPC normaux et les appels `readResource()` optionnels. |
+| `uiPath` | `string \| null` | Route UI du backend intégré. Par défaut `"/ui"`. Mettre à `null` pour désactiver. |
+| `onMessage` | `(session, message) => Promise<McpAppsMessage \| null>` | S'exécute avant `backend.handleMessage()`. |
+| `onHttpRequest` | `(request) => Promise<Response \| { html: string; pendingNotifications?: PendingNotification[] } \| null>` | Hook HTTP personnalisé pour les routes non intégrées. |
+
+## Routes intégrées
+
+Le serveur expose :
+
+- `GET /health`
+- `POST /session`
+- `GET /bridge.js`
+- `GET/WS /bridge?session=<id>`
+- `GET /app/<server>/<path>`
+- `GET /ui?uri=ui://...` quand `uiPath` est activé et que le backend a `readResource()`
+
+## Valeur de retour
+
+```ts
+interface ResourceServer {
+  readonly baseUrl: string;
+  readonly sessions: SessionStore;
+  storeToolResult(result: ToolResultData): string;
+  consumeToolResult(ref: string): ToolResultData | undefined;
+  stop(): Promise<void>;
+}
+```
+
+## Handoff de résultats d'outils
+
+`storeToolResult()` vous permet de mettre en attente une notification `ui/notifications/tool-result` avant que le WebSocket soit ouvert.
+
+```ts
+const ref = server.storeToolResult({
+  content: [{ type: "text", text: "done" }],
+});
+
+const url = `https://your-domain.com/some-page?ref=${ref}`;
+```
+
+Si cette page est servie via du HTML proxifié, le serveur consomme le résultat stocké, met la notification en buffer sur la session, et la vide quand le socket s'ouvre. Les résultats stockés sont à usage unique et expirent après 5 minutes.
+
+## `JsonRpcMcpBackend`
+
+`JsonRpcMcpBackend` est le backend générique intégré pour les serveurs MCP HTTP JSON-RPC.
+
+```ts
+import { JsonRpcMcpBackend } from "@casys/mcp-bridge";
+
+const backend = new JsonRpcMcpBackend({
+  endpointUrl: "https://my-mcp.example.com/mcp",
+  headers: {
+    Authorization: "Bearer token",
+  },
 });
 ```
 
-### Options
+### `JsonRpcMcpBackendOptions`
 
-| Parametre | Type | Requis | Description |
-|-----------|------|--------|-------------|
-| `assetDirectories` | `Record<string, string>` | Oui | Map nom d'app vers repertoire de fichiers UI |
-| `platform` | `"telegram" \| "line"` | Oui | Plateforme cible |
-| `telegramBotToken` | `string` | Non | Token de bot Telegram (requis si platform = "telegram") |
-| `onMessage` | `(session, message) => Promise<result>` | Non | Handler de messages entrants |
-| `options.resourceServerPort` | `number` | Non | Port du serveur HTTP (defaut : auto) |
-| `options.debug` | `boolean` | Non | Mode debug (defaut : false) |
+| Champ | Type | Notes |
+| --- | --- | --- |
+| `endpointUrl` | `string` | Requis. URL HTTP complète acceptant des requêtes POST JSON-RPC. Le slash final est supprimé. |
+| `headers` | `Record<string, string>` | Optionnel. Headers statiques ajoutés à chaque requête (ex. `Authorization`). |
+| `fetchFn` | `typeof fetch` | Optionnel. Implémentation fetch personnalisée. Utile pour les tests ou les environnements d'exécution personnalisés. Par défaut, `fetch` global. |
 
-### Valeur de retour
+Il :
 
-`startResourceServer()` est **synchrone** et retourne immediatement :
-
-```typescript
-interface ResourceServer {
-  baseUrl: string;       // URL de base du serveur
-  sessions: Map;         // Sessions actives
-  stop(): void;          // Arret du serveur
-}
-```
-
-## Interface `PlatformAdapter`
-
-Implementez cette interface pour ajouter le support d'une nouvelle plateforme.
-
-```typescript
-interface PlatformAdapter {
-  name: string;
-  initialize(): Promise<void>;
-  getTheme(): ThemeData;
-  getContainerDimensions(): ContainerDimensions;
-  onLifecycleEvent(callback: (event: LifecycleEvent) => void): void;
-  openLink(url: string): void;
-  sendMessage?(message: unknown): void;
-  getAuthData?(): unknown;
-}
-```
+- envoie des messages JSON-RPC en POST à `endpointUrl`
+- transforme les échecs de transport en erreurs JSON-RPC `-32603` pour les messages de requête
+- implémente `readResource()` en envoyant une requête `resources/read`
+- retourne uniquement le premier champ `contents[0].text` comme HTML

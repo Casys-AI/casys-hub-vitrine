@@ -5,9 +5,9 @@ description: 面向 Deno 的生产级 MCP 服务器框架。MCP 领域的 "Hono"
 
 import { Card, CardGrid, LinkCard, Aside } from '@astrojs/starlight/components';
 
-**"MCP 领域的 Hono"** — 一个生产级框架，用于构建具有可组合中间件管道、OAuth2 认证、双传输模式的 MCP 服务器，提供从原型到生产所需的一切。
+`@casys/mcp-server` 是一个生产级框架，用于构建具有可组合中间件、OAuth2 认证、双传输 (STDIO + HTTP/SSE) 和并发控制的 MCP 服务器。
 
-基于官方 [@modelcontextprotocol/sdk](https://github.com/modelcontextprotocol/sdk) 构建。发布在 [JSR](https://jsr.io/@casys/mcp-server) 上。
+基于官方 [@modelcontextprotocol/sdk](https://github.com/modelcontextprotocol/sdk) (SDK 1.27) 构建。发布在 [JSR](https://jsr.io/@casys/mcp-server) 上。**版本 0.14.0 — 301 个测试。**
 
 <img src="/diagrams/mcp-server/mcp-architecture.svg" alt="MCP Server 架构" style="width: 100%; max-width: 600px; margin: 24px auto; display: block;" />
 
@@ -24,8 +24,8 @@ import { Card, CardGrid, LinkCard, Aside } from '@astrojs/starlight/components';
 `@casys/mcp-server` 提供开箱即用的完整框架 — 采用受 [Hono](https://hono.dev) 和 [Koa](https://koajs.com) 启发的可组合中间件管道。
 
 ```typescript
-// This is a production-ready MCP server. Really.
-const server = new ConcurrentMCPServer({
+// This is a production-ready MCP server.
+const server = new McpApp({
   name: "my-api",
   version: "1.0.0",
   maxConcurrent: 10,
@@ -37,6 +37,8 @@ const server = new ConcurrentMCPServer({
       audience: "https://my-mcp.example.com",
       resource: "https://my-mcp.example.com",
     }),
+    authorizationServers: ["https://accounts.google.com"],
+    resource: "https://my-mcp.example.com",
   },
 });
 
@@ -71,10 +73,10 @@ await server.startHttp({ port: 3000 });
     JSON Schema 验证 (ajv)，在注册时编译。无效输入在 handler 执行前即被拒绝。
   </Card>
   <Card title="MCP Apps" icon="laptop">
-    通过 `ui://` scheme (SEP-1865) 在工具旁提供交互式 HTML 界面。仪表盘、表单、查看器 — 直接在客户端中呈现。
+    通过 `text/html;profile=mcp-app` MIME 类型 (SDK 1.27) 在工具旁提供交互式 HTML 界面。仪表盘、表单、查看器 — 直接在客户端中呈现。
   </Card>
   <Card title="Sampling Bridge" icon="random">
-    双向 LLM 委托 (SEP-1577)。服务器可通过客户端连接回调 LLM。
+    双向 LLM 委托。服务器可通过客户端连接回调 LLM，使用 `enableSampling: true`。
   </Card>
 </CardGrid>
 

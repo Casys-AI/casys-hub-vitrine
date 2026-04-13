@@ -17,11 +17,11 @@ import { Tabs, TabItem, Aside, Steps } from '@astrojs/starlight/components';
   <TabItem label="Google">
     ```typescript
     import {
-      ConcurrentMCPServer,
+      McpApp,
       createGoogleAuthProvider,
     } from "@casys/mcp-server";
 
-    const server = new ConcurrentMCPServer({
+    const server = new McpApp({
       name: "my-api",
       version: "1.0.0",
       auth: {
@@ -29,6 +29,8 @@ import { Tabs, TabItem, Aside, Steps } from '@astrojs/starlight/components';
           audience: "https://my-mcp.example.com",
           resource: "https://my-mcp.example.com",
         }),
+        authorizationServers: ["https://accounts.google.com"],
+        resource: "https://my-mcp.example.com",
       },
     });
     ```
@@ -36,11 +38,11 @@ import { Tabs, TabItem, Aside, Steps } from '@astrojs/starlight/components';
   <TabItem label="Auth0">
     ```typescript
     import {
-      ConcurrentMCPServer,
+      McpApp,
       createAuth0AuthProvider,
     } from "@casys/mcp-server";
 
-    const server = new ConcurrentMCPServer({
+    const server = new McpApp({
       name: "my-api",
       version: "1.0.0",
       auth: {
@@ -50,6 +52,9 @@ import { Tabs, TabItem, Aside, Steps } from '@astrojs/starlight/components';
           resource: "https://my-mcp.example.com",
           scopesSupported: ["read", "write"],
         }),
+        authorizationServers: ["https://my-tenant.auth0.com"],
+        resource: "https://my-mcp.example.com",
+        scopesSupported: ["read", "write"],
       },
     });
     ```
@@ -57,11 +62,11 @@ import { Tabs, TabItem, Aside, Steps } from '@astrojs/starlight/components';
   <TabItem label="GitHub Actions">
     ```typescript
     import {
-      ConcurrentMCPServer,
+      McpApp,
       createGitHubAuthProvider,
     } from "@casys/mcp-server";
 
-    const server = new ConcurrentMCPServer({
+    const server = new McpApp({
       name: "my-api",
       version: "1.0.0",
       auth: {
@@ -69,6 +74,8 @@ import { Tabs, TabItem, Aside, Steps } from '@astrojs/starlight/components';
           audience: "https://my-mcp.example.com",
           resource: "https://my-mcp.example.com",
         }),
+        authorizationServers: ["https://token.actions.githubusercontent.com"],
+        resource: "https://my-mcp.example.com",
       },
     });
     ```
@@ -80,11 +87,11 @@ import { Tabs, TabItem, Aside, Steps } from '@astrojs/starlight/components';
   <TabItem label="通用 OIDC">
     ```typescript
     import {
-      ConcurrentMCPServer,
+      McpApp,
       createOIDCAuthProvider,
     } from "@casys/mcp-server";
 
-    const server = new ConcurrentMCPServer({
+    const server = new McpApp({
       name: "my-api",
       version: "1.0.0",
       auth: {
@@ -92,8 +99,9 @@ import { Tabs, TabItem, Aside, Steps } from '@astrojs/starlight/components';
           issuer: "https://my-idp.example.com",
           audience: "https://my-mcp.example.com",
           resource: "https://my-mcp.example.com",
-          authorizationServers: ["https://my-idp.example.com"],
         }),
+        authorizationServers: ["https://my-idp.example.com"],
+        resource: "https://my-mcp.example.com",
       },
     });
     ```
@@ -128,6 +136,16 @@ server.registerTool(
   Scope 检查是**基于 AND 的** — token 必须拥有*所有*列出的 scope。需要 OR 逻辑？在[自定义中间件](/zh/docs/guides/middleware/)中实现。
 </Aside>
 
+## Token 缓存
+
+`JwtAuthProvider` 内置内存缓存，避免重复 JWKS 查询：
+
+- 缓存键：原始 token 字符串的 SHA-256 哈希
+- TTL：5 分钟
+- 最大条目：1000
+
+这意味着 token 第一次针对 JWKS 端点验证，之后在 TTL 窗口内从缓存提供服务。
+
 ## 进阶：JwtAuthProvider
 
 要完全控制验证参数，直接使用 `JwtAuthProvider`：
@@ -145,7 +163,19 @@ const provider = new JwtAuthProvider({
 });
 
 const authInfo = await provider.verifyToken(token);
-// { subject, clientId, scopes, claims, expiresAt } — or null if invalid
+// AuthInfo | null
+```
+
+`AuthInfo` 字段：
+
+```typescript
+interface AuthInfo {
+  subject: string;                     // Token "sub" claim
+  clientId?: string;                   // Token "client_id" or "azp" claim
+  scopes: string[];                    // Parsed from "scope" claim (space-separated)
+  claims?: Record<string, unknown>;    // All token claims
+  expiresAt?: number;                  // Token expiry as Unix epoch seconds
+}
 ```
 
 ## 自动发现 (RFC 9728)
@@ -168,6 +198,35 @@ GET /.well-known/oauth-protected-resource
 <Aside type="tip">
   无需手动设置。这是从你的 auth provider 配置中派生的，自动提供服务。
 </Aside>
+
+## 客户端 OAuth 流程
+
+构建需要对受保护服务器进行认证的 MCP 客户端：
+
+```typescript
+import {
+  prepareOAuthProvider,
+  FileTokenStore,
+} from "@casys/mcp-server";
+
+const oauthProvider = await prepareOAuthProvider(
+  "https://my-mcp.example.com",
+  {
+    clientId: "my-client-id",
+    scopes: ["read", "write"],
+    tokenStore: new FileTokenStore("./.tokens"),
+    openBrowser: (url) => {
+      // Open the authorization URL in the user's browser
+      console.log(`Open this URL to authorize: ${url}`);
+    },
+  },
+);
+```
+
+提供了两种 token 存储实现：
+
+- `FileTokenStore(path)` — 将 token 持久化到磁盘
+- `MemoryTokenStore()` — 内存存储，重启后 token 丢失
 
 ## 基于 YAML 的认证
 

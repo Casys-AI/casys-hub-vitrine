@@ -57,7 +57,7 @@ No base class, no decorators, no registration boilerplate.
 Use `server.use()` to add your middlewares. They slot in between the built-in auth layer and the built-in scope-check/validation layers:
 
 ```typescript
-const server = new ConcurrentMCPServer({
+const server = new McpApp({
   name: "my-server",
   version: "1.0.0",
 });
@@ -233,6 +233,6 @@ const sanitizer: Middleware = async (ctx, next) => {
 
 ## See Also
 
-- [Authentication (OAuth2)](/docs/guides/auth/) — The built-in auth middleware and OIDC presets
-- [ConcurrentMCPServer API](/docs/api/concurrent-mcp-server/) — Full `use()` and `registerTool()` reference
-- [Standalone Components](/docs/api/standalone-components/) — Use RateLimiter, RequestQueue as standalone utilities
+- [Authentication (OAuth2)](/docs/guides/auth) — The built-in auth middleware and OIDC presets
+- [McpApp API](/docs/api/concurrent-mcp-server) — Full `use()` and `registerTool()` reference
+- [Standalone Components](/docs/api/standalone-components) — Use RateLimiter, RequestQueue as standalone utilities

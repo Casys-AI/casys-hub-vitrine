@@ -1,54 +1,133 @@
 ---
-title: Telegram 适配器
-description: 将 MCP Apps 集成为 Telegram Mini Apps 的完整指南。
+title: Telegram
+description: "@casys/mcp-bridge 0.2.0 中 Telegram 集成的实际实现内容。"
 ---
 
 import { Aside } from '@astrojs/starlight/components';
 
-## 概述
+## 服务器配置
 
-Telegram 适配器将 Telegram WebApp SDK 映射到 MCP Apps 协议，提供：
+```ts
+import { JsonRpcMcpBackend, startResourceServer } from "@casys/mcp-bridge";
 
-- 主题同步 (浅色/深色)
-- 视口和安全区域边距
-- 通过 `initData` 进行认证 (HMAC-SHA256)
-- 生命周期事件 (激活、停用)
-- 原生链接打开
-
-## 配置
-
-```typescript
-import { TelegramPlatformAdapter } from "@casys/mcp-bridge";
-
-// 客户端：在 Telegram Mini App WebView 内运行
-const adapter = new TelegramPlatformAdapter();
-const hostContext = await adapter.initialize();
+const server = startResourceServer({
+  assetDirectories: {
+    "my-app": "./ui-dist",
+  },
+  platform: "telegram",
+  telegramBotToken: Deno.env.get("TELEGRAM_BOT_TOKEN")!,
+  backend: new JsonRpcMcpBackend({
+    endpointUrl: "https://my-mcp.example.com/mcp",
+  }),
+});
 ```
 
-## 主题映射
+对于 `platform: "telegram"`，除非你提供以下其中一项，否则服务器会立即失败：
 
-Telegram 主题会自动映射到 MCP 宿主上下文：
+- `telegramBotToken`
+- 自定义 `auth` 处理器
 
-| Telegram | MCP Host Context |
-|----------|-----------------|
-| `colorScheme: "dark"` | `{ theme: "dark" }` |
-| `colorScheme: "light"` | `{ theme: "light" }` |
-| `themeParams.bg_color` | `backgroundColor` |
-| `themeParams.text_color` | `textColor` |
+## 浏览器中发生的事情
+
+当注入的运行时检测到 `platform=telegram` 时，如果 `window.Telegram.WebApp` 可用，则会使用它。
+
+当前执行以下所有操作：
+
+- 调用 `Telegram.WebApp.ready()`
+- 若应用尚未展开，则调用 `Telegram.WebApp.expand()`
+- 在需要认证时通过 WebSocket 认证通道发送 `initData`
+- 使用 `Telegram.WebApp.openLink()` 处理 `ui/open-link`
+- 从 `colorScheme` 构建 `hostContext.theme`
+- 从 `viewportStableHeight` 构建 `hostContext.containerDimensions.height`
+- 监听 `themeChanged` 和 `viewportChanged` 事件
+
+目前不桥接 Telegram WebApp 的其余事件接口。
+
+<Aside type="caution">
+  注入的 `bridge.js` 在 `containerDimensions` 中使用 `height`（而非 `maxHeight`）。导出的 `TelegramPlatformAdapter` 类则使用 `maxHeight`（见 `getContainerDimensions()`）。`ContainerDimensions` 类型同时支持两个字段。从 `ui/initialize` 读取宿主上下文的代码必须检查与其运行层匹配的字段名称。
+</Aside>
 
 ## 认证
 
-适配器使用 HMAC-SHA256 验证 Telegram 的 `initData`：
+Telegram 认证在服务端实现，而不是在浏览器适配器中。
 
-1. Telegram 发送包含用户信息的 `initData` 查询字符串
-2. 适配器使用你的 bot 令牌验证签名
-3. 有效会话获得加密安全的会话令牌
-4. 无效请求返回 401
+内置处理器：
+
+1. 解析 Mini App 的 `initData`
+2. 移除 `hash`
+3. 对剩余的 `key=value` 对进行排序
+4. 使用 `"WebAppData"` 密钥通过 HMAC-SHA256 派生密钥
+5. 使用 `crypto.subtle.verify` 验证签名
+6. 拒绝早于 24 小时或晚于 60 秒的 `auth_date` 值
+
+认证发生在会话已存在后的第一条 WebSocket 消息上。
 
 <Aside type="caution">
-  永远不要将你的 bot 令牌暴露给客户端。适配器在服务端处理验证。
+  请将 bot 令牌保存在服务端。客户端只发送 Telegram 提供的 `initData`；签名验证在服务端进行。
 </Aside>
 
-## 视口与安全区域
+## 宿主上下文详情
 
-适配器报告 Telegram 的视口尺寸和安全区域边距，你的 MCP App 通过 `host-context-changed` 通知接收这些信息。
+对于自动注入的运行时，Telegram 目前提供：
+
+- `theme`
+- 从 `themeParams` 派生的 `styles.variables`（见下方 CSS 变量）
+- `locale`：当 `initDataUnsafe.user.language_code` 可用时使用，否则回退到 `navigator.language`
+- `timeZone`：来自浏览器环境
+- `containerDimensions.width`：来自 `window.innerWidth`
+- `containerDimensions.height`：来自 `viewportStableHeight`（回退到 `window.innerHeight`）
+
+导出的 `TelegramPlatformAdapter` 提供相同的字段，但有两点不同：
+
+- `locale` 始终来自 `navigator.language` — 不读取 `initDataUnsafe.user.language_code`
+- `containerDimensions` 对视口高度值使用 `maxHeight`（而非 `height`）
+
+## CSS 变量命名
+
+两个 Telegram 层在 `hostContext.styles.variables` 中产生不同的 CSS 变量模式。
+
+**注入的 `bridge.js` 运行时** — 键名镜像 Telegram 的 `themeParams` 属性名，以 `--tg-` 为前缀：
+
+| Telegram `themeParams` 键 | CSS 变量 |
+| --- | --- |
+| `bg_color` | `--tg-bg-color` |
+| `secondary_bg_color` | `--tg-secondary-bg-color` |
+| `text_color` | `--tg-text-color` |
+| `button_color` | `--tg-button-color` |
+| `button_text_color` | `--tg-button-text-color` |
+| `hint_color` | `--tg-hint-color` |
+| `link_color` | `--tg-link-color` |
+| (其他任意 `themeParams` 键) | `--tg-<键名-用连字符>` |
+
+**导出的 `TelegramPlatformAdapter`** — 键名使用语义化命名约定：
+
+| Telegram `themeParams` 键 | CSS 变量 |
+| --- | --- |
+| `bg_color` | `--color-background-primary` |
+| `secondary_bg_color` | `--color-background-secondary` |
+| `text_color` | `--color-text-primary` |
+| `subtitle_text_color` | `--color-text-secondary` |
+| `section_separator_color` | `--color-border-primary` |
+| `accent_text_color` | `--color-ring-primary` |
+| `hint_color` | `--color-text-hint` |
+| `link_color` | `--color-text-link` |
+| `button_color` | `--color-button-primary` |
+| `button_text_color` | `--color-button-text` |
+| `header_bg_color` | `--color-background-header` |
+| `section_bg_color` | `--color-background-section` |
+
+如果你使用注入的运行时，请在 CSS 中使用 `--tg-*` 变量。如果你将 `TelegramPlatformAdapter` 与自定义 `BridgeClient` 一起使用，请使用语义化的 `--color-*` 变量。
+
+## 导出的 Telegram API
+
+该包还导出了两个 Telegram 专用类：
+
+- `TelegramAdapter`：底层 `postMessage` 适配器
+- `TelegramPlatformAdapter`：用于自定义 `BridgeClient` 的高级平台适配器
+
+`TelegramPlatformAdapter` 提供比注入运行时更结构化的宿主上下文，包括 `safeAreaInsets`、`getAuthData()` 和 `sendMessage()`。其 `sendMessage()` 方法调用 `Telegram.WebApp.sendData()`，发送后会关闭 Mini App。
+
+## 不应假设的事项
+
+- 安全区域边距可从 `TelegramPlatformAdapter` 获取，但自动注入的 `bridge.js` 运行时目前不在发送给应用的宿主上下文中包含这些信息。
+- `MainButton`、`BackButton` 以及 Telegram SDK 事件的完整列表已在源码中定义类型，但目前尚未接入桥接流程。
