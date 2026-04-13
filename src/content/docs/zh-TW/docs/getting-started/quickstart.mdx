@@ -1,0 +1,145 @@
+---
+title: 快速開始
+description: 在不到一分鐘內構建你的第一個 MCP 伺服器。
+---
+
+import { Tabs, TabItem, Steps, Aside } from '@astrojs/starlight/components';
+
+讓我們構建一個可執行的 MCP 伺服器。在本頁結束時，你將擁有一個使用 STDIO 傳輸執行的伺服器，然後升級為帶有認證、速率限制和並發控制的 HTTP 伺服器。
+
+## 你的第一個伺服器
+
+<Steps>
+1. **建立 `server.ts`**：
+
+    ```typescript
+    import { McpApp } from "@casys/mcp-server";
+
+    const server = new McpApp({
+      name: "my-server",
+      version: "1.0.0",
+    });
+
+    server.registerTool(
+      {
+        name: "greet",
+        description: "Greet a user",
+        inputSchema: {
+          type: "object",
+          properties: { name: { type: "string" } },
+          required: ["name"],
+        },
+      },
+      ({ name }) => `Hello, ${name}!`,
+    );
+
+    await server.start(); // STDIO transport — blocks until disconnect
+    ```
+
+2. **執行**：
+
+    ```bash
+    deno run --allow-net server.ts
+    ```
+
+3. 使用任何 MCP 客戶端**連線** — Claude Desktop、Cursor、VS Code 等。
+</Steps>
+
+<Aside type="tip">
+  這只有 5 行有意義的程式碼。你獲得了 STDIO 傳輸、正確的 MCP 協定處理，以及優雅的關閉 — 全部開箱即用。
+</Aside>
+
+## 進階：HTTP + 認證 + 全功能
+
+對於遠端部署，將 `start()` 替換為 `startHttp()` 並開啟所需功能：
+
+```typescript
+import {
+  McpApp,
+  createGoogleAuthProvider,
+} from "@casys/mcp-server";
+
+const server = new McpApp({
+  name: "my-api",
+  version: "1.0.0",
+  maxConcurrent: 10,                                    // 最多 10 個並發工具呼叫
+  backpressureStrategy: "queue",                         // 達到容量上限時使用 FIFO 佇列
+  validateSchema: true,                                  // 透過 ajv 拒絕無效輸入
+  rateLimit: { maxRequests: 100, windowMs: 60_000 },    // 每個客戶端每分鐘 100 個請求
+  auth: {
+    provider: createGoogleAuthProvider({
+      audience: "https://my-mcp.example.com",
+      resource: "https://my-mcp.example.com",
+    }),
+    authorizationServers: ["https://accounts.google.com"],
+    resource: "https://my-mcp.example.com",
+  },
+});
+
+server.registerTool(
+  {
+    name: "query",
+    description: "Query the database",
+    inputSchema: {
+      type: "object",
+      properties: { sql: { type: "string" } },
+      required: ["sql"],
+    },
+    requiredScopes: ["db:read"],  // Token 必須包含此範圍
+  },
+  async ({ sql }) => ({ rows: await db.query(sql) }),
+);
+
+await server.startHttp({ port: 3000 });
+```
+
+<Aside>
+  使用 HTTP 傳輸，你會自動獲得：`/.well-known/oauth-protected-resource` 的 RFC 9728 元資料探索、`GET /mcp` 的 SSE 串流、`POST /mcp` 的 JSON-RPC、`GET /health` 的健康檢查，以及 `GET /metrics` 的指標。無需額外程式碼。
+</Aside>
+
+## 打包為二進位檔並使用 YAML 配置
+
+以編譯後的二進位檔發布時，使用者可透過 `mcp-server.yaml` 檔案配置認證 — 零程式碼修改：
+
+```yaml
+# mcp-server.yaml
+auth:
+  provider: auth0
+  audience: https://my-mcp.example.com
+  resource: https://my-mcp.example.com
+  domain: my-tenant.auth0.com
+  scopesSupported:
+    - read
+    - write
+    - admin
+```
+
+環境變數可覆蓋 YAML 以提升部署彈性：
+
+```bash
+MCP_AUTH_AUDIENCE=https://prod.example.com ./my-server --http --port 3000
+```
+
+優先順序：`程式碼設定 > 環境變數 > YAML > 無認證`
+
+## 使用 Inspector 除錯
+
+啟動 MCP Inspector 以除錯你的伺服器：
+
+```typescript
+import { launchInspector } from "@casys/mcp-server";
+
+await launchInspector("deno", ["run", "--allow-all", "server.ts"], { port: 6274 });
+```
+
+實際簽名：`launchInspector(serverCommand, serverArgs, options?)`。第一個參數是執行環境指令，第二個是其引數陣列，`options.port` 設定 Inspector 介面連接埠。
+
+## 接下來的方向
+
+你已有一個執行中的伺服器，現在讓它成為你的：
+
+- **[中介軟體管道](/zh-TW/docs/guides/middleware)** — 在請求鏈中加入日誌、快取、指標或任何自訂邏輯
+- **[認證](/zh-TW/docs/guides/auth)** — 深入了解 Google、Auth0、GitHub 和 OIDC 的 OAuth2 預設配置
+- **[配置](/zh-TW/docs/guides/configuration)** — 用於二進位發布的 YAML + 環境變數配置
+- **[MCP Apps](/zh-TW/docs/guides/mcp-apps)** — 在工具旁提供互動式 HTML 介面
+- **[API 參考](/zh-TW/docs/api/concurrent-mcp-server)** — 每個方法和選項的文件說明

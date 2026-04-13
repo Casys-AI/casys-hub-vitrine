@@ -1,0 +1,68 @@
+---
+title: LINE
+description: "@casys/mcp-bridge 中 LINE 的目前支援狀態。"
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+<Aside type="caution">
+  LINE 支援在 `@casys/mcp-bridge` 0.2.0 中為部分實作。套件包含低階 LINE 介面卡和 `platform=line` 瀏覽器執行時期分支，但不提供 LINE 專屬的 `PlatformAdapter`、LIFF 初始化流程或內建的伺服器端令牌驗證。
+</Aside>
+
+## 目前存在的功能
+
+- `LineAdapter` 繼承共用的 `BasePostMessageAdapter`。
+- 注入的 `bridge.js` 執行時期識別 `platform=line`。
+- 該執行時期使用基於瀏覽器 API 的通用行動宿主上下文。
+- 如果 `window.liff.getAccessToken()` 存在且回傳值，執行時期可以透過 WebSocket 將其作為認證酬載發送。
+
+## 尚未存在的功能
+
+- 沒有匯出的 `LinePlatformAdapter`
+- 沒有內建的 LIFF `init()` 呼叫
+- 沒有 LIFF 專屬的主題設定或生命週期對應
+- 沒有伺服器端的內建 LINE 存取令牌驗證
+
+## 低階介面卡範例
+
+```ts
+import { LineAdapter } from "@casys/mcp-bridge";
+
+const adapter = new LineAdapter();
+
+await adapter.init({
+  resourceBaseUrl: "https://your-domain.com",
+});
+```
+
+`LineAdapter` 提供與基礎介面卡相同的低階介面：
+
+- `init(config)`
+- `sendToHost(message)`
+- `onMessageFromHost(handler)`
+- `destroy()`
+
+## 使用 `platform: "line"` 的 Resource Server
+
+您仍然可以透過以下方式提供 HTML 並執行瀏覽器 bridge：
+
+```ts
+import { startResourceServer } from "@casys/mcp-bridge";
+
+const server = startResourceServer({
+  assetDirectories: {
+    "my-app": "./ui-dist",
+  },
+  platform: "line",
+});
+```
+
+如果您需要 LINE 認證，必須在伺服器上提供您自己的 `auth` 處理器。套件不提供 LINE 驗證器。
+
+## 實際預期
+
+將目前的 LINE 路徑視為傳輸腳手架：
+
+- 足以試驗通用 webview 行為
+- 與 Telegram 路徑不對等
+- 不是即插即用的 LIFF 整合

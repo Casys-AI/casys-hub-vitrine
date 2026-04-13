@@ -1,0 +1,93 @@
+---
+title: 安全性
+description: "@casys/mcp-bridge 的實際安全模型、預設值及目前限制。"
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## 工作階段
+
+工作階段使用 `crypto.getRandomValues()` 產生的 128 位元隨機值在記憶體中建立。工作階段在 WebSocket 交握之前就已存在：
+
+- 當伺服器從 `/app/...` 提供 HTML 時
+- 當伺服器透過 `onHttpRequest()` 或 `/ui?uri=...` 提供代理 HTML 時
+- 當用戶端明確呼叫 `POST /session` 時
+
+伺服器儲存：
+
+- `id`
+- `platform`
+- 時間戳記
+- `authenticated`
+- 選擇性的 `principalId`、`userId`、`username` 及 `authContext`
+- 選擇性的緩衝通知
+
+預設工作階段 TTL 為 30 分鐘，過期的工作階段每 60 秒清理一次。
+
+<Aside type="note">
+  目前的原始碼中，工作階段 TTL 無法透過 `startResourceServer()` 設定。伺服器始終以預設最大存留時間建構 `new SessionStore()`。
+</Aside>
+
+## 認證流程
+
+認證是選擇性且通用的。如果設定了認證處理器，第一則 WebSocket 訊息必須是認證酬載。
+
+對於 Telegram，`telegramBotToken` 安裝內建認證處理器。未認證的非認證訊息會導致：
+
+- 一個 `auth_error` 框架
+- WebSocket 關閉代碼 `4003`
+
+認證失敗以 `4001` 關閉 socket。過期的工作階段以 `4002` 關閉。
+
+## Telegram `initData` 驗證
+
+內建的 Telegram 驗證器：
+
+- 要求 `hash`
+- 要求 `auth_date`
+- 拒絕無效的十六進位值
+- 使用 Web Crypto 驗證 HMAC-SHA256 簽章
+- 拒絕超過 24 小時的 `auth_date`
+- 拒絕超過未來 60 秒的 `auth_date`
+
+如果 `user` 欄位存在，驗證器也會提取 `userId`、`username`、`firstName` 及 `lastName`。
+
+## 內容安全策略
+
+HTML 回應透過 `buildCspHeader()` 取得建構的 CSP。預設政策為：
+
+```text
+default-src 'none';
+script-src 'self' 'unsafe-inline';
+style-src 'self' 'unsafe-inline';
+img-src 'self' data:;
+font-src 'self';
+connect-src 'self';
+frame-ancestors 'self';
+base-uri 'self'
+```
+
+額外的來源來自：
+
+- `config.csp` 用於所有提供的 HTML
+- `UiResourceResponse.csp` 僅用於後端代理的資源
+
+目前實作中，`/app/...` 下的本機檔案沒有每資源中繼資料驅動的 CSP。
+
+## 檔案系統保護
+
+`/app/...` 的路徑遍歷保護是詞彙層面的：
+
+- `.` 和 `..` 在字串空間中正規化
+- 解析後的路徑仍必須以設定的基礎目錄開頭
+
+這可以防止簡單的遍歷嘗試，但不會解析符號連結。
+
+## 目前的信任邊界
+
+套件有重要的安全限制，文件不應隱藏這些限制：
+
+- `allowedOrigins` 僅影響 HTTP CORS 標頭。WebSocket 端點不執行明確的 `Origin` 驗證。
+- 共用的 `BasePostMessageAdapter` 從 `resourceBaseUrl` 限制傳出的 `targetOrigin`，但不透過 `event.origin` 驗證傳入的 `message` 事件。
+- 工作階段狀態僅在記憶體中。重啟伺服器會清除工作階段和緩衝通知。
+- 沒有內建的 LINE 令牌驗證。

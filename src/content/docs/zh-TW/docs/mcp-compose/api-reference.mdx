@@ -1,0 +1,216 @@
+---
+title: 'API 參考'
+description: '匯入路徑、匯出函式、型別和目前的模組邊界。'
+---
+
+本文件描述 `mcp-compose` `0.4.0` 版本中的 API 介面。
+
+## 根套件
+
+```typescript
+import {
+  buildCompositeUi,
+  composeEvents,
+  createCollector,
+  createMcpSdkCollector,
+  extractUiMeta,
+  renderComposite,
+  resolveSyncRules,
+  uiMeta,
+  validateComposition,
+  validateSyncRules,
+} from "@casys/mcp-compose";
+```
+
+根匯出包括：
+
+- 核心型別，如 `CollectedUiResource`、`UiLayout`、`UiOrchestration`、`UiSyncRule`、`CompositeUiDescriptor`
+- `ErrorCode`、`UI_LAYOUT_PRESETS`、`isValidLayout`
+- `createCollector`、`extractUiMeta`
+- `resolveSyncRules`、`validateSyncRules`
+- `buildCompositeUi`
+- `renderComposite`
+- SDK 輔助函式：`createMcpSdkCollector`、`uiMeta`、`validateComposition`、`composeEvents`
+- 主機型別：`CompositeUiHost`、`HostConfig`
+
+## `@casys/mcp-compose/core`
+
+當你只需要純組合基元時使用 `core`：
+
+```typescript
+import {
+  buildCompositeUi,
+  createCollector,
+  extractUiMeta,
+  resolveSyncRules,
+  validateSyncRules,
+  ErrorCode,
+  isLayoutAreas,
+  isLayoutPreset,
+  isValidLayout,
+  UI_LAYOUT_PRESETS,
+} from "@casys/mcp-compose/core";
+```
+
+`core` 匯出型別、收集器、同步輔助函式、組合器和版面配置驗證器。它不匯出渲染器。
+
+## `@casys/mcp-compose/sdk`
+
+```typescript
+import {
+  composeEvents,
+  createMcpSdkCollector,
+  uiMeta,
+  validateComposition,
+  COMPOSE_EVENT_METHOD,
+} from "@casys/mcp-compose/sdk";
+```
+
+匯出：
+
+- `createMcpSdkCollector()`
+- `uiMeta(options)`
+- `validateComposition(tools, syncRules)`
+- `composeEvents(parent?, source?)`
+- `COMPOSE_EVENT_METHOD` — 常數 `"ui/compose/event"`
+- 相關 SDK 型別，如 `McpSdkCallToolResult`、`UiMetaOptions`、`CompositionValidationResult`、`ComposeEvents`
+
+注意：
+
+- `createMcpSdkCollector()` 只新增 SDK 形狀的型別加上 `isError: true` 跳過。
+- `composeEvents()` 是面向瀏覽器的。即使沒有父視窗，建立通道也會成功，但如果沒有可用的父視窗，`emit()` 會拋出例外。
+
+## `@casys/mcp-compose/host`
+
+```typescript
+import {
+  renderComposite,
+  serveDashboard,
+} from "@casys/mcp-compose/host";
+```
+
+匯出：
+
+- `renderComposite(descriptor)`
+- `serveDashboard(html, options?)`
+- `CompositeUiHost`、`HostConfig`
+- `ServeDashboardHandle`、`ServeDashboardOptions`
+
+注意：
+
+- `renderComposite()` 是純函式。
+- `serveDashboard()` 僅限 Deno。它使用 `Deno.serve()` 並可能開啟預設瀏覽器。
+
+## `@casys/mcp-compose/runtime`
+
+```typescript
+import {
+  composeDashboard,
+  composeDashboardFromFiles,
+  connectHttp,
+  createCluster,
+  injectArgs,
+  loadManifest,
+  loadManifests,
+  loadTemplate,
+  parseManifest,
+  parseTemplate,
+  startServer,
+  validateManifest,
+  validateTemplate,
+} from "@casys/mcp-compose/runtime";
+```
+
+匯出：
+
+- 清單輔助函式：`validateManifest`、`parseManifest`、`loadManifest`、`loadManifests`
+- 模板輔助函式：`validateTemplate`、`parseTemplate`、`loadTemplate`、`injectArgs`
+- 叢集輔助函式：`connectHttp`、`startServer`、`createCluster`
+- 組合進入點：`composeDashboard`、`composeDashboardFromFiles`
+- 執行階段型別：`ComposeRequest`、`ComposeResult`、`DashboardTemplate`、`McpManifest`、`TemplateSource`、`TemplateToolCall`、`RuntimeErrorCode` 及相關傳輸/叢集型別
+
+來自原始碼的重要執行階段行為：
+
+- 如果缺少這些參數，stdio 伺服器會以 `--http --port=0` 啟動
+- 啟動等待 `stderr` 上出現 `listening on http://...` 行
+- 工具呼叫發送到 `POST <baseUrl>/mcp`
+- `composeDashboard()` 將 `ui://server/...` URI 解析為 `${uiBaseUrl}/ui?uri=...`
+- `composeDashboardFromFiles()` 不公開 `composeDashboard()` 支援的 `keepAlive` 選項
+
+關鍵模板型別：
+
+```typescript
+interface TemplateToolCall {
+  /** 工具名稱（裸名，限定在來源的清單範圍內）。 */
+  tool: string;
+  /** 靜態參數。{{key}} 佔位符在組合時替換。 */
+  args?: Record<string, unknown>;
+}
+
+interface TemplateSource {
+  /** 用於版面配置區域格線的短 ID。 */
+  id?: string;
+  /** 清單名稱（必須與 McpManifest.name 相符）。 */
+  manifest: string;
+  /** 在此伺服器上呼叫的工具。 */
+  calls: TemplateToolCall[];
+}
+```
+
+## `@casys/mcp-compose/deploy`
+
+```typescript
+import type {
+  DeployCredentials,
+  DeployManifestEntry,
+  DeployRequest,
+  DeployResult,
+  DeployTransport,
+  TunnelConnection,
+} from "@casys/mcp-compose/deploy";
+import { DeployErrorCode } from "@casys/mcp-compose/deploy";
+```
+
+目前狀態：
+
+- `deploy` 匯出型別和 `DeployErrorCode`
+- 目前尚未實作或匯出任何部署函式
+
+套件庫的 deploy readme 描述了計劃中的 API，如 `deployDashboard()` 和 `createTunnel()`，但這些函式在 `0.4.0` 中尚不存在。
+
+`DeployError` 是與 `DeployErrorCode` 一起匯出的結構化錯誤型別：
+
+```typescript
+interface DeployError {
+  code: DeployErrorCode;
+  message: string;
+  project?: string;
+  cause?: unknown;
+}
+```
+
+## 關鍵型別
+
+```typescript
+interface CollectedUiResource {
+  source: string;
+  resourceUri: string;
+  context?: Record<string, unknown>;
+  slot: number;
+}
+
+interface UiOrchestration {
+  layout: UiLayout;
+  sync?: UiSyncRule[];
+  sharedContext?: string[];
+}
+
+interface UiSyncRule {
+  from: string;
+  event: string;
+  to: string;
+  action: string;
+}
+```
+
+關於這些型別之間的資料流，請參閱[收集器](./collector/)、[組合器](./composer/)、[渲染器](./renderer/)和[同步規則](./sync-rules/)。

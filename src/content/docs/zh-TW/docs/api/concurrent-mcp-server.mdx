@@ -1,0 +1,560 @@
+---
+title: McpApp
+description: McpApp 類別的完整 API 參考。
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+:::note[遷移說明]
+此類別在 v0.13 中從 `ConcurrentMCPServer` 更名為 `McpApp`。舊名稱作為已棄用的別名重新匯出，將在 v1.0 中移除。
+:::
+
+框架的主要入口點。`McpApp` 負責工具註冊、中介軟體組合、傳輸選擇和生命週期管理。
+
+<Aside type="note">
+  以 Deno 為主。Node.js 20+ 透過 JSR npm 相容層支援。
+</Aside>
+
+## 建構函式
+
+```typescript
+import { McpApp } from "@casys/mcp-server";
+
+const server = new McpApp(options: ConcurrentServerOptions);
+```
+
+### ConcurrentServerOptions
+
+```typescript
+interface ConcurrentServerOptions {
+  // 必填
+  name: string;                          // 伺服器名稱（顯示給客戶端）
+  version: string;                       // Semver 版本字串
+
+  // 並發
+  maxConcurrent?: number;                // 預設：10
+  backpressureStrategy?: "sleep" | "queue" | "reject";  // 預設："sleep"
+  backpressureSleepMs?: number;          // "sleep" 策略的睡眠間隔（毫秒）
+
+  // 速率限制
+  rateLimit?: RateLimitOptions;
+
+  // Schema 驗證
+  validateSchema?: boolean;              // 預設：false — 啟用 ajv 8
+
+  // Sampling
+  enableSampling?: boolean;              // 啟用雙向 LLM 委派
+  samplingClient?: SamplingClient;       // 外部 sampling 客戶端（bridge 的替代方案）
+
+  // 資源
+  expectResources?: boolean;             // 啟用動態資源支援
+
+  // 認證
+  auth?: AuthOptions;                    // OAuth2/Bearer 配置
+
+  // MCP Apps
+  resourceCsp?: CspOptions;             // HTML 資源注入的 CSP 選項
+
+  // 自訂
+  instructions?: string;                // 初始化時傳送給客戶端的說明
+  toolErrorMapper?: (error: unknown, toolName: string) => string | null;  // 返回要以 isError:true 形式呈現的訊息，或 null 以重新拋出
+  logger?: (msg: string) => void;       // 預設：console.error
+}
+```
+
+### RateLimitOptions
+
+```typescript
+interface RateLimitOptions {
+  maxRequests: number;    // 每個視窗的最大請求數
+  windowMs: number;       // 視窗大小（毫秒）
+  keyExtractor?: (context: RateLimitContext) => string;  // 預設："default"（全域）
+  onLimitExceeded?: "reject" | "wait";  // 預設："wait"
+}
+
+interface RateLimitContext {
+  toolName: string;
+  args: Record<string, unknown>;
+}
+```
+
+### AuthOptions
+
+```typescript
+interface AuthOptions {
+  provider: AuthProvider;              // 使用預設配置（createGoogleAuthProvider 等）或 JwtAuthProvider
+  authorizationServers: string[];      // 授權伺服器 URL（例如 ["https://accounts.google.com"]）
+  resource: string;                    // 此伺服器的資源 URL（用於 RFC 9728 探索）
+  scopesSupported?: string[];          // 在探索文件中宣傳的範圍
+}
+```
+
+## 註冊方法
+
+所有註冊必須在呼叫 `start()` 或 `startHttp()` **之前**完成。例外：`registerToolLive()` 專為啟動後註冊設計。設定 `expectResources: true` 也可在啟動後啟用動態資源註冊。
+
+### registerTool
+
+```typescript
+server.registerTool(tool: MCPTool, handler: ToolHandler): void;
+```
+
+使用其處理器註冊單個工具：
+
+```typescript
+server.registerTool(
+  {
+    name: "greet",
+    description: "Greet someone",
+    inputSchema: {
+      type: "object",
+      properties: { name: { type: "string" } },
+      required: ["name"],
+    },
+    requiredScopes: ["read"],   // 可選 — 若配置了認證，則需要此範圍
+    outputSchema: {             // 可選 — 用於結構化工具結果（SDK 1.27）
+      type: "object",
+      properties: { message: { type: "string" } },
+    },
+    annotations: {              // 可選 — 客戶端提示
+      readOnlyHint: true,
+    },
+  },
+  ({ name }) => `Hello, ${name}!`,
+);
+```
+
+### registerTools
+
+```typescript
+server.registerTools(tools: MCPTool[], handlers: Map<string, ToolHandler>): void;
+```
+
+批量註冊工具。Map 的鍵必須與工具名稱完全匹配。
+
+### registerToolLive
+
+```typescript
+server.registerToolLive(tool: MCPTool, handler: ToolHandler): void;
+```
+
+在伺服器啟動後註冊工具。客戶端在下一次 `tools/list` 請求時會看到新工具。
+
+### unregisterTool
+
+```typescript
+server.unregisterTool(toolName: string): void;
+```
+
+移除已註冊的工具。客戶端在後續的 `tools/list` 請求中將不再看到它。
+
+### registerAppOnlyTool
+
+```typescript
+server.registerAppOnlyTool(tool: MCPTool, handler: ToolHandler): void;
+```
+
+註冊僅對 UI 客戶端可見的工具 — 它不出現在 LLM 的工具列表中。
+
+### registerResource
+
+```typescript
+server.registerResource(resource: MCPResource, handler: ResourceHandler): void;
+```
+
+註冊單個資源。關於 `text/html;profile=mcp-app` 資源，請參閱 [MCP Apps](/zh-TW/docs/guides/mcp-apps)。
+
+### registerResources
+
+```typescript
+server.registerResources(
+  resources: MCPResource[],
+  handlers: Map<string, ResourceHandler>,
+): void;
+```
+
+批量註冊資源。
+
+### registerViewers
+
+```typescript
+server.registerViewers(config: RegisterViewersConfig): void;
+```
+
+批量註冊基於檔案的檢視器資源。每個條目將 URI 前綴映射到模組配置：
+
+```typescript
+server.registerViewers({
+  prefix: "ui://my-server/",
+  moduleUrl: import.meta.url,
+  exists: async (path) => /* 檢查路徑是否存在 */,
+  readFile: async (path) => /* 返回檔案內容字串 */,
+});
+```
+
+`prefix` 是所有已註冊資源的基礎 URI。`moduleUrl` 用於將相對路徑解析為絕對路徑。`exists` 和 `readFile` 由框架呼叫以提供檢視器檔案。
+
+### use
+
+```typescript
+server.use(middleware: Middleware): this;
+```
+
+向管道加入自訂中介軟體。返回 `this` 以支援鏈式呼叫：
+
+```typescript
+server
+  .use(logging)
+  .use(metrics)
+  .use(caching);
+```
+
+<Aside type="caution">
+  在 `start()` 或 `startHttp()` 之後呼叫會拋出錯誤。管道在啟動時編譯。
+</Aside>
+
+請參閱[中介軟體管道指南](/zh-TW/docs/guides/middleware)了解模式和範例。
+
+## 傳輸方法
+
+### start
+
+```typescript
+await server.start(): Promise<void>;
+```
+
+以 STDIO 傳輸啟動。用於本地工具（Claude Desktop、Cursor 等）。阻塞直到客戶端斷線。
+
+### startHttp
+
+```typescript
+server.startHttp(options: HttpServerOptions): HttpServerInstance;
+```
+
+以 Streamable HTTP 傳輸啟動。包含 SSE 串流、工作階段管理和 RFC 9728 探索。返回 `HttpServerInstance`（非 Promise）。
+
+```typescript
+interface HttpServerOptions {
+  port: number;
+  hostname?: string;              // 預設："0.0.0.0"
+  cors?: boolean;                 // 預設：true
+  corsOrigins?: "*" | string[];   // 預設："*" — 生產環境使用允許清單
+  maxBodyBytes?: number | null;   // 預設：1_000_000（1 MB）。null = 無限制
+  requireAuth?: boolean;          // 預設：false — 若為 true 且無認證則啟動時拋出錯誤
+  customRoutes?: RouteConfig[];   // 額外的 HTTP 路由
+  ipRateLimit?: {
+    maxRequests: number;
+    windowMs: number;
+    keyExtractor?: (request: Request) => string;   // 自訂金鑰提取（預設：IP）
+    onLimitExceeded?: (request: Request) => void;  // 達到限制時呼叫
+  };
+  onListen?: (info: { hostname: string; port: number }) => void;  // 伺服器就緒時呼叫
+  embedded?: boolean;             // 跳過連接埠綁定 — 改用 getFetchHandler()
+  embeddedHandlerCallback?: (handler: FetchHandler) => void;  // 嵌入模式下接收處理器（由 getFetchHandler() 內部設定）
+}
+```
+
+自動提供的 HTTP 路由：
+
+| 方法 | 路徑 | 說明 |
+|--------|------|-------------|
+| `POST` | `/mcp` | JSON-RPC 工具呼叫 |
+| `GET` | `/mcp` | 通知的 SSE 串流 |
+| `GET` | `/health` | 健康檢查 |
+| `GET` | `/metrics` | Prometheus 指標 |
+| `GET` | `/.well-known/oauth-protected-resource` | RFC 9728 探索（若已配置認證） |
+
+工作階段：32 個字元的十六進位 ID、30 分鐘 TTL、最多 10,000 個活躍工作階段、每個 IP 每 60 秒最多 10 次 `initialize` 呼叫的速率限制。
+
+**帶安全選項的範例：**
+
+```typescript
+await server.startHttp({
+  port: 3000,
+  requireAuth: true,
+  corsOrigins: ["https://app.example.com"],
+  maxBodyBytes: 1_048_576,
+  ipRateLimit: { maxRequests: 60, windowMs: 60_000 },
+  onListen: ({ hostname, port }) => console.log(`Ready on ${hostname}:${port}`),
+});
+```
+
+### getFetchHandler
+
+```typescript
+await server.getFetchHandler(
+  options?: Omit<HttpServerOptions, "port" | "hostname" | "onListen">
+): Promise<FetchHandler>;
+```
+
+構建完整的 HTTP 中介軟體堆疊並返回其 Web 標準 fetch 處理器，**無需綁定連接埠**。使用此方法將 MCP HTTP 層嵌入現有的 Web 框架（Fresh、Hono、Express）中，而不是將連接埠所有權交給 `startHttp`。
+
+返回的處理器接受 `Request` 並返回 `Response`。它暴露與 `startHttp` 相同的路由：`POST /mcp`、`GET /mcp`（SSE）、`GET /health`、`GET /metrics` 和 `GET /.well-known/oauth-protected-resource`。認證、速率限制、工作階段清理和 OTel 鉤子的工作方式完全相同。
+
+```typescript
+import { Hono } from "hono";
+
+const app = new Hono();
+const mcpApp = new McpApp({ name: "my-app", version: "1.0.0" });
+// ... 註冊工具 ...
+const handler = await mcpApp.getFetchHandler();
+app.all("/mcp/*", (c) => handler(c.req.raw));
+```
+
+多租戶 SaaS 模式：為每個租戶實例化一個 `McpApp`，每個伺服器呼叫一次 `getFetchHandler()`，然後從路由器將每個入站請求分派到正確的處理器。
+
+### stop
+
+```typescript
+await server.stop(): Promise<void>;
+```
+
+優雅關閉。在關閉前等待進行中的請求完成。
+
+## 通知方法
+
+### sendNotification
+
+```typescript
+server.sendNotification(method: string, params?: Record<string, unknown>): void;
+```
+
+向當前工作階段發送通知（STDIO 傳輸）。
+
+### broadcastNotification
+
+```typescript
+server.broadcastNotification(
+  method: string,
+  params?: Record<string, unknown>,
+): void;
+```
+
+向**所有**已連線的 SSE 客戶端推送通知（HTTP 傳輸）。
+
+### sendToSession
+
+```typescript
+server.sendToSession(sessionId: string, message: Record<string, unknown>): void;
+```
+
+透過 ID 向特定 SSE 工作階段推送訊息（HTTP 傳輸）。
+
+## 可觀測性方法
+
+### getMetrics
+
+```typescript
+server.getMetrics(): QueueMetrics;
+```
+
+返回即時佇列指標：
+
+```typescript
+interface QueueMetrics {
+  inFlight: number;  // 當前正在執行的請求
+  queued: number;    // 在背壓佇列中等待的請求
+}
+```
+
+### getServerMetrics
+
+```typescript
+server.getServerMetrics(): ServerMetricsSnapshot;
+```
+
+返回當前伺服器指標的快照，包括進行中的請求、排隊的請求和活躍工作階段。
+
+### getPrometheusMetrics
+
+```typescript
+server.getPrometheusMetrics(): string;
+```
+
+以 Prometheus 文字格式返回指標。與 `GET /metrics` 提供的資料相同。所有指標名稱使用 `mcp_server_` 前綴：
+
+```
+# HELP mcp_server_tool_calls_total Total number of tool calls
+# TYPE mcp_server_tool_calls_total counter
+mcp_server_tool_calls_total{tool="greet",status="success"} 42
+
+# HELP mcp_server_tool_call_duration_ms Tool call duration in milliseconds
+# TYPE mcp_server_tool_call_duration_ms histogram
+mcp_server_tool_call_duration_ms_bucket{tool="greet",le="100"} 40
+...
+
+# HELP mcp_server_active_requests Currently active requests
+# TYPE mcp_server_active_requests gauge
+mcp_server_active_requests 3
+
+# HELP mcp_server_active_sessions Currently active SSE sessions
+# TYPE mcp_server_active_sessions gauge
+mcp_server_active_sessions 7
+```
+
+可用計數器：`mcp_server_tool_calls_total`、`mcp_server_auth_success_total`、`mcp_server_auth_failed_total`。
+
+### getRateLimitMetrics
+
+```typescript
+server.getRateLimitMetrics(): { keys: number; totalRequests: number } | null;
+```
+
+若未配置速率限制則返回 `null`。
+
+### getRateLimiter
+
+```typescript
+server.getRateLimiter(): RateLimiter | null;
+```
+
+返回底層的 `RateLimiter` 實例，用於進階使用場景（自訂金鑰檢查、視窗重設）。若未配置速率限制則返回 `null`。
+
+### getToolCount / getToolNames
+
+```typescript
+server.getToolCount(): number;
+server.getToolNames(): string[];
+```
+
+### getResourceCount
+
+```typescript
+server.getResourceCount(): number;
+```
+
+### getResourceUris
+
+```typescript
+server.getResourceUris(): string[];
+```
+
+返回所有已註冊資源 URI 的陣列（例如 `["ui://my-server/viewer", "ui://my-server/dashboard"]`）。
+
+### getResourceInfo
+
+```typescript
+server.getResourceInfo(uri: string): MCPResource | undefined;
+```
+
+返回已註冊資源的 `MCPResource` 定義（uri、name、description、mimeType），若未找到則返回 `undefined`。適用於測試和除錯。
+
+### readResourceContent
+
+```typescript
+server.readResourceContent(uri: string): Promise<ResourceContent | null>;
+```
+
+直接呼叫已註冊的資源處理器並返回其內容，而不透過 MCP 協定。若資源未註冊則返回 `null`。適用於伺服器端渲染或整合測試。
+
+```typescript
+const content = await server.readResourceContent("ui://my-server/viewer");
+// content.text 包含 HTML
+```
+
+### isStarted
+
+```typescript
+server.isStarted(): boolean;
+```
+
+在 `start()` 或 `startHttp()` 被呼叫後返回 `true`。
+
+## 多租戶中介軟體
+
+對於每個已認證使用者屬於一個租戶的 SaaS 部署，使用 `createMultiTenantMiddleware` 將 `tenantId` 注入中介軟體上下文。它必須在認證中介軟體（填充 `ctx.authInfo`）**之後**且在範圍強制執行或工具處理器之前執行。
+
+```typescript
+import {
+  createMultiTenantMiddleware,
+  type TenantResolver,
+  type TenantResolution,
+} from "@casys/mcp-server";
+
+class SubdomainTenantResolver implements TenantResolver {
+  async resolve(ctx): Promise<TenantResolution> {
+    const host = ctx.request!.headers.get("host") ?? "";
+    const subdomain = host.split(".")[0];
+    const claim = (ctx.authInfo as any).claims?.["urn:my-app:tenant_id"];
+    if (typeof claim !== "string" || claim !== subdomain) {
+      return { ok: false, reason: `claim/subdomain mismatch` };
+    }
+    return { ok: true, tenantId: subdomain };
+  }
+}
+
+server.use(createMultiTenantMiddleware(new SubdomainTenantResolver(), {
+  onRejection: (ctx, reason) => auditLog.warn("tenant_reject", { reason }),
+}));
+```
+
+此中介軟體執行後，`ctx.authInfo.tenantId` 被設定並凍結。所有下游中介軟體和工具處理器都可以讀取它以限定資料存取範圍。
+
+### 類型
+
+```typescript
+type TenantResolution =
+  | { ok: true; tenantId: string }
+  | { ok: false; reason: string };
+
+interface TenantResolver {
+  resolve(ctx: MiddlewareContext): Promise<TenantResolution>;
+}
+
+interface MultiTenantMiddlewareOptions {
+  /**
+   * 在拒絕前於發送 401 之前呼叫。
+   * 用於審計日誌。原因永遠不會暴露給客戶端。
+   * 若此鉤子拋出錯誤，錯誤會記錄到 stderr，但 401 仍然會發送。
+   */
+  onRejection?: (ctx: MiddlewareContext, reason: string) => void | Promise<void>;
+}
+```
+
+管道行為：
+- **STDIO 傳輸**（無 `ctx.request`）：直接通過，不做任何處理 — STDIO 沒有租戶概念。
+- **HTTP 無 `ctx.authInfo`**：拋出配置錯誤。認證中介軟體必須在此之前。
+- **HTTP 且解析被拒絕**：呼叫 `onRejection`，然後拋出 `AuthError("invalid_token")` — 一個通用的 401，不向客戶端洩露任何租戶詳情。
+
+## Sampling Bridge
+
+設定 `enableSampling: true` 時，伺服器可以透過客戶端連線回委派 LLM 呼叫。還必須提供 `samplingClient` 來處理實際請求：
+
+```typescript
+import { McpApp, createSamplingClient } from "@casys/mcp-server";
+
+const samplingClient = createSamplingClient(/* client config */);
+
+const server = new McpApp({
+  name: "my-server",
+  version: "1.0.0",
+  enableSampling: true,
+  samplingClient,
+});
+
+server.registerTool(
+  { name: "summarize", description: "Summarize text", inputSchema: { type: "object", properties: { text: { type: "string" } } } },
+  async (args) => {
+    const result = await samplingClient.requestSampling({
+      messages: [{ role: "user", content: args.text as string }],
+      maxTokens: 500,
+      maxIterations: 3,
+    });
+    return result.content;
+  },
+);
+```
+
+注意：`ToolHandler` 只接收 `args` — 沒有 `{ bridge }` 第二個引數。
+
+## OpenTelemetry
+
+設定 `OTEL_DENO=true` 以啟用 OpenTelemetry 追蹤。工具呼叫和認證事件會發出 span。
+
+## 另請參閱
+
+- [快速開始](/zh-TW/docs/getting-started/quickstart) — 使用兩種傳輸的伺服器設定
+- [中介軟體管道](/zh-TW/docs/guides/middleware) — `use()` 指南和管道順序
+- [認證（OAuth2）](/zh-TW/docs/guides/auth) — `auth` 選項和範圍強制執行
+- [MCP Apps](/zh-TW/docs/guides/mcp-apps) — `registerViewers()`、`registerAppOnlyTool()` 和 UI 資源
+- [獨立元件](/zh-TW/docs/api/standalone-components) — 獨立使用 RateLimiter、RequestQueue

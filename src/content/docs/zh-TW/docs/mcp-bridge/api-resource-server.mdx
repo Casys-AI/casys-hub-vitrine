@@ -1,0 +1,114 @@
+---
+title: Resource Server API
+description: "startResourceServer() 及內建後端輔助工具的已驗證 API 介面。"
+---
+
+## `startResourceServer(config)`
+
+`startResourceServer()` 是同步的，並立即回傳一個執行中的伺服器物件。
+
+```ts
+import { JsonRpcMcpBackend, startResourceServer } from "@casys/mcp-bridge";
+
+const server = startResourceServer({
+  assetDirectories: {
+    "my-app": "./ui-dist",
+  },
+  platform: "telegram",
+  telegramBotToken: Deno.env.get("TELEGRAM_BOT_TOKEN")!,
+  backend: new JsonRpcMcpBackend({
+    endpointUrl: "https://my-mcp.example.com/mcp",
+  }),
+  options: {
+    resourceServerPort: 4000,
+    debug: true,
+  },
+  csp: {
+    frameAncestors: ["https://web.telegram.org"],
+  },
+});
+
+console.log(server.baseUrl);
+```
+
+## `ResourceServerConfig`
+
+| 欄位 | 類型 | 說明 |
+| --- | --- | --- |
+| `assetDirectories` | `Record<string, string>` | 必填。將 `ui://` 伺服器名稱對應至 `/app/<server>/...` 的本機目錄。 |
+| `platform` | `string` | 必填。用於注入的 `/bridge.js?...` 查詢參數。 |
+| `options` | `BridgeOptions` | `resourceServerPort`、`allowedOrigins` 及 `debug`。 |
+| `csp` | `CspOptions` | 額外的 CSP 來源及 `allowInline` 行為。 |
+| `auth` | `BridgeAuthHandler` | 選擇性的通用認證掛鉤，用於 WebSocket 首訊息認證。 |
+| `telegramBotToken` | `string` | Telegram 認證的便捷路徑。`platform: "telegram"` 時必填，除非您傳入 `auth`。 |
+| `backend` | `McpBackend` | 處理一般 JSON-RPC 及選擇性的 `readResource()` 呼叫。 |
+| `uiPath` | `string \| null` | 內建後端 UI 路由。預設為 `"/ui"`。設為 `null` 可停用。 |
+| `onMessage` | `(session, message) => Promise<McpAppsMessage \| null>` | 在 `backend.handleMessage()` 之前執行。 |
+| `onHttpRequest` | `(request) => Promise<Response \| { html: string; pendingNotifications?: PendingNotification[] } \| null>` | 非內建路由的自訂 HTTP 掛鉤。 |
+
+## 內建路由
+
+伺服器公開：
+
+- `GET /health`
+- `POST /session`
+- `GET /bridge.js`
+- `GET/WS /bridge?session=<id>`
+- `GET /app/<server>/<path>`
+- `GET /ui?uri=ui://...` 當 `uiPath` 啟用且後端有 `readResource()` 時
+
+## 回傳值
+
+```ts
+interface ResourceServer {
+  readonly baseUrl: string;
+  readonly sessions: SessionStore;
+  storeToolResult(result: ToolResultData): string;
+  consumeToolResult(ref: string): ToolResultData | undefined;
+  stop(): Promise<void>;
+}
+```
+
+## 工具結果交接
+
+`storeToolResult()` 讓您在 WebSocket 開啟之前暫存 `ui/notifications/tool-result` 通知。
+
+```ts
+const ref = server.storeToolResult({
+  content: [{ type: "text", text: "done" }],
+});
+
+const url = `https://your-domain.com/some-page?ref=${ref}`;
+```
+
+如果該頁面透過代理 HTML 提供，伺服器會消耗儲存的結果，在工作階段上緩衝通知，並在 socket 開啟時刷新。儲存的結果為一次性使用，5 分鐘後過期。
+
+## `JsonRpcMcpBackend`
+
+`JsonRpcMcpBackend` 是 HTTP JSON-RPC MCP 伺服器的內建通用後端。
+
+```ts
+import { JsonRpcMcpBackend } from "@casys/mcp-bridge";
+
+const backend = new JsonRpcMcpBackend({
+  endpointUrl: "https://my-mcp.example.com/mcp",
+  headers: {
+    Authorization: "Bearer token",
+  },
+});
+```
+
+### `JsonRpcMcpBackendOptions`
+
+| 欄位 | 類型 | 說明 |
+| --- | --- | --- |
+| `endpointUrl` | `string` | 必填。接受 JSON-RPC POST 請求的完整 HTTP URL。尾部斜線會被移除。 |
+| `headers` | `Record<string, string>` | 選擇性。新增至每個請求的靜態標頭（例如 `Authorization`）。 |
+| `fetchFn` | `typeof fetch` | 選擇性。自訂 fetch 實作，適用於測試或自訂執行時期環境。預設為全域 `fetch`。 |
+
+它會：
+
+- 透過 POST 向 `endpointUrl` 發送 JSON-RPC 訊息
+- 將傳輸失敗轉換為請求訊息的 JSON-RPC `-32603` 錯誤
+- 透過發送 `resources/read` 請求實作 `readResource()`
+- 僅回傳第一個 `contents[0].text` 欄位作為 HTML

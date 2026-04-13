@@ -1,0 +1,302 @@
+---
+title: MCP Apps（UI 資源）
+description: "使用 MCP App MIME 類型（SDK 1.27）在 MCP 工具旁提供互動式 HTML 介面。"
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+MCP Apps 讓你能夠在工具旁以資源的形式提供互動式 HTML 介面。支援 `text/html;profile=mcp-app` MIME 類型（MCP SDK 1.27）的客戶端會以內嵌方式渲染它們 — 儀表板、資料檢視器、表單、設定面板，緊鄰你的工具顯示。
+
+## MIME 類型
+
+```typescript
+import { MCP_APP_MIME_TYPE } from "@casys/mcp-server";
+// "text/html;profile=mcp-app"
+```
+
+對任何應渲染為互動式介面的資源，使用 `MCP_APP_MIME_TYPE`（匯出的常數）作為 MIME 類型。
+
+## 註冊 UI 資源
+
+```typescript
+import { McpApp, MCP_APP_MIME_TYPE } from "@casys/mcp-server";
+
+const server = new McpApp({
+  name: "my-server",
+  version: "1.0.0",
+});
+
+server.registerResource(
+  {
+    uri: "ui://my-server/viewer",
+    name: "Data Viewer",
+    description: "Interactive data viewer",
+  },
+  async (uri) => ({
+    uri: uri.toString(),
+    mimeType: MCP_APP_MIME_TYPE,
+    text: `
+      <html>
+        <body>
+          <h1>Data Viewer</h1>
+          <div id="app"></div>
+        </body>
+      </html>
+    `,
+  }),
+);
+
+await server.start();
+```
+
+## 動態 UI 資源
+
+處理器接收 URI，可以根據抓取的資料或任何其他狀態返回不同的內容：
+
+```typescript
+server.registerResource(
+  {
+    uri: "ui://my-server/dashboard",
+    name: "Dashboard",
+    description: "Real-time metrics dashboard",
+  },
+  async (uri) => {
+    const metrics = await getMetrics();
+    return {
+      uri: uri.toString(),
+      mimeType: MCP_APP_MIME_TYPE,
+      text: renderDashboard(metrics),  // 每次讀取時返回最新資料
+    };
+  },
+);
+```
+
+## 工具 `_meta.ui` — 將工具連結到 UI 檢視
+
+SDK 1.27 在工具定義中加入了 `_meta.ui`，用於描述工具輸出如何與 UI 關聯：
+
+```typescript
+server.registerTool(
+  {
+    name: "get_report",
+    description: "Fetch a sales report",
+    inputSchema: {
+      type: "object",
+      properties: { reportId: { type: "string" } },
+      required: ["reportId"],
+    },
+    _meta: {
+      ui: {
+        resourceUri: "ui://my-server/viewer",       // 哪個檢視器渲染此工具的輸出
+        visibility: ["model", "app"],               // 對 LLM 和 UI 都可見
+        emits: ["report:loaded"],                   // 此工具向 UI 發出的事件
+        accepts: ["filter:changed"],                // 此工具接受來自 UI 的事件
+      },
+    },
+  },
+  async ({ reportId }) => fetchReport(reportId),
+);
+```
+
+## 僅限 App 的工具
+
+註冊僅對 UI 客戶端可見而不出現在 LLM 工具列表中的工具：
+
+```typescript
+server.registerAppOnlyTool(
+  {
+    name: "update_filter",
+    description: "Update dashboard filter",
+    inputSchema: {
+      type: "object",
+      properties: { filter: { type: "string" } },
+    },
+  },
+  async ({ filter }) => applyFilter(filter),
+);
+```
+
+## 批量註冊檢視器
+
+`registerViewers()` 使用 `RegisterViewersConfig` 物件批量註冊基於檔案的檢視器資源：
+
+```typescript
+server.registerViewers({
+  prefix: "ui://my-server/",
+  moduleUrl: import.meta.url,
+  exists: async (path) => {
+    try {
+      await Deno.stat(path);
+      return true;
+    } catch {
+      return false;
+    }
+  },
+  readFile: async (path) => await Deno.readTextFile(path),
+});
+```
+
+框架使用 `exists` 和 `readFile` 在給定的 `prefix` 下提供檢視器檔案。`moduleUrl` 將相對路徑解析為絕對檔案系統路徑。
+
+## 結構化工具結果
+
+工具可以同時返回文字回應（供 LLM 使用）和結構化資料（供 UI 使用）：
+
+```typescript
+import type { StructuredToolResult } from "@casys/mcp-server";
+
+server.registerTool(
+  {
+    name: "get_data",
+    description: "Fetch data",
+    inputSchema: { type: "object", properties: {} },
+    outputSchema: {
+      type: "object",
+      properties: {
+        rows: { type: "array" },
+        total: { type: "number" },
+      },
+    },
+  },
+  async (): Promise<StructuredToolResult> => {
+    const data = await fetchData();
+    return {
+      content: `Found ${data.rows.length} rows`,   // LLM 可讀的字串
+      structuredContent: {                          // UI 用的機器可讀資料
+        rows: data.rows,
+        total: data.rows.length,
+      },
+    };
+  },
+);
+```
+
+## 內容安全政策
+
+提供 HTML 資源時，注入 CSP 標頭以控制 iframe 可以載入的內容：
+
+```typescript
+import {
+  buildCspHeader,
+  injectCspMetaTag,
+} from "@casys/mcp-server";
+
+// 構建 CSP 標頭字串
+const csp = buildCspHeader({
+  scriptSources: ["'self'", "'unsafe-inline'"],
+  connectSources: ["'self'"],
+  imgSources: ["'self'", "data:"],
+  frameAncestors: ["'self'"],
+  allowInline: false,
+});
+
+// 或直接向 HTML 注入 <meta> CSP 標籤
+const html = `<html><head></head><body>...</body></html>`;
+const secureHtml = injectCspMetaTag(html, csp);
+```
+
+你也可以在伺服器選項中透過 `resourceCsp` 全域設定 CSP：
+
+```typescript
+const server = new McpApp({
+  name: "my-server",
+  version: "1.0.0",
+  resourceCsp: {
+    scriptSources: ["'self'"],
+    connectSources: ["'self'"],
+  },
+});
+```
+
+## PostMessage 認證（HMAC）
+
+要驗證 UI iframe 和宿主之間傳送的訊息，使用 `MessageSigner` 和 `injectChannelAuth`：
+
+```typescript
+import {
+  injectChannelAuth,
+} from "@casys/mcp-server";
+
+// secret 必須是 64 個字元的十六進位字串
+const secret = "a1b2c3..."; // 64 hex chars
+
+// 在你的 UI HTML 中，在提供服務前注入認證憑證
+const html = injectChannelAuth(rawHtml, secret);
+```
+
+注入的腳本處理 postMessage 事件的 HMAC 簽署，讓宿主可以驗證訊息確實來自你的 UI。
+
+## 偵測客戶端 MCP Apps 支援
+
+在註冊 UI 渲染工具之前，你可以檢查已連線的客戶端是否宣傳了 MCP Apps 支援。不支援該擴充的客戶端會靜默丟棄 `_meta.ui` 欄位，但明確的檢查讓你可以在 UI 路徑不可用時提供更豐富的文字回應。
+
+### 實例方法：`getClientMcpAppsCapability()`
+
+```typescript
+const cap = server.getClientMcpAppsCapability();
+if (cap?.mimeTypes?.includes(MCP_APP_MIME_TYPE)) {
+  // 客戶端可以渲染 MCP Apps — 返回資源 URI
+  return {
+    content: [{ type: "text", text: summary }],
+    _meta: { ui: { resourceUri: "ui://my-server/dashboard" } },
+  };
+}
+// 備援：為不支援 UI 的客戶端返回豐富文字
+return { content: [{ type: "text", text: detailedText }] };
+```
+
+此方法從 SDK 的初始化後狀態讀取 `clientCapabilities.extensions["io.modelcontextprotocol/ui"]`。如果在初始化前呼叫或客戶端未宣傳支援，則返回 `undefined`。
+
+### 獨立函式：`getMcpAppsCapability(capabilities)`
+
+```typescript
+import {
+  getMcpAppsCapability,
+  MCP_APP_MIME_TYPE,
+  MCP_APPS_EXTENSION_ID,
+  MCP_APPS_PROTOCOL_VERSION,
+} from "@casys/mcp-server";
+
+// 從任何 ClientCapabilities 物件讀取（例如來自自訂 MCP SDK 處理器）
+const cap = getMcpAppsCapability(client.getClientCapabilities());
+```
+
+這是 `getClientMcpAppsCapability()` 內部使用的相同防禦性讀取器。對於 `null`/`undefined` 輸入、缺少 `extensions` 欄位、缺少擴充鍵或非物件擴充值，返回 `undefined`。格式錯誤的 `mimeTypes` 條目（非字串）會被靜默過濾而不會拋出錯誤。
+
+### 常數和類型
+
+```typescript
+import type { McpAppsClientCapability } from "@casys/mcp-server";
+import {
+  MCP_APPS_EXTENSION_ID,      // "io.modelcontextprotocol/ui"
+  MCP_APPS_PROTOCOL_VERSION,  // "2026-01-26"
+  MCP_APP_MIME_TYPE,          // "text/html;profile=mcp-app"
+} from "@casys/mcp-server";
+
+interface McpAppsClientCapability {
+  /**
+   * 客戶端可以渲染為 MCP Apps 的 MIME 類型。
+   * 通常包含 "text/html;profile=mcp-app"。
+   * 空陣列或缺少陣列表示客戶端宣傳了支援但未列出任何 MIME 類型。
+   */
+  mimeTypes?: string[];
+}
+```
+
+`MCP_APPS_EXTENSION_ID` 是客戶端必須在 `clientCapabilities.extensions` 中包含的金鑰，以宣傳支援。`MCP_APPS_PROTOCOL_VERSION` 標識此套件目標的日期規格版本 — 在採用較新規格修訂版的同一提交中更新。
+
+## 檢查已註冊的資源
+
+```typescript
+server.getResourceCount();  // 2
+server.getResourceUris();   // ["ui://my-server/viewer", ...]
+```
+
+<Aside>
+  並非所有 MCP 客戶端都會渲染 `text/html;profile=mcp-app` 資源。不支援的客戶端不會顯示 UI — 不會有錯誤，也不會有損壞的工具呼叫。
+</Aside>
+
+## 另請參閱
+
+- [McpApp API](/zh-TW/docs/api/concurrent-mcp-server) — `registerResource()`、`registerViewers()`、`registerAppOnlyTool()` 參考
+- [快速開始](/zh-TW/docs/getting-started/quickstart) — 伺服器設定基礎知識

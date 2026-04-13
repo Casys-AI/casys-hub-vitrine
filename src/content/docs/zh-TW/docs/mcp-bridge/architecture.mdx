@@ -1,0 +1,110 @@
+---
+title: 架構
+description: "@casys/mcp-bridge 中實際的 HTTP、WebSocket 及瀏覽器執行時期流程。"
+---
+
+import { Aside } from '@astrojs/starlight/components';
+import Mermaid from '../../../../../components/Mermaid.astro';
+
+## 概覽
+
+<Mermaid chart={`graph TB
+  subgraph Client["瀏覽器 / Mini App"]
+    APP[MCP App HTML]
+    BRIDGE_JS[bridge.js IIFE]
+  end
+  subgraph Server["Resource Server"]
+    HTTP[HTTP 端點]
+    WS[WebSocket /bridge]
+    SESS[工作階段儲存]
+  end
+  subgraph Platforms["訊息平台"]
+    TG[Telegram Mini App]
+    LINE[LINE LIFF]
+  end
+  APP --> BRIDGE_JS
+  BRIDGE_JS -->|WebSocket| WS
+  HTTP -->|提供 HTML + 注入 bridge.js| APP
+  WS --> SESS
+  WS -->|JSON-RPC| BACKEND[MCP 後端]
+  TG -.->|宿主| Client
+  LINE -.->|宿主| Client
+  style BRIDGE_JS fill:#FFB86F,color:#000
+  style WS fill:#FFB86F,color:#000`} />
+
+```text
+Telegram Mini App / WebView
+        |
+        | GET /app/my-app/index.html
+        | or GET /ui?uri=ui://my-app/index.html
+        v
+Resource Server
+  - 建立工作階段
+  - 注入 /bridge.js?platform=...&session=...&auth=1
+        |
+        | WebSocket /bridge?session=<id>
+        v
+bridge.js
+  - 本地處理 ui/initialize
+  - 本地處理 ui/open-link
+  - 將所有其他 JSON-RPC 轉發到伺服器
+        |
+        v
+onMessage() -> backend.handleMessage()
+```
+
+## HTTP 介面
+
+`startResourceServer()` 公開以下內建路由：
+
+- `GET /health`
+- `POST /session`
+- `GET /bridge.js`
+- `GET/WS /bridge?session=<id>`
+- `GET /app/<server>/<path>`
+- `GET /ui?uri=ui://...` 當 `uiPath` 啟用且 `backend.readResource()` 存在時
+
+任何不符合這些路由的請求都可以在 `onHttpRequest()` 中處理。如果該掛鉤回傳 `{ html, pendingNotifications }`，伺服器仍會建立工作階段、注入 bridge 腳本，並緩衝新頁面的通知。
+
+## 瀏覽器執行時期
+
+`src/client/bridge.js` 中注入的執行時期是一個自執行腳本，而非單純的載入器。
+
+它會：
+
+- 從自身的腳本 URL 讀取 `platform`、`session`、`auth` 及 `debug`
+- 在 iframe 模式下修補 `window.parent.postMessage`，在獨立模式下修補 `window.postMessage`
+- 本地處理 `ui/initialize`，回傳宿主資訊 `{ name: "@casys/mcp-bridge", version: "0.2.0" }`
+- 透過平台執行時期本地處理 `ui/open-link`
+- 以 30 秒逾時追蹤待處理的請求 ID
+- 緩衝早期傳入的通知，直到頁面完成 `ui/initialize`
+
+## 工作階段與認證流程
+
+1. 工作階段在 WebSocket 存在之前建立。
+2. 頁面載入時注入的腳本 URL 中包含 `session=<id>`。
+3. 執行時期開啟 `/bridge?session=<id>`。
+4. 如果需要認證，第一則 WebSocket 訊息必須是認證酬載。
+5. 只有認證成功後，執行時期才發出 `mcp-bridge-ready`。
+
+對於 Telegram，認證在第一則 WebSocket 訊息的伺服器端強制執行，而非在初始 HTTP 請求期間。
+
+## 伺服器上的路由順序
+
+對於一般 JSON-RPC 流量，伺服器執行以下步驟：
+
+1. `onMessage(session, message)`（如果您提供了此函式）
+2. `backend.handleMessage(session, message)`（如果您設定了後端）
+3. 對任何未處理且有 `id` 的請求回傳 JSON-RPC `-32601`
+
+此順序讓您可以攔截或短路特定方法，而無需完全取代後端。
+
+## 值得了解的傳遞細節
+
+- 儲存在伺服器上的待處理通知會在 WebSocket 開啟後立即刷新。
+- 瀏覽器執行時期將以指數退避（上限 10 秒）最多重試 WebSocket 連線 5 次。
+- 在斷線或未完成認證期間，傳出的請求不會排隊，而是會被丟棄並顯示主控台警告。
+
+<Aside type="caution">
+  根路徑假設已硬式編碼在注入的執行時期中。`bridge.js` 以 `/bridge.js?...` 注入，WebSocket 目標始終是相同來源根目錄的 `/bridge?session=...`。
+</Aside>

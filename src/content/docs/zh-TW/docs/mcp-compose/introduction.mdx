@@ -1,0 +1,75 @@
+---
+title: '簡介'
+description: '將多個 MCP App UI 組合成一個具有版面配置與事件路由的儀表板。'
+---
+
+import Mermaid from '../../../../../components/Mermaid.astro';
+
+`mcp-compose` 是一個輕量級的 Deno 函式庫，用於取得多個帶有 `_meta.ui.resourceUri` 的 MCP 工具結果，將它們轉換成單一組合描述符，並渲染出複合儀表板。本文件對應套件版本 `0.4.0`。
+
+它不是視覺化建構工具或終端使用者儀表板產品。套件 README 將其定位為組合基元：你提供收集的工具結果加上協調配置，它給你 HTML。
+
+## 處理流程
+
+<Mermaid chart={`graph LR
+  T1[工具結果 1] --> C[收集器]
+  T2[工具結果 2] --> C
+  T3[工具結果 N] --> C
+  C -->|資源| COMP[組合器]
+  ORCH[協調配置\n版面 + 同步] --> COMP
+  COMP -->|描述符| R[渲染器]
+  R --> HTML[獨立 HTML]
+  style C fill:#FFB86F,color:#000
+  style COMP fill:#FFB86F,color:#000
+  style R fill:#FFB86F,color:#000`} />
+
+公開流程如下：
+
+```typescript
+import {
+  buildCompositeUi,
+  createCollector,
+  renderComposite,
+} from "@casys/mcp-compose";
+
+const collector = createCollector();
+collector.collect("postgres:query", {
+  _meta: { ui: { resourceUri: "ui://postgres/table/abc123" } },
+});
+collector.collect("viz:render", {
+  _meta: { ui: { resourceUri: "ui://viz/chart/viz-1" } },
+});
+
+const descriptor = buildCompositeUi(collector.getResources(), {
+  layout: "split",
+  sync: [
+    { from: "postgres:query", event: "filter", to: "viz:render", action: "update" },
+  ],
+});
+
+const html = renderComposite(descriptor);
+```
+
+這直接對應到套件庫中的程式碼和測試：
+
+- `createCollector()` 檢查工具結果並儲存 `CollectedUiResource` 物件。
+- `buildCompositeUi()` 產生一個帶有已解析同步規則和可選共享上下文的 `CompositeUiDescriptor`。
+- `renderComposite()` 將該描述符轉換成帶有內嵌 CSS 和 JS 的完整 HTML 文件。
+
+## 目前已實作的功能
+
+- 根套件匯出收集器、同步輔助函式、組合器、主機渲染器、SDK 輔助函式和主機型別。
+- 當省略協調配置時，`buildCompositeUi()` 預設使用 `layout: "stack"`。
+- 無效的同步規則不會從組合器拋出例外。未知的 `from` 或 `to` 參考在你驗證之前會被靜默排除。
+- 匯出的渲染器來自 `host` 層，而非較舊的 `core` 渲染器樹。
+- 主機渲染器支援預設版面配置（`split`、`tabs`、`grid`、`stack`）和基於物件的區域版面配置。
+
+## 每一層的用途
+
+- [`@casys/mcp-compose`](./api-reference/) 是預設進入點。
+- [`collector`](./collector/) 涵蓋 `_meta.ui.resourceUri` 提取與插槽指派。
+- [`composer`](./composer/) 涵蓋版面配置、共享上下文和描述符生成。
+- [`renderer`](./renderer/) 涵蓋生成的 HTML、CSS 和事件匯流排行為。
+- [`sync-rules`](./sync-rules/) 涵蓋驗證、解析和廣播路由。
+
+套件庫也公開了 `sdk`、`host`、`runtime` 和 `deploy` 子路徑。`deploy` 目前僅有型別：型別已存在，但尚未匯出任何部署函式。

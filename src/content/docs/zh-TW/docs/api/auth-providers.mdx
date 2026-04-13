@@ -1,0 +1,180 @@
+---
+title: 認證提供商
+description: "認證預設配置和 JwtAuthProvider 的 API 參考。"
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+用於常見身份提供商的工廠函式，以及用於完全控制的低層級 `JwtAuthProvider`。所有函式都返回與 `McpAppOptions.auth.provider` 相容的 `AuthProvider`。
+
+## 工廠函式（預設配置）
+
+### createGoogleAuthProvider
+
+```typescript
+import { createGoogleAuthProvider } from "@casys/mcp-server";
+
+const provider = createGoogleAuthProvider({
+  audience: string;    // 你的伺服器受眾 URL
+  resource: string;    // 你的伺服器資源 URL
+});
+```
+
+使用 Google 的 OIDC 發行者（`https://accounts.google.com`）和公開 JWKS 端點。JWKS URI 為 `https://www.googleapis.com/oauth2/v3/certs`。
+
+### createAuth0AuthProvider
+
+```typescript
+import { createAuth0AuthProvider } from "@casys/mcp-server";
+
+const provider = createAuth0AuthProvider({
+  domain: string;              // Auth0 租戶網域（例如 "my-tenant.auth0.com"）
+  audience: string;
+  resource: string;
+  scopesSupported?: string[];  // 你的伺服器識別的範圍
+});
+```
+
+### createGitHubAuthProvider
+
+```typescript
+import { createGitHubAuthProvider } from "@casys/mcp-server";
+
+const provider = createGitHubAuthProvider({
+  audience: string;
+  resource: string;
+});
+```
+
+用於 GitHub Actions OIDC 令牌。使用 `https://token.actions.githubusercontent.com` 作為發行者。
+
+### createOIDCAuthProvider
+
+```typescript
+import { createOIDCAuthProvider } from "@casys/mcp-server";
+
+const provider = createOIDCAuthProvider({
+  issuer: string;                      // OIDC 發行者 URL
+  audience: string;
+  resource: string;
+  authorizationServers?: string[];     // 預設：[issuer]
+  scopesSupported?: string[];
+});
+```
+
+通用 OIDC 提供商。若省略 `jwksUri`，JWKS URI 預設為 `${issuer}/.well-known/jwks.json`。提供商不會抓取 `.well-known/openid-configuration`。
+
+<Aside type="tip">
+  不確定使用哪個預設配置？請參閱[認證指南](/zh-TW/docs/guides/auth)了解每個提供商的使用範例。
+</Aside>
+
+## JwtAuthProvider
+
+用於完全控制 JWT 驗證。當預設配置無法覆蓋你的身份提供商時使用：
+
+```typescript
+import { JwtAuthProvider } from "@casys/mcp-server";
+
+const provider = new JwtAuthProvider({
+  issuer: string;
+  audience: string;
+  resource: string;
+  authorizationServers: string[];
+  jwksUri?: string;            // 若省略則從發行者衍生
+  scopesSupported?: string[];
+});
+```
+
+### verifyToken
+
+```typescript
+const authInfo = await provider.verifyToken(token: string);
+// AuthInfo | null
+```
+
+成功時返回 `AuthInfo` 物件，令牌無效或已過期時返回 `null`。
+
+```typescript
+interface AuthInfo {
+  subject: string;                     // 令牌的 "sub" 宣告
+  clientId?: string;                   // 令牌的 "client_id" 或 "azp" 宣告
+  scopes: string[];                    // 從 "scope" 宣告解析（空格分隔）
+  claims?: Record<string, unknown>;    // 所有令牌宣告
+  expiresAt?: number;                  // 令牌到期時間（Unix 紀元秒）
+  tenantId?: string;                   // 由 createMultiTenantMiddleware 設定 — 單租戶伺服器上為 undefined
+}
+```
+
+### 令牌快取
+
+`JwtAuthProvider` 維護一個記憶體快取，以避免重複的 JWKS 往返：
+
+- 快取鍵：原始令牌字串的 SHA-256 雜湊
+- TTL：5 分鐘
+- 最大條目數：1000
+
+## 配置載入器
+
+用於二進位發布 — 在執行時從 YAML 檔案和環境變數載入認證配置。
+
+### loadAuthConfig
+
+```typescript
+import { loadAuthConfig } from "@casys/mcp-server";
+
+const config = await loadAuthConfig();
+// AuthConfig | null
+```
+
+自動從 `mcp-server.yaml` + `MCP_AUTH_*` 環境變數載入。若未找到配置則返回 `null`（認證保持停用）。
+
+### createAuthProviderFromConfig
+
+```typescript
+import { createAuthProviderFromConfig } from "@casys/mcp-server";
+
+const provider = createAuthProviderFromConfig(config: AuthConfig);
+// 根據 config.provider 返回適當的 AuthProvider
+```
+
+根據 `config.provider` 分派到正確的預設配置：
+
+| `config.provider` | 使用的預設配置 |
+|-------------------|-------------|
+| `"google"` | `createGoogleAuthProvider` |
+| `"auth0"` | `createAuth0AuthProvider` |
+| `"github"` | `createGitHubAuthProvider` |
+| `"oidc"` | `createOIDCAuthProvider` |
+
+## 客戶端 OAuth
+
+用於構建需要對受保護伺服器進行認證的 MCP 客戶端。這些工具不從主要的 `@casys/mcp-server` 入口點匯出 — 使用深層匯入路徑：
+
+```typescript
+import { prepareOAuthProvider } from "@casys/mcp-server/client-auth/connect";
+import { FileTokenStore } from "@casys/mcp-server/client-auth/token-store/file-store";
+import { MemoryTokenStore } from "@casys/mcp-server/client-auth/token-store/memory-store";
+
+const { provider, callbackServer } = await prepareOAuthProvider(
+  "https://my-mcp.example.com",
+  {
+    clientId: "my-client-id",
+    scopes: ["read", "write"],
+    tokenStore: new FileTokenStore("./.tokens"),  // 或 new MemoryTokenStore()
+    openBrowser: async (url) => {
+      // 在使用者的瀏覽器中開啟授權 URL
+      console.log(`Open this URL to authorize: ${url}`);
+    },
+  },
+);
+// 將 provider 作為 authProvider 傳遞給 StreamableHTTPClientTransport
+// 完成後關閉 callbackServer
+```
+
+`FileTokenStore(path)` 在重啟之間將令牌持久化到磁碟。`MemoryTokenStore()` 僅在記憶體中。
+
+## 另請參閱
+
+- [認證（OAuth2）](/zh-TW/docs/guides/auth) — 使用預設配置、範圍強制執行和 RFC 9728 的使用指南
+- [配置（YAML）](/zh-TW/docs/guides/configuration) — 帶環境變數覆蓋的基於檔案的認證配置
+- [McpApp API](/zh-TW/docs/api/concurrent-mcp-server) — 建構函式中的 `AuthOptions`

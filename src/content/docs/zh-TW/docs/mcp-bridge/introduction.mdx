@@ -1,0 +1,62 @@
+---
+title: 簡介
+description: "@casys/mcp-bridge 0.2.0 的現有功能。"
+---
+
+import { Card, CardGrid, LinkCard, Aside } from '@astrojs/starlight/components';
+
+<Aside type="note">
+  本文件已對照 `@casys/mcp-bridge` 原始碼及 `deno.json` 版本 `0.2.0` 驗證。
+</Aside>
+
+`@casys/mcp-bridge` 將 MCP App UI 轉換為可在訊息平台 webview 中執行的 HTTP 頁面。在目前的套件中，這表示：
+
+1. Resource Server 從本機資產目錄或後端 `ui://` 解析器提供 HTML。
+2. 伺服器將 `/bridge.js?...` 注入 HTML 回應中。
+3. 注入的執行時期透過 `/bridge?session=...` 在頁面與伺服器之間傳遞 MCP JSON-RPC。
+
+如果您的 UI 已經透過 `postMessage` 使用 MCP Apps JSON-RPC 與其宿主通訊，bridge 將維持該契約並處理周圍的 webview 傳輸。
+
+## 已實作的功能
+
+<CardGrid>
+  <Card title="Resource Server" icon="server">
+    `startResourceServer()` 提供 `/app`、`/bridge.js`、`/bridge`、`/health`、`/session`，以及選擇性的 `/ui` 路由。
+  </Card>
+  <Card title="瀏覽器執行時期" icon="puzzle">
+    注入的 `bridge.js` 在本地處理 `ui/initialize` 和 `ui/open-link`，然後透過 WebSocket 轉發其餘的請求。
+  </Card>
+  <Card title="Telegram" icon="rocket">
+    Telegram 是唯一具有端對端平台路徑的整合，內建基於 Mini App `initData` 的伺服器端認證。
+  </Card>
+  <Card title="LINE" icon="setting">
+    LINE 目前為部分支援：套件包含低階介面卡和瀏覽器執行時期分支，但尚未提供內建的 LIFF 初始化或令牌驗證。
+  </Card>
+</CardGrid>
+
+## 套件的實際功能
+
+- `assetDirectories` 下的本機 HTML 以 `/app/<server>/<path>` 提供。
+- 後端解析的 `ui://` 資源在您的後端實作 `readResource()` 時，可透過 `/ui?uri=ui://...` 公開。
+- 每個提供的 HTML 頁面都會獲得一個新的記憶體內工作階段 ID 及注入的 bridge 腳本。
+- bridge 腳本本地處理 `ui/initialize` 並回報協定版本 `2025-11-25`。
+- 所有其他 JSON-RPC 流量透過 WebSocket 發送到伺服器，其中 `onMessage()` 先執行，`backend.handleMessage()` 後執行。
+
+## 重要限制
+
+- 注入的腳本以 `/bridge.js?...` 參考，瀏覽器執行時期始終在相同來源根目錄連線到 `/bridge?session=...`。請將 bridge 掛載於來源根目錄，或新增根層級重新導向規則。
+- 套件僅匯出 `WebSocketTransport`，沒有已實作的 HTTP 備援傳輸。
+- 工作階段狀態僅在記憶體中。
+- LINE 與 Telegram 的功能不對等。
+
+## 後續步驟
+
+<CardGrid>
+  <LinkCard title="快速開始" href="/zh-TW/docs/mcp-bridge/quickstart" description="執行 Resource Server 並開啟您的第一個 Telegram Mini App" />
+  <LinkCard title="架構" href="/zh-TW/docs/mcp-bridge/architecture" description="查看確切的路由、工作階段流程及瀏覽器/執行時期分割" />
+  <LinkCard title="Telegram" href="/zh-TW/docs/mcp-bridge/telegram" description="Telegram 路徑今日實際實作的內容" />
+  <LinkCard title="LINE" href="/zh-TW/docs/mcp-bridge/line" description="LINE 介面卡提供的功能及尚未實作的內容" />
+  <LinkCard title="Resource Server API" href="/zh-TW/docs/mcp-bridge/api-resource-server" description="startResourceServer() 設定、內建路由及 JsonRpcMcpBackend" />
+  <LinkCard title="Bridge Client API" href="/zh-TW/docs/mcp-bridge/api-bridge-client" description="注入的 bridge.js 執行時期及匯出的 BridgeClient 類別" />
+  <LinkCard title="安全性" href="/zh-TW/docs/mcp-bridge/security" description="CSP、工作階段 TTL、Telegram 認證及目前的信任邊界" />
+</CardGrid>

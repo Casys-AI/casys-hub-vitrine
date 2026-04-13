@@ -1,0 +1,232 @@
+---
+title: 獨立元件
+description: "獨立於 McpApp 使用 RateLimiter、RequestQueue 和 SchemaValidator。"
+next: false
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+`@casys/mcp-server` 的構建模組本身就很有用。速率限制、並發控制和 Schema 驗證 — 全部可在任何 Deno 或 Node.js 專案中使用，無需 MCP。
+
+## RateLimiter
+
+帶有每個金鑰追蹤的滑動視窗速率限制器。無外部相依套件。
+
+```typescript
+import { RateLimiter } from "@casys/mcp-server";
+
+const limiter = new RateLimiter({
+  maxRequests: 10,   // 10 個請求
+  windowMs: 1000,    // 每 1 秒
+});
+```
+
+### checkLimit
+
+```typescript
+limiter.checkLimit(key: string): boolean;
+```
+
+在限制內返回 `true`，受到速率限制時返回 `false`。非阻塞 — 不等待。
+
+```typescript
+if (limiter.checkLimit("client-123")) {
+  // 處理請求
+} else {
+  // 受到速率限制
+}
+```
+
+### waitForSlot
+
+```typescript
+await limiter.waitForSlot(key: string): Promise<void>;
+```
+
+阻塞直到有槽位開放。最大等待時間等於 `windowMs`。
+
+```typescript
+await limiter.waitForSlot("client-123");
+// 當此解析時保證有槽位
+```
+
+### getRemainingRequests
+
+```typescript
+limiter.getRemainingRequests(key: string): number;
+```
+
+返回給定金鑰在當前視窗內還能發出多少個請求。對於沒有歷史記錄的金鑰返回 `maxRequests`。
+
+```typescript
+const remaining = limiter.getRemainingRequests("client-123");
+// 例如，若已使用 10 個中的 3 個請求，則返回 7
+```
+
+### getTimeUntilSlot
+
+```typescript
+limiter.getTimeUntilSlot(key: string): number;
+```
+
+返回給定金鑰下一個槽位開放前的毫秒數。若槽位已可用則返回 `0`。
+
+### clear
+
+```typescript
+limiter.clear(key: string): void;
+```
+
+清除特定金鑰的請求歷史，立即釋放其槽位。
+
+### clearAll
+
+```typescript
+limiter.clearAll(): void;
+```
+
+清除所有已追蹤的金鑰及其請求歷史。
+
+### getMetrics
+
+```typescript
+limiter.getMetrics(): { keys: number; totalRequests: number };
+```
+
+## RequestQueue
+
+具有可配置背壓的並發控制。保護下游服務免於過載。
+
+```typescript
+import { RequestQueue } from "@casys/mcp-server";
+
+const queue = new RequestQueue({
+  maxConcurrent: 5,
+  strategy: "queue",     // "sleep" | "queue" | "reject"
+  sleepMs: 10,           // 僅用於 "sleep" 策略 — 預設：10
+});
+```
+
+### 策略
+
+| 策略 | 行為 | 最適用於 |
+|----------|----------|----------|
+| `sleep` | 自旋等待，間隔 `sleepMs` 直到槽位開放 | 低延遲、可承受 CPU 消耗 |
+| `queue` | FIFO 佇列 — 請求按順序等待 | 公平排序、可預測延遲 |
+| `reject` | 達到容量時立即拒絕 | 快速失敗、斷路器模式 |
+
+### acquire / release
+
+```typescript
+await queue.acquire(): Promise<void>;
+queue.release(): void;
+```
+
+始終使用 try/finally 以防止槽位洩漏：
+
+```typescript
+await queue.acquire();
+try {
+  await processRequest();  // 佔用 maxConcurrent 個槽位中的 1 個
+} finally {
+  queue.release();
+}
+```
+
+### getMetrics
+
+```typescript
+queue.getMetrics(): { inFlight: number; queued: number };
+```
+
+## SchemaValidator
+
+由 ajv 8 提供支援的 JSON Schema 驗證，含 `allErrors` 和 `useDefaults`。Schema 在 `addSchema()` 時編譯一次 — 驗證呼叫速度很快。
+
+```typescript
+import { SchemaValidator } from "@casys/mcp-server";
+
+const validator = new SchemaValidator();
+```
+
+### addSchema
+
+```typescript
+validator.addSchema(name: string, schema: object): void;
+```
+
+編譯並快取 Schema。在啟動時呼叫一次：
+
+```typescript
+validator.addSchema("my_tool", {
+  type: "object",
+  properties: {
+    count: { type: "number", minimum: 0 },
+    label: { type: "string", maxLength: 100 },
+  },
+  required: ["count"],
+});
+```
+
+### validate
+
+```typescript
+validator.validate(name: string, data: unknown): ValidationResult;
+```
+
+```typescript
+interface ValidationResult {
+  valid: boolean;
+  errors: ValidationError[];  // 結構化錯誤物件（有效時為空）
+}
+```
+
+```typescript
+validator.validate("my_tool", { count: -1 });
+// { valid: false, errors: ["count must be >= 0"] }
+
+validator.validate("my_tool", { count: 5 });
+// { valid: true, errors: [] }
+```
+
+### hasSchema
+
+```typescript
+validator.hasSchema(name: string): boolean;
+```
+
+若已加入具有給定名稱的 Schema 則返回 `true`。
+
+### removeSchema
+
+```typescript
+validator.removeSchema(name: string): void;
+```
+
+移除之前加入的 Schema。之後使用該名稱呼叫 `validate()` 將拋出錯誤。
+
+### validateOrThrow
+
+```typescript
+validator.validateOrThrow(name: string, data: unknown): void;
+```
+
+若資料無效則拋出 `ValidationError`。當你想快速失敗而不是處理結果物件時很有用：
+
+```typescript
+try {
+  validator.validateOrThrow("my_tool", args);
+  // 引數有效 — 繼續執行
+} catch (error) {
+  // error.message 包含所有驗證錯誤
+}
+```
+
+<Aside type="tip">
+  在 `McpApp` 內部，這些元件會根據你的選項自動連接。只有在框架外構建自訂基礎架構時才需要獨立使用。
+</Aside>
+
+## 另請參閱
+
+- [McpApp API](/zh-TW/docs/api/concurrent-mcp-server) — 這些元件在內部的使用方式
+- [中介軟體管道](/zh-TW/docs/guides/middleware) — 管道中的速率限制、驗證和背壓

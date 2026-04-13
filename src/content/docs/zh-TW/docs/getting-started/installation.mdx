@@ -1,0 +1,73 @@
+---
+title: 安裝
+description: "透過 JSR 為 Deno 或 npm 安裝 @casys/mcp-server。"
+---
+
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+一條指令即可安裝。無需建置步驟，無需對等相依套件。
+
+## 安裝
+
+<Tabs>
+  <TabItem label="Deno（推薦）">
+    ```bash
+    deno add jsr:@casys/mcp-server
+    ```
+  </TabItem>
+  <TabItem label="npm">
+    ```bash
+    npx jsr add @casys/mcp-server
+    ```
+  </TabItem>
+</Tabs>
+
+發布在 [JSR](https://jsr.io/@casys/mcp-server)（`@casys/mcp-server`）上。同時支援 Deno 和 Node.js。
+
+## 系統需求
+
+| 執行環境 | 最低版本 |
+|---------|----------------|
+| **Deno** | 2.0+ |
+| **Node.js** | 20+ |
+| **TypeScript** | 5.0+（推薦） |
+
+此套件以 Deno 為主。Node.js 支援透過 JSR npm 相容層提供。
+
+## 驗證安裝
+
+建立 `server.ts` 檔案：
+
+```typescript
+import { McpApp } from "@casys/mcp-server";
+
+const server = new McpApp({
+  name: "test",
+  version: "0.0.1",
+});
+
+console.log(`Ready — ${server.getToolCount()} tools registered.`);
+```
+
+執行：
+
+<Tabs>
+  <TabItem label="Deno">
+    ```bash
+    deno run --allow-net server.ts
+    ```
+  </TabItem>
+  <TabItem label="Node.js">
+    ```bash
+    npx tsx server.ts
+    ```
+  </TabItem>
+</Tabs>
+
+<Aside type="tip">
+  如果你看到「Ready — 0 tools registered.」，表示一切就緒。前往快速開始建構真實的功能。
+</Aside>
+
+## 下一步
+
+用不到一分鐘構建你的第一個帶有工具的 MCP 伺服器：**[快速開始](/zh-TW/docs/getting-started/quickstart)**。

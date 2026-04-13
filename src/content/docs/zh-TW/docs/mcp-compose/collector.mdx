@@ -1,0 +1,163 @@
+---
+title: '收集器'
+description: "從工具結果提取 `_meta.ui.resourceUri` 並指派穩定插槽。"
+---
+
+## API
+
+```typescript
+import { createCollector, extractUiMeta } from "@casys/mcp-compose";
+```
+
+`createCollector()` 返回一個有狀態的 `UiCollector`：
+
+```typescript
+interface UiCollector {
+  collect(
+    toolName: string,
+    result: unknown,
+    context?: Record<string, unknown>,
+  ): CollectedUiResource | null;
+
+  getResources(): CollectedUiResource[];
+  clear(): void;
+}
+```
+
+## `extractUiMeta(result)`
+
+這是收集器內部使用的底層輔助函式。它只尋找 `_meta.ui.resourceUri` 和可選的 `visibility`。
+
+```typescript
+const meta = extractUiMeta({
+  content: [{ type: "text", text: "OK" }],
+  _meta: { ui: { resourceUri: "ui://pg/table/1", visibility: ["model", "app"] } },
+});
+
+// meta === { resourceUri: "ui://pg/table/1", visibility: ["model", "app"] }
+```
+
+如果輸入不是物件、`_meta` 缺失、`ui` 缺失，或 `resourceUri` 為空或不是字串，則返回 `null`。
+
+## `collect(toolName, result, context?)`
+
+`collect()` 封裝了 `extractUiMeta()`，並在有效的 `resourceUri` 存在時儲存 `CollectedUiResource`：
+
+```typescript
+const collector = createCollector();
+
+const resource = collector.collect(
+  "postgres:query",
+  {
+    _meta: { ui: { resourceUri: "ui://pg/table/1" } },
+  },
+  { query: "SELECT * FROM users", userId: "u123" },
+);
+
+// resource === {
+//   source: "postgres:query",
+//   resourceUri: "ui://pg/table/1",
+//   context: { query: "SELECT * FROM users", userId: "u123" },
+//   slot: 0,
+// }
+```
+
+來自實作和測試的實際行為：
+
+- 插槽編號從 `0` 開始，只有在實際收集到資源時才遞增。
+- 非 UI 結果會被跳過，不佔用插槽。
+- `context` 原樣儲存，之後由 `buildCompositeUi()` 用於共享上下文提取。
+
+範例：
+
+```typescript
+collector.collect("a", { _meta: { ui: { resourceUri: "ui://a" } } }); // 插槽 0
+collector.collect("no-ui", { content: [] }); // null，不佔用插槽
+collector.collect("b", { _meta: { ui: { resourceUri: "ui://b" } } }); // 插槽 1
+```
+
+## `getResources()`
+
+按插槽順序返回已收集的資源：
+
+```typescript
+const resources = collector.getResources();
+```
+
+這返回一個新的陣列副本。對返回陣列的修改不會影響收集器的內部狀態。
+
+## `clear()`
+
+重置收集器：
+
+```typescript
+collector.clear();
+```
+
+`clear()` 之後，下一個收集到的資源會重新從 `slot: 0` 開始。
+
+## 收集形狀
+
+```typescript
+interface CollectedUiResource {
+  source: string;
+  resourceUri: string;
+  context?: Record<string, unknown>;
+  slot: number;
+}
+```
+
+## SDK 收集器
+
+如果你的輸入已符合 `@modelcontextprotocol/sdk` 的 `CallToolResult` 形狀，請使用 `@casys/mcp-compose/sdk` 中的 `createMcpSdkCollector()`。它委託給相同的核心收集器，並新增一個行為：`isError: true` 的結果會被自動跳過。
+
+### `McpSdkCollector` 介面
+
+```typescript
+import { createMcpSdkCollector } from "@casys/mcp-compose/sdk";
+
+interface McpSdkCollector {
+  /**
+   * 從 MCP SDK CallToolResult 收集 UI 資源。
+   * 如果結果有 isError: true 或沒有 _meta.ui.resourceUri，則返回 null。
+   */
+  collectFromSdk(
+    toolName: string,
+    result: McpSdkCallToolResult,
+    context?: Record<string, unknown>,
+  ): CollectedUiResource | null;
+
+  /** 按插槽順序取得所有已收集的資源。 */
+  getResources(): CollectedUiResource[];
+
+  /** 重置已收集的資源。 */
+  clear(): void;
+
+  /** 存取底層的核心收集器。 */
+  readonly inner: UiCollector;
+}
+```
+
+該方法是 `collectFromSdk()`，而非 `collect()`。`inner` 屬性公開底層的 `UiCollector`，如果你需要直接存取核心 API。
+
+### 範例
+
+```typescript
+import { createMcpSdkCollector } from "@casys/mcp-compose/sdk";
+import { buildCompositeUi, renderComposite } from "@casys/mcp-compose";
+
+const collector = createMcpSdkCollector();
+
+// sdkResult 符合 @modelcontextprotocol/sdk CallToolResult 形狀
+for (const [toolName, sdkResult] of toolCallResults) {
+  collector.collectFromSdk(toolName, sdkResult, { workflowId: "wf-1" });
+}
+
+// 錯誤結果 (isError: true) 會被自動跳過
+// 繼續標準流程
+const resources = collector.getResources();
+const descriptor = buildCompositeUi(resources, { layout: "split" });
+const html = renderComposite(descriptor);
+```
+
+注意：`createMcpSdkCollector()` 封裝了標準的 `createCollector()`。`inner` 屬性讓你可以存取底層的收集器，如果你需要混合使用 SDK 和非 SDK 結果。

@@ -1,0 +1,127 @@
+---
+title: Bridge Client API
+description: 注入的瀏覽器執行時期及匯出的 BridgeClient 類別。
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## 兩個瀏覽器端層
+
+`@casys/mcp-bridge` 公開兩個相關的瀏覽器端元件：
+
+1. `startResourceServer()` 在 `/bridge.js` 提供的注入 `bridge.js` 執行時期
+2. `src/core/bridge-client.ts` 中匯出的 `BridgeClient` 類別
+
+它們解決相同的問題，但不是相同的實作。
+
+## 注入的 `bridge.js`
+
+Resource Server 注入格式如下的腳本 URL：
+
+```text
+/bridge.js?platform=<platform>&session=<sessionId>[&auth=1][&debug=1]
+```
+
+該執行時期：
+
+- 從 `document.currentScript` 讀取自身的查詢參數
+- 在 iframe 模式下修補 `window.parent.postMessage`，或在獨立模式下修補 `window.postMessage`
+- 本地處理 `ui/initialize`
+- 本地處理 `ui/open-link`
+- 透過 WebSocket 轉發其餘所有請求
+- 發出 `mcp-bridge-ready`
+- 發出 `mcp-bridge-auth-error`
+
+### 執行時期行為
+
+- `ui/initialize` 回傳協定版本 `2025-11-25`
+- 宿主資訊為 `{ name: "@casys/mcp-bridge", version: "0.2.0" }`
+- 待處理的請求 ID 在 30 秒後逾時
+- 早期傳入的通知緩衝至 `ui/initialize` 完成
+- WebSocket 重新連線最多嘗試 5 次，以指數退避（上限 10 秒）
+- 如果 socket 已關閉或認證尚未完成，傳出的訊息會被丟棄
+
+## 匯出的 `BridgeClient`
+
+如果您要組合自己的平台執行時期而非依賴注入的腳本，請使用匯出的類別。
+
+```ts
+import {
+  BridgeClient,
+  TelegramPlatformAdapter,
+  WebSocketTransport,
+} from "@casys/mcp-bridge";
+
+const client = new BridgeClient({
+  serverUrl: "https://bridge.example.com",
+  sessionId: "session-id",
+  platform: new TelegramPlatformAdapter(),
+  transport: new WebSocketTransport(),
+});
+
+await client.start();
+```
+
+## `BridgeClientOptions`
+
+| 欄位 | 類型 | 說明 |
+| --- | --- | --- |
+| `serverUrl` | `string` | 基礎伺服器 URL。`BridgeClient` 附加 `/bridge?session=<id>`。 |
+| `platform` | `PlatformAdapter` | 必填。提供宿主上下文、生命週期事件及 `openLink()`。 |
+| `transport` | `BridgeTransport` | 程式碼中必填。套件匯出 `WebSocketTransport`。 |
+| `sessionId` | `string` | 必填。傳遞至 WebSocket URL。 |
+| `bridgeInfo` | `{ name: string; version: string }` | 選擇性的回報宿主資訊覆寫。 |
+| `requestTimeoutMs` | `number` | 選擇性。預設為 `30000`。 |
+
+## `BridgeClient` 行為
+
+該類別：
+
+- 初始化平台介面卡
+- 連線傳輸
+- 攔截 `window.parent.postMessage`
+- 本地處理 `ui/initialize`
+- 本地處理 `ui/open-link`
+- 透過傳輸轉發其餘請求
+- 將 `theme-changed` 和 `viewport-changed` 生命週期事件轉換為 `ui/notifications/host-context-changed`
+- 在 `teardown` 生命週期事件上分發 `ui/resource-teardown`
+
+<Aside type="caution">
+  匯出的 `BridgeClient` 僅修補 `window.parent.postMessage`（iframe 模式）。它不支援獨立模式（當 `window.parent === window` 時修補 `window.postMessage`）。獨立模式僅可透過注入的 `bridge.js` 腳本使用。
+</Aside>
+
+## 與注入執行時期的重要差異
+
+- 匯出的 `BridgeClient` 不實作注入執行時期的重新連線迴圈。
+- 匯出的 `BridgeClient` 不實作注入執行時期的認證訊息協定。
+- 匯出的 `BridgeClient` 僅支援 iframe 模式（`window.parent.postMessage`）。獨立模式僅限注入執行時期。
+- 套件目前僅實作 `WebSocketTransport`。
+
+## `McpAppsMethod` 常數
+
+套件匯出一個 `McpAppsMethod` 物件，包含 MCP Apps 協定中使用的所有已知 JSON-RPC 方法名稱字串。在需要參考方法名稱而不硬式編碼字串時，請匯入它。
+
+```ts
+import { McpAppsMethod } from "@casys/mcp-bridge";
+```
+
+| 常數 | 方法字串 | 方向 |
+| --- | --- | --- |
+| `UI_INITIALIZE` | `ui/initialize` | App → Host |
+| `UI_NOTIFICATIONS_INITIALIZED` | `ui/notifications/initialized` | App → Host |
+| `TOOLS_CALL` | `tools/call` | App → Host |
+| `RESOURCES_READ` | `resources/read` | App → Host |
+| `UI_OPEN_LINK` | `ui/open-link` | App → Host |
+| `UI_MESSAGE` | `ui/message` | App → Host |
+| `UI_UPDATE_MODEL_CONTEXT` | `ui/update-model-context` | App → Host |
+| `UI_REQUEST_DISPLAY_MODE` | `ui/request-display-mode` | App → Host |
+| `NOTIFICATIONS_MESSAGE` | `notifications/message` | App → Host |
+| `UI_TOOL_INPUT` | `ui/notifications/tool-input` | Host → App |
+| `UI_TOOL_INPUT_PARTIAL` | `ui/notifications/tool-input-partial` | Host → App |
+| `UI_TOOL_RESULT` | `ui/notifications/tool-result` | Host → App |
+| `UI_TOOL_CANCELLED` | `ui/notifications/tool-cancelled` | Host → App |
+| `UI_HOST_CONTEXT_CHANGED` | `ui/notifications/host-context-changed` | Host → App |
+| `UI_SIZE_CHANGED` | `ui/notifications/size-changed` | Host → App |
+| `UI_RESOURCE_TEARDOWN` | `ui/resource-teardown` | Host → App |
+
+`BridgeClient` 本地處理 `UI_INITIALIZE` 和 `UI_OPEN_LINK`。所有其他 App → Host 方法透過傳輸轉發至 resource server。

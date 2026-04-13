@@ -1,0 +1,239 @@
+---
+title: 認證（OAuth2）
+description: "使用 JWT/Bearer 認證和 OIDC 預設配置保護你的 MCP 伺服器。"
+---
+
+import { Tabs, TabItem, Aside, Steps } from '@astrojs/starlight/components';
+
+為 MCP 伺服器加入認證通常意味著你需要自行處理 JWKS 抓取、令牌驗證、金鑰輪換、範圍檢查和元資料端點。使用 `@casys/mcp-server`，只需一行程式碼。
+
+<img src="/diagrams/mcp-server/mcp-auth-flow.svg" alt="OAuth2 認證流程" style="width: 100%; max-width: 600px; margin: 24px auto; display: block;" />
+
+## 認證預設配置
+
+選擇你的身份提供商。每個預設配置都會自動處理發行者 URL、JWKS 端點和金鑰輪換：
+
+<Tabs>
+  <TabItem label="Google">
+    ```typescript
+    import {
+      McpApp,
+      createGoogleAuthProvider,
+    } from "@casys/mcp-server";
+
+    const server = new McpApp({
+      name: "my-api",
+      version: "1.0.0",
+      auth: {
+        provider: createGoogleAuthProvider({
+          audience: "https://my-mcp.example.com",
+          resource: "https://my-mcp.example.com",
+        }),
+        authorizationServers: ["https://accounts.google.com"],
+        resource: "https://my-mcp.example.com",
+      },
+    });
+    ```
+  </TabItem>
+  <TabItem label="Auth0">
+    ```typescript
+    import {
+      McpApp,
+      createAuth0AuthProvider,
+    } from "@casys/mcp-server";
+
+    const server = new McpApp({
+      name: "my-api",
+      version: "1.0.0",
+      auth: {
+        provider: createAuth0AuthProvider({
+          domain: "my-tenant.auth0.com",
+          audience: "https://my-mcp.example.com",
+          resource: "https://my-mcp.example.com",
+          scopesSupported: ["read", "write"],
+        }),
+        authorizationServers: ["https://my-tenant.auth0.com"],
+        resource: "https://my-mcp.example.com",
+        scopesSupported: ["read", "write"],
+      },
+    });
+    ```
+  </TabItem>
+  <TabItem label="GitHub Actions">
+    ```typescript
+    import {
+      McpApp,
+      createGitHubAuthProvider,
+    } from "@casys/mcp-server";
+
+    const server = new McpApp({
+      name: "my-api",
+      version: "1.0.0",
+      auth: {
+        provider: createGitHubAuthProvider({
+          audience: "https://my-mcp.example.com",
+          resource: "https://my-mcp.example.com",
+        }),
+        authorizationServers: ["https://token.actions.githubusercontent.com"],
+        resource: "https://my-mcp.example.com",
+      },
+    });
+    ```
+
+    <Aside type="tip">
+      GitHub Actions 自動提供 OIDC 令牌 — 無需管理任何機密資訊。
+    </Aside>
+  </TabItem>
+  <TabItem label="通用 OIDC">
+    ```typescript
+    import {
+      McpApp,
+      createOIDCAuthProvider,
+    } from "@casys/mcp-server";
+
+    const server = new McpApp({
+      name: "my-api",
+      version: "1.0.0",
+      auth: {
+        provider: createOIDCAuthProvider({
+          issuer: "https://my-idp.example.com",
+          audience: "https://my-mcp.example.com",
+          resource: "https://my-mcp.example.com",
+        }),
+        authorizationServers: ["https://my-idp.example.com"],
+        resource: "https://my-mcp.example.com",
+      },
+    });
+    ```
+  </TabItem>
+</Tabs>
+
+## 範圍強制執行
+
+工具可以宣告必要的範圍。範圍檢查中介軟體在認證之後、處理器之前自動執行：
+
+```typescript
+server.registerTool(
+  {
+    name: "delete_user",
+    description: "Delete a user account",
+    inputSchema: {
+      type: "object",
+      properties: { userId: { type: "string" } },
+      required: ["userId"],
+    },
+    requiredScopes: ["admin", "users:delete"],
+  },
+  async ({ userId }) => {
+    // 只有在令牌同時具有 admin 和 users:delete 時才會執行此程式碼
+    await deleteUser(userId);
+    return { deleted: true };
+  },
+);
+```
+
+<Aside>
+  範圍檢查是**AND 邏輯** — 令牌必須擁有列出的*所有*範圍。需要 OR 邏輯？請在[自訂中介軟體](/zh-TW/docs/guides/middleware)中實作。
+</Aside>
+
+## 令牌快取
+
+`JwtAuthProvider` 包含一個記憶體快取，以避免重複的 JWKS 查詢：
+
+- 快取鍵：原始令牌字串的 SHA-256 雜湊
+- TTL：5 分鐘
+- 最大大小：1000 個條目
+
+這意味著令牌只需對 JWKS 端點驗證一次，之後在 TTL 視窗內的後續呼叫都從快取提供。
+
+## 進階：JwtAuthProvider
+
+如需完全控制驗證參數，請直接使用 `JwtAuthProvider`：
+
+```typescript
+import { JwtAuthProvider } from "@casys/mcp-server";
+
+const provider = new JwtAuthProvider({
+  issuer: "https://accounts.google.com",
+  audience: "https://my-mcp.example.com",
+  resource: "https://my-mcp.example.com",
+  authorizationServers: ["https://accounts.google.com"],
+  jwksUri: "https://www.googleapis.com/oauth2/v3/certs",
+  scopesSupported: ["read", "write"],
+});
+
+const authInfo = await provider.verifyToken(token);
+// AuthInfo | null
+```
+
+`AuthInfo` 欄位：
+
+```typescript
+interface AuthInfo {
+  subject: string;                     // 令牌的 "sub" 宣告
+  clientId?: string;                   // 令牌的 "client_id" 或 "azp" 宣告
+  scopes: string[];                    // 從 "scope" 宣告解析（空格分隔）
+  claims?: Record<string, unknown>;    // 所有令牌宣告
+  expiresAt?: number;                  // 令牌到期時間（Unix 紀元秒）
+}
+```
+
+## 自動探索（RFC 9728）
+
+當在 HTTP 伺服器上配置認證時，框架在啟動時自動提供一個探索端點。MCP 客戶端使用此端點來了解如何進行認證：
+
+```
+GET /.well-known/oauth-protected-resource
+```
+
+```json
+{
+  "resource": "https://my-mcp.example.com",
+  "authorization_servers": ["https://accounts.google.com"],
+  "scopes_supported": ["read", "write"],
+  "bearer_methods_supported": ["header"]
+}
+```
+
+<Aside type="tip">
+  你不需要手動設定這個。它從你的認證提供商配置衍生，並在呼叫 `startHttp()` 時自動提供。
+</Aside>
+
+## 客戶端 OAuth 流程
+
+用於構建需要對受保護伺服器進行認證的 MCP 客戶端：
+
+```typescript
+import {
+  prepareOAuthProvider,
+  FileTokenStore,
+} from "@casys/mcp-server";
+
+const oauthProvider = await prepareOAuthProvider(
+  "https://my-mcp.example.com",
+  {
+    clientId: "my-client-id",
+    scopes: ["read", "write"],
+    tokenStore: new FileTokenStore("./.tokens"),
+    openBrowser: (url) => {
+      // 在使用者的瀏覽器中開啟授權 URL
+      console.log(`Open this URL to authorize: ${url}`);
+    },
+  },
+);
+```
+
+提供了兩種令牌儲存實作：
+
+- `FileTokenStore(path)` — 將令牌持久化到磁碟
+- `MemoryTokenStore()` — 記憶體中，重啟後令牌遺失
+
+## 基於 YAML 的認證
+
+以編譯後的二進位檔發布？你的使用者可以在不修改程式碼的情況下配置認證 — 請參閱[配置指南](/zh-TW/docs/guides/configuration)。
+
+## 另請參閱
+
+- [認證提供商 API](/zh-TW/docs/api/auth-providers) — 預設配置和 `JwtAuthProvider` 的完整 API 參考
+- [中介軟體管道](/zh-TW/docs/guides/middleware) — 認證如何融入中介軟體鏈
+- [配置（YAML）](/zh-TW/docs/guides/configuration) — 用於二進位發布的基於檔案的認證配置

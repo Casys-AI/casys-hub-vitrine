@@ -1,0 +1,133 @@
+---
+title: Telegram
+description: "@casys/mcp-bridge 0.2.0 中 Telegram 整合的實際實作內容。"
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## 伺服器設定
+
+```ts
+import { JsonRpcMcpBackend, startResourceServer } from "@casys/mcp-bridge";
+
+const server = startResourceServer({
+  assetDirectories: {
+    "my-app": "./ui-dist",
+  },
+  platform: "telegram",
+  telegramBotToken: Deno.env.get("TELEGRAM_BOT_TOKEN")!,
+  backend: new JsonRpcMcpBackend({
+    endpointUrl: "https://my-mcp.example.com/mcp",
+  }),
+});
+```
+
+對於 `platform: "telegram"`，伺服器會快速失敗，除非您提供以下其中之一：
+
+- `telegramBotToken`
+- 自訂 `auth` 處理器
+
+## 瀏覽器中的行為
+
+當注入的執行時期偵測到 `platform=telegram` 時，如果 `window.Telegram.WebApp` 可用，它會使用該物件。
+
+目前執行以下所有操作：
+
+- 呼叫 `Telegram.WebApp.ready()`
+- 應用程式尚未展開時呼叫 `Telegram.WebApp.expand()`
+- 在需要認證時透過 WebSocket 認證頻道發送 `initData`
+- 對 `ui/open-link` 使用 `Telegram.WebApp.openLink()`
+- 從 `colorScheme` 建構 `hostContext.theme`
+- 從 `viewportStableHeight` 建構 `hostContext.containerDimensions.height`
+- 監聽 `themeChanged` 和 `viewportChanged`
+
+目前不橋接 Telegram WebApp 事件介面的其餘部分。
+
+<Aside type="caution">
+  注入的 `bridge.js` 在 `containerDimensions` 中使用 `height`（而非 `maxHeight`）。匯出的 `TelegramPlatformAdapter` 類別則使用 `maxHeight`（見 `getContainerDimensions()`）。`ContainerDimensions` 類型同時支援兩個欄位。從 `ui/initialize` 讀取宿主上下文的程式碼必須根據其執行的層級檢查對應的欄位名稱。
+</Aside>
+
+## 認證
+
+Telegram 認證在伺服器端實作，而非在瀏覽器介面卡中。
+
+內建處理器：
+
+1. 解析 Mini App `initData`
+2. 移除 `hash`
+3. 將剩餘的 `key=value` 對排序
+4. 使用 `"WebAppData"` 金鑰透過 HMAC-SHA256 衍生密鑰
+5. 使用 `crypto.subtle.verify` 驗證簽章
+6. 拒絕超過 24 小時或超過未來 60 秒的 `auth_date` 值
+
+認證發生在工作階段已存在後的第一則 WebSocket 訊息上。
+
+<Aside type="caution">
+  請將機器人令牌保留在伺服器端。用戶端僅發送 Telegram 提供的 `initData`；簽章驗證在伺服器端進行。
+</Aside>
+
+## 宿主上下文詳細資料
+
+對於自動注入的執行時期，Telegram 目前提供：
+
+- `theme`
+- 從 `themeParams` 衍生的 `styles.variables`（見下方 CSS 變數）
+- 當可用時，`locale` 來自 `initDataUnsafe.user.language_code`，否則回退至 `navigator.language`
+- 來自瀏覽器環境的 `timeZone`
+- 來自 `window.innerWidth` 的 `containerDimensions.width`
+- 來自 `viewportStableHeight` 的 `containerDimensions.height`（回退至 `window.innerHeight`）
+
+匯出的 `TelegramPlatformAdapter` 提供相同欄位，但有兩點差異：
+
+- `locale` 始終來自 `navigator.language`——不讀取 `initDataUnsafe.user.language_code`
+- `containerDimensions` 對視口高度值使用 `maxHeight`（而非 `height`）
+
+## CSS 變數命名
+
+兩個 Telegram 層在 `hostContext.styles.variables` 中產生不同的 CSS 變數結構。
+
+**注入的 `bridge.js` 執行時期** — 金鑰鏡像 Telegram 的 `themeParams` 屬性名稱，並加上 `--tg-` 前綴：
+
+| Telegram `themeParams` 金鑰 | CSS 變數 |
+| --- | --- |
+| `bg_color` | `--tg-bg-color` |
+| `secondary_bg_color` | `--tg-secondary-bg-color` |
+| `text_color` | `--tg-text-color` |
+| `button_color` | `--tg-button-color` |
+| `button_text_color` | `--tg-button-text-color` |
+| `hint_color` | `--tg-hint-color` |
+| `link_color` | `--tg-link-color` |
+| （任何其他 `themeParams` 金鑰） | `--tg-<含連字號的金鑰>` |
+
+**匯出的 `TelegramPlatformAdapter`** — 金鑰使用語義命名慣例：
+
+| Telegram `themeParams` 金鑰 | CSS 變數 |
+| --- | --- |
+| `bg_color` | `--color-background-primary` |
+| `secondary_bg_color` | `--color-background-secondary` |
+| `text_color` | `--color-text-primary` |
+| `subtitle_text_color` | `--color-text-secondary` |
+| `section_separator_color` | `--color-border-primary` |
+| `accent_text_color` | `--color-ring-primary` |
+| `hint_color` | `--color-text-hint` |
+| `link_color` | `--color-text-link` |
+| `button_color` | `--color-button-primary` |
+| `button_text_color` | `--color-button-text` |
+| `header_bg_color` | `--color-background-header` |
+| `section_bg_color` | `--color-background-section` |
+
+如果您使用注入的執行時期，請在 CSS 中以 `--tg-*` 變數為目標。如果您使用帶有自訂 `BridgeClient` 的 `TelegramPlatformAdapter`，請以語義 `--color-*` 變數為目標。
+
+## 匯出的 Telegram API
+
+套件也匯出兩個 Telegram 專屬類別：
+
+- `TelegramAdapter`：低階 `postMessage` 介面卡
+- `TelegramPlatformAdapter`：用於自訂 `BridgeClient` 的高階平台介面卡
+
+`TelegramPlatformAdapter` 公開比注入執行時期更結構化的宿主上下文，包含 `safeAreaInsets`、`getAuthData()` 及 `sendMessage()`。其 `sendMessage()` 方法呼叫 `Telegram.WebApp.sendData()`，發送後會關閉 Mini App。
+
+## 不應假設的事項
+
+- 安全區域插圖可從 `TelegramPlatformAdapter` 取得，但自動注入的 `bridge.js` 執行時期目前不將其包含在發送給應用程式的宿主上下文中。
+- `MainButton`、`BackButton` 及 Telegram SDK 事件的完整列表在原始碼中已有型別定義，但目前尚未連接到 bridge 流程。

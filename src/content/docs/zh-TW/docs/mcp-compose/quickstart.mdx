@@ -1,0 +1,90 @@
+---
+title: '快速入門'
+description: '收集兩個 MCP UI 結果、驗證同步規則，並渲染出一個儀表板。'
+---
+
+## 安裝
+
+```bash
+deno add jsr:@casys/mcp-compose@0.4.0
+```
+
+或手動新增匯入：
+
+```json
+{
+  "imports": {
+    "@casys/mcp-compose": "jsr:@casys/mcp-compose@0.4.0"
+  }
+}
+```
+
+## 最小化流程
+
+此範例使用與套件庫 README 和測試中相同的工具名稱和規則形式：
+
+```typescript
+import {
+  buildCompositeUi,
+  createCollector,
+  renderComposite,
+  validateSyncRules,
+} from "@casys/mcp-compose";
+
+const collector = createCollector();
+
+const pgResult = {
+  content: [{ type: "text", text: "Query executed" }],
+  _meta: { ui: { resourceUri: "ui://postgres/table/sales-q1" } },
+};
+
+const vizResult = {
+  content: [{ type: "text", text: "Chart rendered" }],
+  _meta: { ui: { resourceUri: "ui://viz/chart/sales-bar" } },
+};
+
+collector.collect("postgres:query", pgResult, {
+  query: "SELECT * FROM sales WHERE quarter = 'Q1'",
+  workflowId: "wf-001",
+});
+collector.collect("viz:render", vizResult, {
+  workflowId: "wf-001",
+});
+
+const resources = collector.getResources();
+
+const orchestration = {
+  layout: "split" as const,
+  sync: [
+    { from: "postgres:query", event: "filter", to: "viz:render", action: "update" },
+  ],
+  sharedContext: ["workflowId"],
+};
+
+const validation = validateSyncRules(
+  orchestration.sync,
+  resources.map((resource) => resource.source),
+);
+
+if (!validation.valid) {
+  console.error(validation.issues);
+  Deno.exit(1);
+}
+
+const descriptor = buildCompositeUi(resources, orchestration);
+const html = renderComposite(descriptor);
+
+await Deno.writeTextFile("./dashboard.html", html);
+```
+
+## 你會得到什麼
+
+- 兩個已收集的資源，插槽分別為 `0` 和 `1`。
+- 一個複合描述符，其同步規則被解析為 `{ from: 0, to: 1, ... }`。
+- 一個帶有內嵌樣式、兩個 iframe 和主機事件匯流排的 HTML 文件。
+
+## 注意事項
+
+- 對於不包含 `_meta.ui.resourceUri` 的結果，`collect()` 返回 `null`。
+- `validateSyncRules()` 是呈現同步問題的步驟。`buildCompositeUi()` 不會對錯誤的同步參考拋出例外。
+- 根套件的 `renderComposite()` 使用主機渲染器，支援[渲染器](./renderer/)頁面上記載的預設版面配置和區域版面配置。

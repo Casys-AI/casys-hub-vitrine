@@ -1,0 +1,96 @@
+---
+title: 快速開始
+description: 啟動 Resource Server 並在 Telegram 中開啟 MCP App。
+---
+
+import { Steps, Aside } from '@astrojs/starlight/components';
+
+## 前置條件
+
+- Deno 2.x 或 Node.js 20+
+- 從 [@BotFather](https://t.me/botfather) 取得的 Telegram 機器人令牌
+- 可透過 HTTP JSON-RPC 連線的 MCP 伺服器
+- 您想透過 `assetDirectories` 公開的 HTML 應用程式目錄
+
+## 安裝
+
+```bash
+# npm
+npm install @casys/mcp-bridge
+
+# Deno
+deno add jsr:@casys/mcp-bridge
+```
+
+<Aside type="caution">
+  注入的執行時期以 `/bridge.js?...` 提供，並始終在相同來源根目錄開啟 `/bridge?session=...`。如果您將 bridge 放在反向代理後方，請確保 `/app`、`/bridge.js`、`/bridge`，以及選擇性的 `/ui` 可在該來源的根目錄存取。
+</Aside>
+
+## 啟動 bridge
+
+<Steps>
+
+1. **建立 Resource Server**
+
+   ```ts
+   import { JsonRpcMcpBackend, startResourceServer } from "@casys/mcp-bridge";
+
+   const server = startResourceServer({
+     assetDirectories: {
+       "my-app": "./ui-dist",
+     },
+     platform: "telegram",
+     telegramBotToken: Deno.env.get("TELEGRAM_BOT_TOKEN")!,
+     backend: new JsonRpcMcpBackend({
+       endpointUrl: "https://my-mcp.example.com/mcp",
+     }),
+     options: {
+       resourceServerPort: 4000,
+     },
+   });
+
+   console.log(`Bridge 執行於 ${server.baseUrl}`);
+   ```
+
+2. **發布所需路由**
+
+   您的公開來源需要以下路徑：
+
+   - `/app/*` 用於本機提供的 HTML、JS、CSS、圖片及字型
+   - `/bridge.js` 用於注入的瀏覽器執行時期
+   - `/bridge` 用於 WebSocket
+   - `/ui` 僅在您需要後端代理 `ui://` 資源時使用
+
+3. **將 Telegram 指向 HTML 頁面**
+
+   在 [@BotFather](https://t.me/botfather) 中將 Mini App URL 設定為 bridge 提供的頁面，例如：
+
+   ```text
+   https://your-domain.com/app/my-app/index.html
+   ```
+
+4. **開啟 Mini App**
+
+   當 Telegram 載入頁面時，Resource Server 建立工作階段、注入 `bridge.js`，瀏覽器執行時期在正常 JSON-RPC 流量開始前，透過 WebSocket 發送 Telegram 認證資料。
+
+</Steps>
+
+## 選擇性：觀察 bridge 就緒狀態
+
+注入的執行時期在 socket 及選擇性認證步驟完成後發出瀏覽器事件：
+
+```ts
+window.addEventListener("mcp-bridge-ready", (event) => {
+  console.log("Bridge 就緒", event.detail);
+});
+
+window.addEventListener("mcp-bridge-auth-error", (event) => {
+  console.error("Bridge 認證失敗", event.detail.error);
+});
+```
+
+## 本機資產 vs 後端 `ui://` 資源
+
+- 當 HTML 位於 `assetDirectories` 時，使用 `/app/<server>/<path>`。
+- 當您設定的後端實作 `readResource()` 時，使用 `/ui?uri=ui://...`。
+- `JsonRpcMcpBackend.readResource()` 轉發 `resources/read` JSON-RPC 請求，並僅使用第一個 `contents[0].text` 值作為 HTML。

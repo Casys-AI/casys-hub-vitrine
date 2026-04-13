@@ -1,0 +1,289 @@
+---
+title: Platform 快速入門
+description: "三個套件串連在一起：帶有 UI 產生工具的 McpApp、透過 mcp-bridge 將它們提供到 Telegram，以及用 mcp-compose 建構儀表板。"
+---
+
+import { Steps, Aside, Card, CardGrid } from '@astrojs/starlight/components';
+import Mermaid from '../../../../../components/Mermaid.astro';
+
+此範例建構一個最小化的發票 MCP 伺服器，包含兩個產生 UI 資源的工具，然後展示 `mcp-bridge` 如何在 Telegram webview 中提供這些 UI，以及 `mcp-compose` 如何將它們合併成分割窗格儀表板。
+
+## 前置條件
+
+- Deno 2.x
+- 來自 [@BotFather](https://t.me/botfather) 的 Telegram 機器人 token（用於 bridge 部分）
+
+## 步驟 1 — 帶有兩個 UI 產生工具的 McpApp
+
+安裝 `mcp-server`：
+
+```bash
+deno add jsr:@casys/mcp-server@0.14.0
+```
+
+建立 `server.ts`：
+
+```typescript
+import { McpApp } from "@casys/mcp-server";
+import { uiMeta } from "@casys/mcp-server"; // re-exported from mcp-compose
+import { existsSync } from "node:fs";
+import { readFileSync } from "node:fs";
+
+const app = new McpApp({
+  name: "invoices",
+  version: "1.0.0",
+  maxConcurrent: 10,
+  validateSchema: true,
+});
+
+// Tool 1 — list invoices, produces a table UI
+app.registerTool(
+  {
+    name: "invoices:list",
+    description: "List recent invoices",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workflowId: { type: "string" },
+      },
+    },
+    ...uiMeta({
+      resourceUri: "ui://invoices/invoice-list",
+      emits: ["invoice.selected"],
+      visibility: ["model", "app"],
+    }),
+  },
+  async (args) => {
+    // Fetch invoices from your data source here
+    return {
+      content: [{ type: "text", text: "3 invoices loaded" }],
+      _meta: { ui: { resourceUri: "ui://invoices/invoice-list" } },
+    };
+  },
+);
+
+// Tool 2 — render a chart, reacts to invoice selection
+app.registerTool(
+  {
+    name: "chart:render",
+    description: "Render invoice amount chart",
+    inputSchema: {
+      type: "object",
+      properties: {
+        workflowId: { type: "string" },
+      },
+    },
+    ...uiMeta({
+      resourceUri: "ui://invoices/invoice-chart",
+      accepts: ["invoice.selected"],
+      visibility: ["model", "app"],
+    }),
+  },
+  async (args) => {
+    return {
+      content: [{ type: "text", text: "Chart rendered" }],
+      _meta: { ui: { resourceUri: "ui://invoices/invoice-chart" } },
+    };
+  },
+);
+
+// Register HTML viewers — each maps to a built ui/*/dist/index.html
+app.registerViewers({
+  prefix: "invoices",
+  moduleUrl: import.meta.url,
+  exists: (path) => existsSync(path),
+  readFile: (path) => readFileSync(path, "utf-8"),
+  viewers: ["invoice-list", "invoice-chart"],
+});
+
+// Start over HTTP on port 3000
+await app.startHttp({ port: 3000 });
+console.log("MCP server running at http://localhost:3000/mcp");
+```
+
+<Aside type="note">
+  `uiMeta()` 從 `@casys/mcp-server` 重新匯出——伺服器不需要單獨匯入 `mcp-compose`。`_meta.ui` 物件直接展開到工具定義中，並在每個工具結果中轉發。
+</Aside>
+
+當 LLM 呼叫 `invoices:list` 時，結果包含 `_meta.ui.resourceUri = "ui://invoices/invoice-list"`。客戶端（bridge 或 compose）使用該 URI 渲染互動式 viewer。
+
+## 步驟 2 — Bridge 到 Telegram
+
+安裝 `mcp-bridge`：
+
+```bash
+deno add jsr:@casys/mcp-bridge@0.2.0
+```
+
+<Aside type="caution">
+  `mcp-bridge` 目前是 v0.2.0（原型版）。API 可能發生變更。請鎖定確切版本。
+</Aside>
+
+建立 `bridge.ts`：
+
+```typescript
+import { JsonRpcMcpBackend, startResourceServer } from "@casys/mcp-bridge";
+
+const server = startResourceServer({
+  // Serve the built HTML viewers by name
+  assetDirectories: {
+    "invoices": "./ui/invoice-list/dist",
+  },
+  platform: "telegram",
+  telegramBotToken: Deno.env.get("TELEGRAM_BOT_TOKEN")!,
+  backend: new JsonRpcMcpBackend({
+    // Point at the McpApp started in Step 1
+    endpointUrl: "http://localhost:3000/mcp",
+  }),
+  options: {
+    resourceServerPort: 4000,
+  },
+});
+
+console.log(`Bridge running at ${server.baseUrl}`);
+```
+
+同時執行兩個檔案：
+
+```bash
+deno run -A server.ts &
+deno run -A bridge.ts
+```
+
+在 BotFather 中將 Telegram Mini App URL 設定為：
+
+```text
+http://localhost:4000/app/invoices/index.html
+```
+
+當使用者開啟 Mini App 時，bridge 會：
+1. 提供注入了 `bridge.js` 的 HTML。
+2. 開啟一個 WebSocket 工作階段。
+3. 驗證 Telegram 初始化資料（使用機器人 token 進行 HMAC 檢查）。
+4. 在 webview 和 MCP 伺服器之間轉發 JSON-RPC 訊息。
+
+對於在 MCP 伺服器上已註冊（不在 `assetDirectories` 中）的 `ui://` 資源，使用 `/ui?uri=ui://...` 路由——bridge 會向後端轉發 `resources/read` 請求並返回 HTML。
+
+## 步驟 3 — 將兩個工具組合成儀表板
+
+安裝 `mcp-compose`：
+
+```bash
+deno add jsr:@casys/mcp-compose@0.4.0
+```
+
+<Aside type="caution">
+  `mcp-compose` 目前是 v0.4.0（Alpha 版）。API 可能發生變更。請鎖定確切版本。
+</Aside>
+
+建立 `compose.ts`：
+
+```typescript
+import {
+  buildCompositeUi,
+  createCollector,
+  renderComposite,
+  validateSyncRules,
+} from "@casys/mcp-compose";
+
+// Simulate tool results from your LLM agent
+// In practice, these come from your MCP client calling the tools above
+const invoiceListResult = {
+  content: [{ type: "text", text: "3 invoices loaded" }],
+  _meta: { ui: { resourceUri: "ui://invoices/invoice-list" } },
+};
+
+const chartResult = {
+  content: [{ type: "text", text: "Chart rendered" }],
+  _meta: { ui: { resourceUri: "ui://invoices/invoice-chart" } },
+};
+
+// 1. Collect results
+const collector = createCollector();
+collector.collect("invoices:list", invoiceListResult, { workflowId: "wf-001" });
+collector.collect("chart:render", chartResult, { workflowId: "wf-001" });
+
+const resources = collector.getResources();
+
+// 2. Define sync rules and layout
+const orchestration = {
+  layout: "split" as const,
+  sync: [
+    {
+      from: "invoices:list",
+      event: "invoice.selected",
+      to: "chart:render",
+      action: "update",
+    },
+  ],
+  sharedContext: ["workflowId"],
+};
+
+// 3. Validate sync rules before building
+const validation = validateSyncRules(
+  orchestration.sync,
+  resources.map((r) => r.source),
+);
+
+if (!validation.valid) {
+  console.error("Sync rule issues:", validation.issues);
+  Deno.exit(1);
+}
+
+// 4. Build and render
+const descriptor = buildCompositeUi(resources, orchestration);
+const html = renderComposite(descriptor);
+
+await Deno.writeTextFile("./dashboard.html", html);
+console.log("Dashboard written to dashboard.html");
+```
+
+執行：
+
+```bash
+deno run -A compose.ts
+```
+
+在瀏覽器中開啟 `dashboard.html`，你會看到：
+- 兩個並排的 iframe（分割版面配置）。
+- 當發票列表 iframe 發送 `invoice.selected` 時，組合事件匯流排將其路由到圖表 iframe 的 `update` 動作處理器。
+- `workflowId` 在每個 `ComposeEventPayload.sharedContext` 中都可用。
+
+## 剛才發生了什麼
+
+<Mermaid chart={`graph LR
+  AGENT[LLM agent] -->|invoices:list| APP[McpApp\nserver.ts]
+  AGENT -->|chart:render| APP
+  APP -->|_meta.ui| BRIDGE[mcp-bridge\nbridge.ts\nTelegram webview]
+  APP -->|_meta.ui| COMPOSE[mcp-compose\ncompose.ts\nHTML 儀表板]
+  style APP fill:#6750A4,color:#fff
+  style BRIDGE fill:#FFB86F,color:#000
+  style COMPOSE fill:#FFB86F,color:#000`} />
+
+1. **`McpApp`** 註冊了兩個工具。每個工具結果都帶有 `_meta.ui.resourceUri`。
+2. **`registerViewers()`** 將這些 URI 映射到 MCP 伺服器上已建構的 HTML 檔案。
+3. **`mcp-bridge`** 執行了一個 HTTP 伺服器，在 Telegram Mini App 中提供這些頁面，並將 WebSocket 訊息轉發到 MCP 伺服器。
+4. **`mcp-compose`** 收集了兩個工具結果、驗證了同步規則，並渲染了一個帶有已接線事件匯流排的分割窗格 HTML 儀表板。
+
+兩個消費者（`mcp-bridge` 和 `mcp-compose`）是獨立的——你可以使用其中一個、兩個，或都不用。它們與伺服器之間的合約是 `_meta.ui.resourceUri`。
+
+## 下一步
+
+<CardGrid>
+  <a href="/zh-TW/docs/platform/architecture" class="sl-link-card">
+    <span>架構</span>
+    <span>registerViewers、事件匯流排和共享上下文的完整細節。</span>
+  </a>
+  <a href="/zh-TW/docs/guides/mcp-apps" class="sl-link-card">
+    <span>MCP Apps 指南</span>
+    <span>使用 MCP Apps 協定建構 HTML viewer。</span>
+  </a>
+  <a href="/zh-TW/docs/mcp-bridge/telegram" class="sl-link-card">
+    <span>Telegram 轉接器</span>
+    <span>認證、CSP 設定和 Telegram 專用選項。</span>
+  </a>
+  <a href="/zh-TW/docs/mcp-compose/composer" class="sl-link-card">
+    <span>組合器與版面配置</span>
+    <span>可用的版面配置預設值和同步規則選項。</span>
+  </a>
+</CardGrid>

@@ -1,0 +1,106 @@
+---
+title: 簡介
+description: "面向 Deno 的生產級 MCP 伺服器框架。可組合中介軟體、OAuth2 認證、雙傳輸與並發控制。"
+---
+
+import { Card, CardGrid, LinkCard, Aside } from '@astrojs/starlight/components';
+import Mermaid from '../../../../../components/Mermaid.astro';
+
+`@casys/mcp-server` 是一個生產級框架，用於構建具有可組合中介軟體、OAuth2 認證、雙傳輸 (STDIO + HTTP/SSE) 和並發控制的 MCP 伺服器。
+
+基於官方 [@modelcontextprotocol/sdk](https://github.com/modelcontextprotocol/sdk) (SDK 1.27) 構建。發布在 [JSR](https://jsr.io/@casys/mcp-server) 上。**版本 0.14.0 — 301 個測試。**
+
+<img src="/diagrams/mcp-server/mcp-architecture.svg" alt="MCP Server 架構" style="width: 100%; max-width: 600px; margin: 24px auto; display: block;" />
+
+<Mermaid chart={`graph TB
+  CLIENT[MCP 客戶端] -->|JSON-RPC| TRANSPORT[傳輸層]
+  TRANSPORT --> MW[中介軟體管道]
+  MW --> TOOLS[工具處理器]
+  MW --> RES[資源]
+  TRANSPORT -->|SSE| NOTIFY[通知]
+  subgraph Middleware
+    AUTH[認證] --> RATE[速率限制]
+    RATE --> CUSTOM[自訂]
+    CUSTOM --> VALID[驗證]
+  end
+  MW --> Middleware
+  style TRANSPORT fill:#6750A4,color:#fff
+  style MW fill:#FFB86F,color:#000`} />
+
+## 問題
+
+用官方 SDK 構建 MCP 伺服器只需 5 分鐘。將其部署到生產環境則需要數週。
+
+你需要認證、速率限制、輸入驗證、50 個客戶端同時請求時的背壓處理、維運人員無需重新構建即可更改的配置、HTTP 傳輸的工作階段管理。每一個新需求都意味著在你的業務邏輯外面再包一層手工管道程式碼。
+
+**你不是為了構建基礎架構而來的。** 你是為了構建工具。
+
+## 解決方案
+
+`@casys/mcp-server` 提供開箱即用的完整框架 — 採用受 [Hono](https://hono.dev) 和 [Koa](https://koajs.com) 啟發的可組合中介軟體管道。
+
+```typescript
+// This is a production-ready MCP server.
+const server = new McpApp({
+  name: "my-api",
+  version: "1.0.0",
+  maxConcurrent: 10,
+  backpressureStrategy: "queue",
+  validateSchema: true,
+  rateLimit: { maxRequests: 100, windowMs: 60_000 },
+  auth: {
+    provider: createGoogleAuthProvider({
+      audience: "https://my-mcp.example.com",
+      resource: "https://my-mcp.example.com",
+    }),
+    authorizationServers: ["https://accounts.google.com"],
+    resource: "https://my-mcp.example.com",
+  },
+});
+
+server.use(logging).use(metrics); // Your custom middleware
+server.registerTool(myTool, myHandler);
+await server.startHttp({ port: 3000 });
+```
+
+<Aside type="tip">
+  認證、速率限制、並發控制、Schema 驗證、背壓、SSE 串流、工作階段管理 — 全部來自一個 import。
+</Aside>
+
+## 功能概覽
+
+<CardGrid>
+  <Card title="雙傳輸" icon="rocket">
+    STDIO 用於本地工具，Streamable HTTP (SSE + 工作階段) 用於遠端 API。同一份伺服器程式碼，兩種傳輸 — 只需將 `start()` 替換為 `startHttp()`。
+  </Card>
+  <Card title="中介軟體管道" icon="puzzle">
+    可組合的洋蔥模型，類似 Hono/Koa。接入認證、日誌、快取、速率限制 — 或用 5 行程式碼編寫自己的中介軟體。
+  </Card>
+  <Card title="OAuth2 認證" icon="approve-check">
+    JWT/Bearer 驗證，支援 JWKS 金鑰輪換和 RFC 9728 元資料。為 Google、Auth0、GitHub Actions 和通用 OIDC 提供一行配置。
+  </Card>
+  <Card title="YAML + 環境變數配置" icon="setting">
+    基於檔案的配置，支援環境變數覆蓋。發布編譯後的二進位檔 — 使用者無需修改程式碼即可配置認證。
+  </Card>
+  <Card title="並發控制" icon="list-format">
+    內建 RequestQueue，支援 3 種背壓策略 (sleep、queue、reject)。不再有過載的伺服器。
+  </Card>
+  <Card title="Schema 驗證" icon="approve-check-circle">
+    JSON Schema 驗證 (ajv 8，含 allErrors + useDefaults)，在註冊時編譯。無效輸入在處理器執行前即被拒絕。
+  </Card>
+  <Card title="MCP Apps" icon="laptop">
+    透過 `text/html;profile=mcp-app` MIME 類型 (SDK 1.27) 在工具旁提供互動式 HTML 介面。儀表板、表單、檢視器 — 直接在客戶端中呈現。
+  </Card>
+  <Card title="Sampling Bridge" icon="random">
+    雙向 LLM 委派。伺服器可透過客戶端連線回呼 LLM，使用 `enableSampling: true`。
+  </Card>
+</CardGrid>
+
+## 開始使用
+
+<CardGrid>
+  <LinkCard title="安裝" href="/zh-TW/docs/getting-started/installation" description="一條指令。Deno 或 npm。" />
+  <LinkCard title="快速開始" href="/zh-TW/docs/getting-started/quickstart" description="從零到執行伺服器，不到一分鐘。" />
+  <LinkCard title="中介軟體指南" href="/zh-TW/docs/guides/middleware" description="讓一切可組合的管道模型。" />
+  <LinkCard title="認證指南" href="/zh-TW/docs/guides/auth" description="用一行 OAuth2 配置保護你的伺服器。" />
+</CardGrid>

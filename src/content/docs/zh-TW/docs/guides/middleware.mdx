@@ -1,0 +1,238 @@
+---
+title: 中介軟體管道
+description: "用於 MCP 工具呼叫的可組合洋蔥模型中介軟體。"
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+import Mermaid from '../../../../../components/Mermaid.astro';
+
+`@casys/mcp-server` 中的每一個工具呼叫都會流經一個可組合的中介軟體鏈 — 與你從 Hono、Koa 或 Express 熟知的洋蔥模型相同。這就是認證、速率限制、驗證和自訂邏輯如何在不相互糾纏的情況下組合在一起的方式。
+
+## 運作原理
+
+<img src="/diagrams/mcp-server/mcp-middleware-pipeline.svg" alt="中介軟體管道" style="width: 100%; max-width: 600px; margin: 24px auto; display: block;" />
+
+<Mermaid chart={`graph LR
+  REQ[請求] --> AUTH[認證]
+  AUTH --> RL[速率限制]
+  RL --> CUSTOM[你的程式碼]
+  CUSTOM --> VAL[驗證]
+  VAL --> BP[背壓]
+  BP --> HANDLER[處理器]
+  HANDLER --> RES[回應]
+  style CUSTOM fill:#FFB86F,color:#000,stroke:#e6a050
+  style HANDLER fill:#6750A4,color:#fff,stroke:#4a3880`} />
+
+```
+請求 → 速率限制 → 認證 → [自訂] → 範圍檢查 → 驗證 → 背壓 → 處理器
+                                                                ↓
+回應 ← 速率限制 ← 認證 ← [自訂] ← 範圍檢查 ← 驗證 ← 背壓 ← 結果
+```
+
+每個中介軟體接收一個 `context` 物件和一個 `next()` 函式。呼叫 `next()` 將控制權傳遞給下游。回應透過相同的鏈以反向流回 — 因此單個中介軟體可以同時對請求和回應執行操作。
+
+## 撰寫中介軟體
+
+中介軟體就是一個非同步函式。以下是一個為每個工具呼叫計時的記錄器：
+
+```typescript
+import type { Middleware } from "@casys/mcp-server";
+
+const logging: Middleware = async (ctx, next) => {
+  const start = performance.now();
+  console.log(`→ ${ctx.toolName}`, ctx.args);
+
+  const result = await next();
+
+  const ms = (performance.now() - start).toFixed(0);
+  console.log(`← ${ctx.toolName} (${ms}ms)`);
+  return result;
+};
+```
+
+無需基底類別、無需裝飾器、無需註冊樣板程式碼。
+
+## 註冊中介軟體
+
+使用 `server.use()` 加入你的中介軟體。它們會插入在內建認證層和內建範圍檢查/驗證層之間：
+
+```typescript
+const server = new McpApp({
+  name: "my-server",
+  version: "1.0.0",
+});
+
+server.use(logging);
+server.use(metrics);
+server.use(caching);
+
+server.registerTool(/* ... */);
+await server.startHttp({ port: 3000 });
+```
+
+`use()` 支援鏈式呼叫：
+
+```typescript
+server.use(logging).use(metrics).use(caching);
+```
+
+<Aside type="caution">
+  `use()` 必須在 `start()` 或 `startHttp()` **之前**呼叫。管道在啟動時編譯，之後無法修改。
+</Aside>
+
+## 管道順序
+
+以下是每次工具呼叫依序執行的內容：
+
+| 順序 | 層級 | 來源 | 功能說明 |
+|-------|-------|--------|-------------|
+| 1 | 速率限制 | 內建（若已配置） | 滑動視窗的每個客戶端節流 |
+| 2 | 認證 | 內建（若已配置） | JWT/Bearer 令牌驗證，填充 `ctx.authInfo` |
+| 3 | **你的中介軟體** | `server.use()` | 你的程式碼，按照註冊順序 |
+| 4 | 範圍檢查 | 內建（若認證 + `requiredScopes`） | 驗證令牌範圍是否符合工具定義 |
+| 5 | 驗證 | 內建（若 `validateSchema: true`） | 透過 ajv 8 進行 JSON Schema 驗證 |
+| 6 | 背壓 | 內建 | 根據 `maxConcurrent` 進行佇列/睡眠/拒絕 |
+| 7 | 處理器 | `registerTool()` | 你的工具處理器函式 |
+
+<Aside type="tip">
+  你的中介軟體在認證**之後**但在範圍檢查和驗證**之前**執行。這意味著當你的中介軟體執行時，`ctx.authInfo` 已經填充完畢。
+</Aside>
+
+## 上下文物件
+
+每個中介軟體接收一個 `MiddlewareContext`：
+
+```typescript
+interface MiddlewareContext {
+  toolName: string;                  // 正在呼叫的工具
+  args: Record<string, unknown>;     // 工具的輸入引數
+  request?: Request;                 // HTTP 請求（僅限 HTTP 傳輸）
+  sessionId?: string;                // 工作階段 ID（僅限 HTTP 傳輸）
+  authInfo?: AuthInfo;               // 由認證中介軟體填充（若已配置）
+  [key: string]: unknown;            // 可擴展 — 加入你自己的欄位
+}
+```
+
+`authInfo` 在認證層之後可用：
+
+```typescript
+interface AuthInfo {
+  subject: string;                     // 令牌的 "sub" 宣告
+  clientId?: string;                   // 令牌的 "client_id" 或 "azp" 宣告
+  scopes: string[];                    // 從 "scope" 宣告解析
+  claims?: Record<string, unknown>;    // 所有令牌宣告
+  expiresAt?: number;                  // 令牌到期時間（Unix 紀元秒）
+}
+```
+
+## 豐富上下文
+
+中介軟體可以為下游中介軟體和處理器附加資料：
+
+```typescript
+const tenantResolver: Middleware = async (ctx, next) => {
+  const tenantId = ctx.request?.headers.get("x-tenant-id");
+  if (!tenantId) {
+    throw new Error("Missing X-Tenant-Id header");
+  }
+  ctx.tenantId = tenantId;  // 對所有下游中介軟體和處理器可用
+  return next();
+};
+```
+
+## 短路執行
+
+不呼叫 `next()` 即可跳過管道的其餘部分。這就是構建快取的方式：
+
+```typescript
+const cache = new Map<string, { result: unknown; expiry: number }>();
+
+const caching: Middleware = async (ctx, next) => {
+  const key = `${ctx.toolName}:${JSON.stringify(ctx.args)}`;
+  const cached = cache.get(key);
+
+  if (cached && cached.expiry > Date.now()) {
+    return cached.result;  // 整個下游管道被跳過
+  }
+
+  const result = await next();
+  cache.set(key, { result, expiry: Date.now() + 60_000 });
+  return result;
+};
+```
+
+## 錯誤處理
+
+在鏈中任何位置拋出的錯誤都會反向傳播回所有中介軟體。將錯誤處理器放在最前面，使其包裹所有內容：
+
+```typescript
+const errorHandler: Middleware = async (ctx, next) => {
+  try {
+    return await next();
+  } catch (error) {
+    console.error(`Tool ${ctx.toolName} failed:`, error);
+    // 重新拋出，讓框架將其轉換為 MCP 錯誤回應。
+    // 在此返回普通物件會產生正常（非錯誤）結果。
+    throw error;
+  }
+};
+
+// 第一個中介軟體 = 最外層 = 捕獲所有錯誤
+server.use(errorHandler);
+server.use(logging);
+server.use(caching);
+```
+
+<Aside type="caution">
+  從中介軟體返回 `{ error: true, message }` 會被序列化為**正常**工具結果，而非 MCP `isError` 回應。要傳遞工具錯誤，請拋出一個 `Error`（或讓其傳播）— 框架的 `toolErrorMapper` 會將其轉換為正確的 MCP 錯誤格式。
+</Aside>
+
+## 實用範例
+
+### 請求計時
+
+```typescript
+const timing: Middleware = async (ctx, next) => {
+  const start = performance.now();
+  try {
+    return await next();
+  } finally {
+    const duration = performance.now() - start;
+    metrics.record(ctx.toolName, duration);
+  }
+};
+```
+
+### 工具特定存取控制
+
+```typescript
+const adminOnly: Middleware = async (ctx, next) => {
+  if (ctx.toolName.startsWith("admin_")) {
+    const role = ctx.authInfo?.claims?.role;
+    if (role !== "admin") {
+      throw new Error("Admin access required");
+    }
+  }
+  return next();
+};
+```
+
+### 輸入清理
+
+```typescript
+const sanitizer: Middleware = async (ctx, next) => {
+  if (typeof ctx.args.query === "string") {
+    ctx.args.query = ctx.args.query.trim().slice(0, 1000);
+  }
+
+  const result = await next();
+
+  return { ...result, processedAt: new Date().toISOString() };
+};
+```
+
+## 另請參閱
+
+- [認證（OAuth2）](/zh-TW/docs/guides/auth) — 內建認證中介軟體和 OIDC 預設配置
+- [McpApp API](/zh-TW/docs/api/concurrent-mcp-server) — 完整的 `use()` 和 `registerTool()` 參考
+- [獨立元件](/zh-TW/docs/api/standalone-components) — 將 RateLimiter、RequestQueue 作為獨立工具使用
