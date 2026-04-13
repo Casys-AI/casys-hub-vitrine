@@ -1,0 +1,146 @@
+---
+title: Composer
+description: "从收集的资源和编排配置中构建 `CompositeUiDescriptor`。"
+---
+
+## API
+
+```typescript
+import { buildCompositeUi } from "@casys/mcp-compose";
+```
+
+```typescript
+function buildCompositeUi(
+  resources: CollectedUiResource[],
+  orchestration?: UiOrchestration,
+): CompositeUiDescriptor
+```
+
+## 返回值
+
+`buildCompositeUi()` 生成：
+
+```typescript
+interface CompositeUiDescriptor {
+  type: "composite";
+  resourceUri: string;
+  layout: UiLayout;
+  children: CollectedUiResource[];
+  sync: ResolvedSyncRule[];
+  sharedContext?: Record<string, unknown>;
+  areaMap?: Record<string, string>;
+}
+```
+
+重要的实现细节：
+
+- `type` 始终为 `"composite"`。
+- `resourceUri` 始终为 `ui://mcp-compose/workflow/<uuid>`。
+- `children` 是按顺序排列的原始已收集资源。
+- 当省略编排参数时，`layout` 默认为 `"stack"`。
+- `sync` 包含基于槽位解析后的规则，而非工具名称规则。
+
+## 基本示例
+
+```typescript
+const descriptor = buildCompositeUi(
+  [
+    { source: "postgres:query", resourceUri: "ui://pg/1", slot: 0 },
+    { source: "viz:render", resourceUri: "ui://viz/2", slot: 1 },
+  ],
+  {
+    layout: "split",
+    sync: [
+      { from: "postgres:query", event: "filter", to: "viz:render", action: "update" },
+    ],
+    sharedContext: ["workflowId"],
+  },
+);
+
+// descriptor.sync[0] === { from: 0, event: "filter", to: 1, action: "update" }
+```
+
+## `UiOrchestration`
+
+```typescript
+interface UiOrchestration {
+  layout: UiLayout;
+  sync?: UiSyncRule[];
+  sharedContext?: string[];
+}
+```
+
+### 布局预设
+
+预设字符串布局包括：
+
+- `"split"`：并排的 flex 面板
+- `"tabs"`：标签栏，每次只显示一个 iframe
+- `"grid"`：自动适应的 CSS grid
+- `"stack"`：垂直堆叠
+
+### Areas 布局
+
+`UiLayout` 也可以是一个对象：
+
+```typescript
+const layout = {
+  areas: [
+    ["filter", "list", "detail"],
+    ["filter", "chart", "chart"],
+  ],
+  columns: [1, 2, 2],
+  rows: [3, 1],
+  gap: "normal" as const,
+};
+```
+
+renderer 将重复的区域名称视为 CSS grid 跨越。`gap` 是一个标记值，而非数字：`"none"`、`"compact"`、`"normal"` 或 `"spacious"`。
+
+## 共享上下文
+
+当你传入 `sharedContext` 时，composer 会按顺序扫描资源的 `context` 对象，并取找到的每个请求键的第一个值：
+
+```typescript
+const descriptor = buildCompositeUi(
+  [
+    {
+      source: "postgres:query",
+      resourceUri: "ui://pg/1",
+      slot: 0,
+      context: { workflowId: "wf-123", query: "SELECT *" },
+    },
+    {
+      source: "viz:render",
+      resourceUri: "ui://viz/2",
+      slot: 1,
+      context: { workflowId: "wf-999", userId: "user-456" },
+    },
+  ],
+  {
+    layout: "split",
+    sharedContext: ["workflowId", "userId"],
+  },
+);
+
+// descriptor.sharedContext === {
+//   workflowId: "wf-123",
+//   userId: "user-456",
+// }
+```
+
+这是先匹配优先，而非后写优先。
+
+## 同步规则解析
+
+`buildCompositeUi()` 内部调用 `resolveSyncRules()`。这意味着：
+
+- 有效的工具名称规则会转换为基于槽位的规则
+- `to: "*"` 保持为 `"*"`
+- 未知的 `from` 或 `to` 引用会从最终描述符中排除
+
+如果你希望向调用方暴露错误的同步规则，请在组合之前运行 [`validateSyncRules`](./sync-rules/)。
+
+## `areaMap`
+
+描述符类型包含 `areaMap`，但 `buildCompositeUi()` 不会填充它。在此仓库中，`areaMap` 由运行时层在后续处理中添加，当仪表盘模板为 areas 布局分配来源 ID 时。

@@ -1,0 +1,205 @@
+---
+title: 平台架构
+description: "mcp-server、mcp-bridge 和 mcp-compose 如何通过 _meta.ui 约定、registerViewers 和组合事件进行集成。"
+---
+
+import { Card, CardGrid, Aside } from '@astrojs/starlight/components';
+import Mermaid from '../../../../../components/Mermaid.astro';
+
+## `_meta.ui` 约定
+
+三个软件包共享一个约定：工具结果可以在其 `content` 数组旁边携带一个 `_meta.ui` 对象。
+
+```typescript
+// 带有 UI 元数据的工具结果结构
+{
+  content: [{ type: "text", text: "..." }],
+  _meta: {
+    ui: {
+      resourceUri: "ui://my-server/viewer-name",  // 必填
+      visibility: ["model", "app"],                // 可选
+      emits: ["rowSelected"],                      // 可选 — PML 事件
+      accepts: ["setFilter"],                      // 可选 — PML 事件
+    }
+  }
+}
+```
+
+`resourceUri` 是一个 `ui://` URI，而非 HTTP URL — 它在提供服务时由处理结果的软件包（`mcp-bridge` 或 `mcp-compose`）进行解析。
+
+### 使用 `uiMeta()` 构建 `_meta.ui`
+
+来自 `@casys/mcp-compose` 的 `uiMeta()` 助手函数可以从类型化的选项对象构建 `_meta` 对象：
+
+```typescript
+import { uiMeta } from "@casys/mcp-compose";
+
+const tool = {
+  name: "invoices:list",
+  description: "List invoices",
+  inputSchema: { type: "object", properties: {} },
+  ...uiMeta({
+    resourceUri: "ui://invoices/invoice-list",
+    emits: ["invoice.selected"],
+    accepts: ["filter.apply"],
+    visibility: ["model", "app"],
+  }),
+};
+```
+
+`uiMeta()` 同样从 `@casys/mcp-server` 重新导出，因此如果你正在使用 `mcp-server`，无需将 `mcp-compose` 作为直接依赖项添加。
+
+## `registerViewers()` — 在 `ui://` URI 处提供 HTML
+
+`McpApp.registerViewers()` 遍历一组已构建的 UI 目录，并将每个目录注册为 `ui://{prefix}/{viewerName}` 处的 MCP 资源。
+
+```typescript
+import { McpApp } from "@casys/mcp-server";
+import { existsSync } from "node:fs";
+import { readFileSync } from "node:fs";
+
+const app = new McpApp({ name: "invoices", version: "1.0.0" });
+
+app.registerViewers({
+  prefix: "invoices",
+  moduleUrl: import.meta.url,
+  exists: (path) => existsSync(path),
+  readFile: (path) => readFileSync(path, "utf-8"),
+  viewers: ["invoice-list", "invoice-detail"],
+});
+// 注册：
+//   ui://invoices/invoice-list  → ./ui/invoice-list/dist/index.html
+//   ui://invoices/invoice-detail → ./ui/invoice-detail/dist/index.html
+```
+
+`dist/` 目录不存在的 Viewer 会被跳过并输出警告，而非报错。即使某个 UI 尚未构建，服务器也能正常启动。
+
+`RegisterViewersConfig` 字段说明：
+
+| 字段 | 是否必填 | 说明 |
+|---|---|---|
+| `prefix` | 是 | URI 前缀，例如 `"invoices"` → `ui://invoices/…` |
+| `moduleUrl` | 是 | 服务器文件的 `import.meta.url`，用于解析相对路径 |
+| `exists` | 是 | 文件系统存在性检查函数 |
+| `readFile` | 是 | 文件读取函数，可以是异步的 |
+| `viewers` | 否 | 明确指定的 Viewer 名称列表。省略则使用 `discover` 自动发现 |
+| `discover` | 否 | 通过扫描 `uiDir` 目录自动发现 |
+| `csp` | 否 | CSP 头部配置：`resourceDomains`、`connectDomains`、`frameDomains` |
+
+## Bridge 路径：消息平台 Webview
+
+当工具结果到达 `mcp-bridge` 时，资源服务器通过向 MCP 后端转发 `resources/read` JSON-RPC 请求来解析 `ui://` URI，并将 HTML 响应作为 HTTP 页面提供，同时注入 `bridge.js`。
+
+<Mermaid chart={`sequenceDiagram
+  participant A as LLM 智能体
+  participant S as McpApp
+  participant B as mcp-bridge
+  participant W as Webview（Telegram）
+
+  A->>S: tools/call invoices:list
+  S-->>A: _meta.ui.resourceUri = ui://invoices/invoice-list
+  A->>B: 打开 ui://invoices/invoice-list
+  B->>S: resources/read ui://invoices/invoice-list
+  S-->>B: HTML 内容
+  B-->>W: HTTP 页面 + 注入 bridge.js
+  W->>B: WebSocket JSON-RPC
+  B->>S: tools/call（来自 Webview 交互）`} />
+
+`startResourceServer()` 是入口函数：
+
+```typescript
+import { JsonRpcMcpBackend, startResourceServer } from "@casys/mcp-bridge";
+
+const server = startResourceServer({
+  assetDirectories: { "invoices": "./ui/invoice-list/dist" },
+  platform: "telegram",
+  telegramBotToken: Deno.env.get("TELEGRAM_BOT_TOKEN")!,
+  backend: new JsonRpcMcpBackend({
+    endpointUrl: "https://my-mcp.example.com/mcp",
+  }),
+  options: { resourceServerPort: 4000 },
+});
+```
+
+`/ui?uri=ui://...` 路由将 `ui://` 资源从后端代理。`assetDirectories` 中的本地文件直接提供，无需经过后端。
+
+## Compose 路径：多 UI 仪表板
+
+`mcp-compose` 完全在服务端实现了"收集器 → 组合器 → 渲染器"流水线。输出是一个独立的 HTML 文件，包含 iframe 和事件总线。
+
+<Mermaid chart={`graph TD
+  R1[工具结果 A\n_meta.ui.resourceUri] --> C[createCollector]
+  R2[工具结果 B\n_meta.ui.resourceUri] --> C
+  C -->|getResources| COMP[buildCompositeUi\n编排 + 布局]
+  COMP -->|CompositeUiDescriptor| REND[renderComposite]
+  REND -->|HTML 字符串| OUT[仪表板 HTML\niframe + 事件总线]
+  style C fill:#6750A4,color:#fff
+  style COMP fill:#FFB86F,color:#000`} />
+
+```typescript
+import {
+  buildCompositeUi,
+  createCollector,
+  renderComposite,
+} from "@casys/mcp-compose";
+
+const collector = createCollector();
+collector.collect("invoices:list", invoiceToolResult);
+collector.collect("chart:render", chartToolResult);
+
+const descriptor = buildCompositeUi(collector.getResources(), {
+  layout: "split",
+  sync: [
+    { from: "invoices:list", event: "invoice.selected", to: "chart:render", action: "update" },
+  ],
+  sharedContext: ["workflowId"],
+});
+
+const html = renderComposite(descriptor);
+```
+
+## 共享上下文传播
+
+`mcp-bridge` 和 `mcp-compose` 都会在 UI 事件旁传播一个共享上下文对象。在 `mcp-compose` 中，`sharedContext` 在编排选项中声明，字段名（例如 `"workflowId"`、`"userId"`）从每个收集的工具调用参数中提取：
+
+```typescript
+collector.collect("invoices:list", result, {
+  workflowId: "wf-abc",
+  userId: "u-123",
+});
+
+const descriptor = buildCompositeUi(collector.getResources(), {
+  layout: "split",
+  sync: [...],
+  sharedContext: ["workflowId", "userId"],  // 这些字段会转发给 iframe
+});
+```
+
+每个 iframe 在事件到达时，会在 `ComposeEventPayload.sharedContext` 字段中接收到共享上下文。
+
+## 使用 `composeEvents()` 实现跨 UI 事件通信
+
+在由 `mcp-compose` 渲染的 iframe 内部，使用 `composeEvents()` 来发送和接收事件，无需依赖 MCP 应用协议：
+
+```typescript
+// 在 iframe 内部（浏览器代码，例如 invoice-list viewer）
+import { composeEvents } from "@casys/mcp-compose/sdk";
+
+const events = composeEvents();
+
+// 选中行时发出事件
+button.addEventListener("click", () => {
+  events.emit("invoice.selected", { invoiceId: "INV-001" });
+});
+
+// 监听来自图表 iframe 的过滤动作
+events.on("filter.apply", (payload) => {
+  applyFilter(payload.data);
+});
+```
+
+`composeEvents()` 通过 `postMessage` 使用专用的 `ui/compose/event` JSON-RPC 方法。如果你正在使用 MCP 应用的 `App` 实例，它不会与其产生干扰。
+
+<Aside type="note">
+  在 `uiMeta()` 中声明的 `emits` 和 `accepts` 是事件总线的提示信息 — compose 渲染器使用它们在插槽之间路由事件。请在工具定义上声明它们，以便编排器在 iframe 加载之前就了解连接关系。
+</Aside>

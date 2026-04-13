@@ -1,0 +1,216 @@
+---
+title: Reference API
+description: "Chemins d'import, fonctions exportees, types, et frontieres de modules actuelles."
+---
+
+Cette documentation decrit la surface API presente dans `mcp-compose` `0.4.0`.
+
+## Package racine
+
+```typescript
+import {
+  buildCompositeUi,
+  composeEvents,
+  createCollector,
+  createMcpSdkCollector,
+  extractUiMeta,
+  renderComposite,
+  resolveSyncRules,
+  uiMeta,
+  validateComposition,
+  validateSyncRules,
+} from "@casys/mcp-compose";
+```
+
+Les exports racine incluent :
+
+- les types core tels que `CollectedUiResource`, `UiLayout`, `UiOrchestration`, `UiSyncRule`, `CompositeUiDescriptor`
+- `ErrorCode`, `UI_LAYOUT_PRESETS`, `isValidLayout`
+- `createCollector`, `extractUiMeta`
+- `resolveSyncRules`, `validateSyncRules`
+- `buildCompositeUi`
+- `renderComposite`
+- helpers SDK : `createMcpSdkCollector`, `uiMeta`, `validateComposition`, `composeEvents`
+- types host : `CompositeUiHost`, `HostConfig`
+
+## `@casys/mcp-compose/core`
+
+Utilisez `core` quand vous ne voulez que les primitives de composition pures :
+
+```typescript
+import {
+  buildCompositeUi,
+  createCollector,
+  extractUiMeta,
+  resolveSyncRules,
+  validateSyncRules,
+  ErrorCode,
+  isLayoutAreas,
+  isLayoutPreset,
+  isValidLayout,
+  UI_LAYOUT_PRESETS,
+} from "@casys/mcp-compose/core";
+```
+
+`core` exporte les types, le collector, les helpers de sync, le composer, et les validateurs de layout. Il n'exporte pas le renderer.
+
+## `@casys/mcp-compose/sdk`
+
+```typescript
+import {
+  composeEvents,
+  createMcpSdkCollector,
+  uiMeta,
+  validateComposition,
+  COMPOSE_EVENT_METHOD,
+} from "@casys/mcp-compose/sdk";
+```
+
+Exports :
+
+- `createMcpSdkCollector()`
+- `uiMeta(options)`
+- `validateComposition(tools, syncRules)`
+- `composeEvents(parent?, source?)`
+- `COMPOSE_EVENT_METHOD` — constante `"ui/compose/event"`
+- types SDK associes tels que `McpSdkCallToolResult`, `UiMetaOptions`, `CompositionValidationResult`, `ComposeEvents`
+
+Notes :
+
+- `createMcpSdkCollector()` ajoute uniquement le typage SDK et le filtrage des `isError: true`.
+- `composeEvents()` est oriente navigateur. La creation du canal reussit meme sans fenetre parente, mais `emit()` leve une erreur si aucun parent n'est disponible.
+
+## `@casys/mcp-compose/host`
+
+```typescript
+import {
+  renderComposite,
+  serveDashboard,
+} from "@casys/mcp-compose/host";
+```
+
+Exports :
+
+- `renderComposite(descriptor)`
+- `serveDashboard(html, options?)`
+- `CompositeUiHost`, `HostConfig`
+- `ServeDashboardHandle`, `ServeDashboardOptions`
+
+Notes :
+
+- `renderComposite()` est une fonction pure.
+- `serveDashboard()` est Deno uniquement. Elle utilise `Deno.serve()` et peut ouvrir le navigateur par defaut.
+
+## `@casys/mcp-compose/runtime`
+
+```typescript
+import {
+  composeDashboard,
+  composeDashboardFromFiles,
+  connectHttp,
+  createCluster,
+  injectArgs,
+  loadManifest,
+  loadManifests,
+  loadTemplate,
+  parseManifest,
+  parseTemplate,
+  startServer,
+  validateManifest,
+  validateTemplate,
+} from "@casys/mcp-compose/runtime";
+```
+
+Exports :
+
+- helpers manifest : `validateManifest`, `parseManifest`, `loadManifest`, `loadManifests`
+- helpers template : `validateTemplate`, `parseTemplate`, `loadTemplate`, `injectArgs`
+- helpers cluster : `connectHttp`, `startServer`, `createCluster`
+- points d'entree de composition : `composeDashboard`, `composeDashboardFromFiles`
+- types runtime : `ComposeRequest`, `ComposeResult`, `DashboardTemplate`, `McpManifest`, `TemplateSource`, `TemplateToolCall`, `RuntimeErrorCode`, et types transport/cluster associes
+
+Comportement runtime important issu du code source :
+
+- les serveurs stdio sont demarres avec `--http --port=0` si ces arguments sont absents
+- le demarrage attend une ligne `listening on http://...` sur `stderr`
+- les appels d'outils passent par `POST <baseUrl>/mcp`
+- `composeDashboard()` resout les URIs `ui://server/...` en `${uiBaseUrl}/ui?uri=...`
+- `composeDashboardFromFiles()` n'expose pas l'option `keepAlive` que `composeDashboard()` supporte
+
+Types de template cles :
+
+```typescript
+interface TemplateToolCall {
+  /** Tool name (bare, scoped to the source's manifest). */
+  tool: string;
+  /** Static arguments. {{key}} placeholders are replaced at compose time. */
+  args?: Record<string, unknown>;
+}
+
+interface TemplateSource {
+  /** Short ID for use in layout areas grid. */
+  id?: string;
+  /** Manifest name (must match an McpManifest.name). */
+  manifest: string;
+  /** Tools to call on this server. */
+  calls: TemplateToolCall[];
+}
+```
+
+## `@casys/mcp-compose/deploy`
+
+```typescript
+import type {
+  DeployCredentials,
+  DeployManifestEntry,
+  DeployRequest,
+  DeployResult,
+  DeployTransport,
+  TunnelConnection,
+} from "@casys/mcp-compose/deploy";
+import { DeployErrorCode } from "@casys/mcp-compose/deploy";
+```
+
+Etat actuel :
+
+- `deploy` exporte des types et `DeployErrorCode`
+- aucune fonction de deploy n'est implementee ou exportee pour l'instant
+
+Le readme deploy du repo decrit des APIs planifiees telles que `deployDashboard()` et `createTunnel()`, mais ces fonctions ne sont pas presentes dans la version `0.4.0`.
+
+`DeployError` est un type d'erreur structure exporte avec `DeployErrorCode` :
+
+```typescript
+interface DeployError {
+  code: DeployErrorCode;
+  message: string;
+  project?: string;
+  cause?: unknown;
+}
+```
+
+## Types cles
+
+```typescript
+interface CollectedUiResource {
+  source: string;
+  resourceUri: string;
+  context?: Record<string, unknown>;
+  slot: number;
+}
+
+interface UiOrchestration {
+  layout: UiLayout;
+  sync?: UiSyncRule[];
+  sharedContext?: string[];
+}
+
+interface UiSyncRule {
+  from: string;
+  event: string;
+  to: string;
+  action: string;
+}
+```
+
+Pour le flux de donnees entre ces types, consultez [Collector](./collector/), [Composer](./composer/), [Renderer](./renderer/), et [Sync Rules](./sync-rules/).

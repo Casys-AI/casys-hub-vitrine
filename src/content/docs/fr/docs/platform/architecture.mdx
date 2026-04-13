@@ -1,0 +1,205 @@
+---
+title: Architecture de la Platform
+description: "Comment mcp-server, mcp-bridge et mcp-compose s'integrent via le contrat _meta.ui, registerViewers et les evenements compose."
+---
+
+import { Card, CardGrid, Aside } from '@astrojs/starlight/components';
+import Mermaid from '../../../../../components/Mermaid.astro';
+
+## Le contrat `_meta.ui`
+
+Les trois packages partagent une convention : un resultat d'outil peut porter un objet `_meta.ui` aux cotes de son tableau `content`.
+
+```typescript
+// Structure d'un resultat d'outil avec metadonnees UI
+{
+  content: [{ type: "text", text: "..." }],
+  _meta: {
+    ui: {
+      resourceUri: "ui://my-server/viewer-name",  // obligatoire
+      visibility: ["model", "app"],                // optionnel
+      emits: ["rowSelected"],                      // optionnel — evenements PML
+      accepts: ["setFilter"],                      // optionnel — evenements PML
+    }
+  }
+}
+```
+
+Le `resourceUri` est un URI `ui://`. Ce n'est pas une URL HTTP — il est resolu au moment du rendu par le package qui traite le resultat (`mcp-bridge` ou `mcp-compose`).
+
+### Construire `_meta.ui` avec `uiMeta()`
+
+Le helper `uiMeta()` de `@casys/mcp-compose` construit l'objet `_meta` a partir d'un ensemble d'options typees :
+
+```typescript
+import { uiMeta } from "@casys/mcp-compose";
+
+const tool = {
+  name: "invoices:list",
+  description: "List invoices",
+  inputSchema: { type: "object", properties: {} },
+  ...uiMeta({
+    resourceUri: "ui://invoices/invoice-list",
+    emits: ["invoice.selected"],
+    accepts: ["filter.apply"],
+    visibility: ["model", "app"],
+  }),
+};
+```
+
+`uiMeta()` est aussi re-exporte depuis `@casys/mcp-server`, donc vous n'avez pas besoin d'ajouter `mcp-compose` comme dependance directe si vous utilisez `mcp-server`.
+
+## `registerViewers()` — servir du HTML aux URIs `ui://`
+
+`McpApp.registerViewers()` parcourt un ensemble de repertoires UI construits et enregistre chacun d'eux comme une ressource MCP a `ui://{prefix}/{viewerName}`.
+
+```typescript
+import { McpApp } from "@casys/mcp-server";
+import { existsSync } from "node:fs";
+import { readFileSync } from "node:fs";
+
+const app = new McpApp({ name: "invoices", version: "1.0.0" });
+
+app.registerViewers({
+  prefix: "invoices",
+  moduleUrl: import.meta.url,
+  exists: (path) => existsSync(path),
+  readFile: (path) => readFileSync(path, "utf-8"),
+  viewers: ["invoice-list", "invoice-detail"],
+});
+// Enregistre :
+//   ui://invoices/invoice-list  → ./ui/invoice-list/dist/index.html
+//   ui://invoices/invoice-detail → ./ui/invoice-detail/dist/index.html
+```
+
+Les viewers dont le repertoire `dist/` n'existe pas sont ignores avec un avertissement, pas une erreur. Le serveur demarre meme si une interface n'a pas encore ete construite.
+
+Champs de `RegisterViewersConfig` :
+
+| Champ | Obligatoire | Description |
+|---|---|---|
+| `prefix` | Oui | Prefixe URI, ex. `"invoices"` → `ui://invoices/…` |
+| `moduleUrl` | Oui | `import.meta.url` du fichier serveur, utilise pour resoudre les chemins relatifs |
+| `exists` | Oui | Verification d'existence dans le systeme de fichiers |
+| `readFile` | Oui | Lecteur de fichier, peut etre asynchrone |
+| `viewers` | Non | Liste explicite des noms de viewers. Omettez pour utiliser `discover`. |
+| `discover` | Non | Decouverte automatique en scannant un repertoire `uiDir` |
+| `csp` | Non | `resourceDomains`, `connectDomains`, `frameDomains` pour les en-tetes CSP |
+
+## Chemin Bridge : webviews des plateformes de messagerie
+
+Quand un resultat d'outil atteint `mcp-bridge`, le serveur de ressources resout l'URI `ui://` en transmettant une requete JSON-RPC `resources/read` au backend MCP et en servant la reponse HTML comme une page HTTP, en injectant `bridge.js`.
+
+<Mermaid chart={`sequenceDiagram
+  participant A as Agent LLM
+  participant S as McpApp
+  participant B as mcp-bridge
+  participant W as Webview (Telegram)
+
+  A->>S: tools/call invoices:list
+  S-->>A: _meta.ui.resourceUri = ui://invoices/invoice-list
+  A->>B: ouvrir ui://invoices/invoice-list
+  B->>S: resources/read ui://invoices/invoice-list
+  S-->>B: contenu HTML
+  B-->>W: page HTTP + bridge.js injecte
+  W->>B: WebSocket JSON-RPC
+  B->>S: tools/call (depuis les interactions webview)`} />
+
+`startResourceServer()` est le point d'entree :
+
+```typescript
+import { JsonRpcMcpBackend, startResourceServer } from "@casys/mcp-bridge";
+
+const server = startResourceServer({
+  assetDirectories: { "invoices": "./ui/invoice-list/dist" },
+  platform: "telegram",
+  telegramBotToken: Deno.env.get("TELEGRAM_BOT_TOKEN")!,
+  backend: new JsonRpcMcpBackend({
+    endpointUrl: "https://my-mcp.example.com/mcp",
+  }),
+  options: { resourceServerPort: 4000 },
+});
+```
+
+La route `/ui?uri=ui://...` proxifie les ressources `ui://` depuis le backend. Les fichiers locaux dans `assetDirectories` sont servis directement sans aller-retour vers le backend.
+
+## Chemin Compose : tableaux de bord multi-interfaces
+
+`mcp-compose` implemente le pipeline Collecteur → Compositeur → Renderer entierement cote serveur. Le resultat est un fichier HTML autonome avec des iframes et un bus d'evenements.
+
+<Mermaid chart={`graph TD
+  R1[Resultat outil A\n_meta.ui.resourceUri] --> C[createCollector]
+  R2[Resultat outil B\n_meta.ui.resourceUri] --> C
+  C -->|getResources| COMP[buildCompositeUi\norchestration + mise en page]
+  COMP -->|CompositeUiDescriptor| REND[renderComposite]
+  REND -->|chaine HTML| OUT[Tableau de bord HTML\niframes + bus d'evenements]
+  style C fill:#6750A4,color:#fff
+  style COMP fill:#FFB86F,color:#000`} />
+
+```typescript
+import {
+  buildCompositeUi,
+  createCollector,
+  renderComposite,
+} from "@casys/mcp-compose";
+
+const collector = createCollector();
+collector.collect("invoices:list", invoiceToolResult);
+collector.collect("chart:render", chartToolResult);
+
+const descriptor = buildCompositeUi(collector.getResources(), {
+  layout: "split",
+  sync: [
+    { from: "invoices:list", event: "invoice.selected", to: "chart:render", action: "update" },
+  ],
+  sharedContext: ["workflowId"],
+});
+
+const html = renderComposite(descriptor);
+```
+
+## Propagation du contexte partage
+
+`mcp-bridge` et `mcp-compose` propagent tous deux un objet de contexte partage aux cotes des evenements UI. Dans `mcp-compose`, `sharedContext` est declare dans les options d'orchestration et les noms de champs (ex. `"workflowId"`, `"userId"`) sont extraits des arguments de chaque appel d'outil collecte :
+
+```typescript
+collector.collect("invoices:list", result, {
+  workflowId: "wf-abc",
+  userId: "u-123",
+});
+
+const descriptor = buildCompositeUi(collector.getResources(), {
+  layout: "split",
+  sync: [...],
+  sharedContext: ["workflowId", "userId"],  // ces champs sont transmis aux iframes
+});
+```
+
+Chaque iframe recoit le contexte partage dans le champ `ComposeEventPayload.sharedContext` a la reception d'un evenement.
+
+## Evenements inter-interfaces avec `composeEvents()`
+
+A l'interieur d'une iframe rendue par `mcp-compose`, utilisez `composeEvents()` pour emettre et recevoir des evenements sans aucune dependance sur le protocole MCP Apps :
+
+```typescript
+// A l'interieur d'une iframe (code navigateur, ex. viewer invoice-list)
+import { composeEvents } from "@casys/mcp-compose/sdk";
+
+const events = composeEvents();
+
+// Emet quand une ligne est selectionnee
+button.addEventListener("click", () => {
+  events.emit("invoice.selected", { invoiceId: "INV-001" });
+});
+
+// Ecoute les actions de filtre depuis l'iframe du graphique
+events.on("filter.apply", (payload) => {
+  applyFilter(payload.data);
+});
+```
+
+`composeEvents()` utilise une methode JSON-RPC `ui/compose/event` dediee via `postMessage`. Elle n'interfere pas avec l'instance MCP Apps `App` si vous en utilisez une.
+
+<Aside type="note">
+  Les declarations `emits` et `accepts` dans `uiMeta()` sont des indications pour le bus d'evenements — le renderer compose les utilise pour acheminer les evenements entre les slots. Declarez-les dans la definition de l'outil afin que l'orchestrateur connaisse le cablage avant le chargement des iframes.
+</Aside>

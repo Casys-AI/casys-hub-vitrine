@@ -1,0 +1,110 @@
+---
+title: Renderer
+description: "将复合描述符渲染为包含 CSS 和事件总线 JS 的独立 HTML。"
+---
+
+## API
+
+```typescript
+import { renderComposite } from "@casys/mcp-compose";
+```
+
+根导出使用来自 `@casys/mcp-compose/host` 的 host renderer。
+
+```typescript
+function renderComposite(descriptor: CompositeUiDescriptor): string
+```
+
+## 生成内容
+
+`renderComposite()` 返回一个 HTML 文档：
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>mcp-compose</title>
+  <style>...</style>
+</head>
+<body>
+  <div class="layout-split" id="container">
+    <iframe id="ui-0" src="ui://postgres/table/123" data-slot="0" data-source="postgres:query"></iframe>
+    <iframe id="ui-1" src="ui://viz/chart/456" data-slot="1" data-source="viz:chart"></iframe>
+  </div>
+  <script>...</script>
+</body>
+</html>
+```
+
+renderer 在将标签名和 iframe 属性值插入 HTML 之前会对其进行转义。
+
+## 布局行为
+
+公开的 renderer 支持：
+
+- `split`：`display: flex; height: 100vh`
+- `tabs`：标签栏加上绝对定位的 iframe，默认激活第一个标签
+- `grid`：带 `repeat(auto-fit, minmax(400px, 1fr))` 的 `display: grid`
+- `stack`：垂直 flex，每个 iframe 的 `min-height: 200px`
+- areas 布局：从 `UiLayoutAreas` 生成 CSS `grid-template-areas`
+
+Areas 示例：
+
+```typescript
+const descriptor = buildCompositeUi(resources, {
+  layout: {
+    areas: [
+      ["filter", "main"],
+      ["filter", "detail"],
+    ],
+    columns: [1, 3],
+    rows: [2, 1],
+    gap: "compact",
+  },
+});
+```
+
+使用 areas 布局时，renderer 首先查找 `descriptor.areaMap`。如果没有 `areaMap`，则回退到使用每个子项的 `source` 名称作为区域名称。
+
+## 事件总线行为
+
+内联脚本处理来自子 UI 的 JSON-RPC 2.0 消息：
+
+- `ui/initialize`：返回 host 能力和 `hostContext.sharedContext`
+- `ui/message`：记录消息并确认
+- `ui/compose/event`：使用同步规则路由专用的 compose 事件
+- `ui/update-model-context`：传统路由路径，同样使用同步规则
+
+广播规则会排除发送方：
+
+```typescript
+{ from: "date:picker", event: "change", to: "*", action: "refresh" }
+```
+
+该规则会扇出到其他所有 iframe，而不会回传给源 iframe。
+
+## 渲染时的共享上下文
+
+如果描述符包含 `sharedContext`，renderer 会将其注入脚本：
+
+```typescript
+const descriptor = buildCompositeUi(resources, {
+  layout: "stack",
+  sharedContext: ["workflowId"],
+});
+```
+
+初始化响应会在 `hostContext.sharedContext` 下包含该对象，compose 事件的 payload 也会将其转发给目标 iframe。
+
+## 安全性与主题
+
+当前仓库中 host renderer 的行为：
+
+- 工具名称在成为标签标签前会进行 HTML 转义
+- `src`、`data-source` 和 `data-area` 会进行属性转义
+- 基础 CSS 定义了亮色和暗色自定义属性
+- 包含 `prefers-color-scheme: dark`
+
+值得了解的一个实现细节：仓库中还有一个较旧的 core renderer，但根包导出的是 host renderer。host renderer 是支持 areas 布局和 `ui/compose/event` 的那个。

@@ -1,0 +1,90 @@
+---
+title: Demarrage rapide
+description: "Collectez deux resultats d'UI MCP, validez les sync rules, et rendez un dashboard."
+---
+
+## Installation
+
+```bash
+deno add jsr:@casys/mcp-compose@0.4.0
+```
+
+Ou ajoutez l'import manuellement :
+
+```json
+{
+  "imports": {
+    "@casys/mcp-compose": "jsr:@casys/mcp-compose@0.4.0"
+  }
+}
+```
+
+## Pipeline minimal
+
+Cet exemple utilise les memes noms d'outils et la meme structure de regles que le README et les tests du repo :
+
+```typescript
+import {
+  buildCompositeUi,
+  createCollector,
+  renderComposite,
+  validateSyncRules,
+} from "@casys/mcp-compose";
+
+const collector = createCollector();
+
+const pgResult = {
+  content: [{ type: "text", text: "Query executed" }],
+  _meta: { ui: { resourceUri: "ui://postgres/table/sales-q1" } },
+};
+
+const vizResult = {
+  content: [{ type: "text", text: "Chart rendered" }],
+  _meta: { ui: { resourceUri: "ui://viz/chart/sales-bar" } },
+};
+
+collector.collect("postgres:query", pgResult, {
+  query: "SELECT * FROM sales WHERE quarter = 'Q1'",
+  workflowId: "wf-001",
+});
+collector.collect("viz:render", vizResult, {
+  workflowId: "wf-001",
+});
+
+const resources = collector.getResources();
+
+const orchestration = {
+  layout: "split" as const,
+  sync: [
+    { from: "postgres:query", event: "filter", to: "viz:render", action: "update" },
+  ],
+  sharedContext: ["workflowId"],
+};
+
+const validation = validateSyncRules(
+  orchestration.sync,
+  resources.map((resource) => resource.source),
+);
+
+if (!validation.valid) {
+  console.error(validation.issues);
+  Deno.exit(1);
+}
+
+const descriptor = buildCompositeUi(resources, orchestration);
+const html = renderComposite(descriptor);
+
+await Deno.writeTextFile("./dashboard.html", html);
+```
+
+## Ce que vous obtenez
+
+- Deux ressources collectees avec les slots `0` et `1`.
+- Un descripteur composite dont la sync rule est resolue en `{ from: 0, to: 1, ... }`.
+- Un document HTML avec des styles inline, deux iframes, et le bus d'evenements host.
+
+## A retenir
+
+- `collect()` retourne `null` pour les resultats qui ne contiennent pas `_meta.ui.resourceUri`.
+- `validateSyncRules()` est l'etape qui remonte les problemes de sync. `buildCompositeUi()` ne leve pas d'erreur sur les mauvaises references de sync.
+- `renderComposite()` du package racine utilise le renderer host, qui supporte les layouts predefinis et les layouts a base d'areas documentes sur la page [renderer](./renderer/).

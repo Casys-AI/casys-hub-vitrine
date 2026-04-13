@@ -1,0 +1,177 @@
+---
+title: 同步规则
+description: "验证工具名称规则，将其解析为槽位，并在 UI 之间路由事件。"
+---
+
+import Mermaid from '../../../../../components/Mermaid.astro';
+
+## `UiSyncRule`
+
+同步规则使用工具名称进行编写：
+
+```typescript
+interface UiSyncRule {
+  from: string;
+  event: string;
+  to: string;
+  action: string;
+}
+```
+
+来自仓库测试的示例：
+
+```typescript
+const rules = [
+  { from: "postgres:query", event: "filter", to: "viz:render", action: "update" },
+  { from: "date:picker", event: "change", to: "*", action: "refresh" },
+];
+```
+
+`to: "*"` 表示广播到其他所有 iframe。
+
+## `validateSyncRules(rules, knownSources)`
+
+```typescript
+import { validateSyncRules } from "@casys/mcp-compose";
+```
+
+```typescript
+const result = validateSyncRules(rules, ["postgres:query", "viz:render"]);
+```
+
+验证器检查两件事：
+
+- 孤立引用：`from` 或 `to` 中的名称不存在于 `knownSources` 中
+- 非广播规则中的自引用：`from === to`
+
+返回结果：
+
+```typescript
+interface ValidationResult {
+  valid: boolean;
+  issues: ValidationIssue[];
+}
+```
+
+```typescript
+interface ValidationIssue {
+  code: ErrorCode;
+  message: string;
+  path?: string;
+}
+```
+
+相关错误码为：
+
+- `ORPHAN_SYNC_REFERENCE`
+- `CIRCULAR_SYNC_RULE`
+
+重要提示：`CIRCULAR_SYNC_RULE` 仅针对直接自引用情况。验证器不检测更长的循环，例如 `a -> b -> a`。
+
+## `resolveSyncRules(rules, resources)`
+
+```typescript
+import { resolveSyncRules } from "@casys/mcp-compose";
+```
+
+这将工具名称规则转换为基于槽位的规则：
+
+```typescript
+interface ResolvedSyncRule {
+  from: number;
+  event: string;
+  to: number | "*";
+  action: string;
+}
+```
+
+`resolveSyncRules()` 同时返回 `rules` 和 `issues`：
+
+```typescript
+const result = resolveSyncRules(
+  [{ from: "postgres:query", event: "filter", to: "viz:render", action: "update" }],
+  [
+    { source: "postgres:query", resourceUri: "ui://pg/1", slot: 0 },
+    { source: "viz:render", resourceUri: "ui://viz/2", slot: 1 },
+  ],
+);
+
+// result.rules[0] === { from: 0, event: "filter", to: 1, action: "update" }
+```
+
+未知的引用会报告在 `result.issues` 中，并从 `result.rules` 中排除。
+
+## 与 Composer 的交互
+
+`buildCompositeUi()` 内部调用 `resolveSyncRules()` 并只保留 `result.rules`。这意味着错误的规则会消失，除非你在组合之前进行验证。
+
+推荐模式：
+
+```typescript
+const validation = validateSyncRules(
+  orchestration.sync ?? [],
+  resources.map((resource) => resource.source),
+);
+
+if (!validation.valid) {
+  console.error(validation.issues);
+  Deno.exit(1);
+}
+
+const descriptor = buildCompositeUi(resources, orchestration);
+```
+
+## Renderer 中的路由行为
+
+<Mermaid chart={`sequenceDiagram
+  participant UI1 as postgres:query (slot 0)
+  participant BUS as 事件总线
+  participant UI2 as viz:render (slot 1)
+  UI1->>BUS: ui/update-model-context {event: "filter"}
+  BUS->>BUS: 匹配同步规则: from=0, event=filter, to=1
+  BUS->>UI2: ui/notifications/tool-result {action: "update", data, sharedContext}
+  UI2-->>UI2: 应用 filter 更新`} />
+
+生成的 host 脚本通过以下方式匹配规则：
+
+- 源槽位
+- 事件名称
+- 目标槽位或广播
+
+实现说明：即使公开示例使用具体的事件名称，路由器也将 `rule.event === "*"` 视为事件通配符。该行为来自 host renderer 源码的推断。
+
+## SDK 级别验证
+
+如果你的工具使用 `uiMeta({ emits, accepts })` 声明了 UI 契约，除了核心同步验证之外，还可以使用 `@casys/mcp-compose/sdk` 中的 `validateComposition()`：
+
+```typescript
+import { uiMeta, validateComposition } from "@casys/mcp-compose/sdk";
+
+const tools = [
+  {
+    name: "erp:customers",
+    ...uiMeta({
+      resourceUri: "ui://erp/customers",
+      emits: ["rowSelected"],
+    }),
+  },
+  {
+    name: "viz:chart",
+    ...uiMeta({
+      resourceUri: "ui://viz/chart",
+      accepts: ["highlight"],
+    }),
+  },
+];
+
+const result = validateComposition(tools, [
+  { from: "erp:customers", event: "rowSelected", to: "viz:chart", action: "highlight" },
+]);
+```
+
+`validateComposition()` 添加了语义检查，例如：
+
+- `SYNC_EVENT_NOT_EMITTED`
+- `SYNC_ACTION_NOT_ACCEPTED`
+- `ORPHAN_EMIT`
+- `ORPHAN_ACCEPT`

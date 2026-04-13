@@ -1,0 +1,75 @@
+---
+title: Introduction
+description: "Composez plusieurs interfaces MCP App en un seul dashboard avec gestion du layout et routage d'evenements."
+---
+
+import Mermaid from '../../../../../components/Mermaid.astro';
+
+`mcp-compose` est une bibliotheque Deno legere qui prend plusieurs resultats d'outils MCP exposant `_meta.ui.resourceUri`, les transforme en un descripteur de composition unique, et produit un dashboard composite. Cette documentation correspond a la version `0.4.0` du package.
+
+Ce n'est pas un builder visuel ni un produit de dashboard pour utilisateurs finaux. Le README du repo le positionne comme une primitive de composition : vous fournissez des resultats d'outils collectes et une orchestration, et il vous retourne du HTML.
+
+## Le pipeline
+
+<Mermaid chart={`graph LR
+  T1[Resultat outil 1] --> C[Collector]
+  T2[Resultat outil 2] --> C
+  T3[Resultat outil N] --> C
+  C -->|ressources| COMP[Composer]
+  ORCH[Orchestration\nlayout + sync] --> COMP
+  COMP -->|descripteur| R[Renderer]
+  R --> HTML[HTML autonome]
+  style C fill:#FFB86F,color:#000
+  style COMP fill:#FFB86F,color:#000
+  style R fill:#FFB86F,color:#000`} />
+
+Le flux public est :
+
+```typescript
+import {
+  buildCompositeUi,
+  createCollector,
+  renderComposite,
+} from "@casys/mcp-compose";
+
+const collector = createCollector();
+collector.collect("postgres:query", {
+  _meta: { ui: { resourceUri: "ui://postgres/table/abc123" } },
+});
+collector.collect("viz:render", {
+  _meta: { ui: { resourceUri: "ui://viz/chart/viz-1" } },
+});
+
+const descriptor = buildCompositeUi(collector.getResources(), {
+  layout: "split",
+  sync: [
+    { from: "postgres:query", event: "filter", to: "viz:render", action: "update" },
+  ],
+});
+
+const html = renderComposite(descriptor);
+```
+
+Ce flux correspond directement au code et aux tests du repo :
+
+- `createCollector()` inspecte les resultats d'outils et stocke des objets `CollectedUiResource`.
+- `buildCompositeUi()` produit un `CompositeUiDescriptor` avec les sync rules resolues et un contexte partage optionnel.
+- `renderComposite()` transforme ce descripteur en un document HTML complet avec CSS et JS inline.
+
+## Ce qui est implemente aujourd'hui
+
+- Le package racine exporte le collector, les helpers de sync, le composer, le renderer host, les helpers SDK, et les types host.
+- `buildCompositeUi()` utilise `layout: "stack"` par defaut quand l'orchestration est omise.
+- Les sync rules invalides ne sont pas levees depuis le composer. Les references `from` ou `to` inconnues sont silencieusement exclues, sauf si vous validez d'abord.
+- Le renderer exporte vient de la couche `host`, pas de l'ancien arbre de renderer `core`.
+- Le renderer host supporte les layouts predefinis (`split`, `tabs`, `grid`, `stack`) et les layouts a base d'areas sous forme d'objets.
+
+## Role de chaque couche
+
+- [`@casys/mcp-compose`](./api-reference/) est le point d'entree principal.
+- [`collector`](./collector/) couvre l'extraction de `_meta.ui.resourceUri` et l'assignation des slots.
+- [`composer`](./composer/) couvre le layout, le contexte partage, et la generation de descripteurs.
+- [`renderer`](./renderer/) couvre le HTML genere, le CSS, et le comportement du bus d'evenements.
+- [`sync-rules`](./sync-rules/) couvre la validation, la resolution, et le routage des broadcasts.
+
+Le repo expose aussi les sous-chemins `sdk`, `host`, `runtime`, et `deploy`. `deploy` est actuellement en types uniquement : les types existent, mais aucune fonction de deploy n'est encore exportee.

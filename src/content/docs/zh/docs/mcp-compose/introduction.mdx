@@ -1,0 +1,75 @@
+---
+title: 简介
+description: "将多个 MCP App UI 组合成一个仪表盘，支持布局和事件路由。"
+---
+
+import Mermaid from '../../../../../components/Mermaid.astro';
+
+`mcp-compose` 是一个轻量级 Deno 库，用于将多个暴露 `_meta.ui.resourceUri` 的 MCP 工具结果转换为单一的组合描述符，并渲染出复合仪表盘。本文档对应包版本 `0.4.0`。
+
+它不是可视化构建器或面向终端用户的仪表盘产品。仓库 README 将其定位为一个组合原语：你提供收集到的工具结果和编排配置，它给你返回 HTML。
+
+## 处理管道
+
+<Mermaid chart={`graph LR
+  T1[工具结果 1] --> C[Collector]
+  T2[工具结果 2] --> C
+  T3[工具结果 N] --> C
+  C -->|resources| COMP[Composer]
+  ORCH[编排\n布局 + 同步] --> COMP
+  COMP -->|descriptor| R[Renderer]
+  R --> HTML[独立 HTML]
+  style C fill:#FFB86F,color:#000
+  style COMP fill:#FFB86F,color:#000
+  style R fill:#FFB86F,color:#000`} />
+
+公开的流程如下：
+
+```typescript
+import {
+  buildCompositeUi,
+  createCollector,
+  renderComposite,
+} from "@casys/mcp-compose";
+
+const collector = createCollector();
+collector.collect("postgres:query", {
+  _meta: { ui: { resourceUri: "ui://postgres/table/abc123" } },
+});
+collector.collect("viz:render", {
+  _meta: { ui: { resourceUri: "ui://viz/chart/viz-1" } },
+});
+
+const descriptor = buildCompositeUi(collector.getResources(), {
+  layout: "split",
+  sync: [
+    { from: "postgres:query", event: "filter", to: "viz:render", action: "update" },
+  ],
+});
+
+const html = renderComposite(descriptor);
+```
+
+这直接对应仓库中的代码和测试：
+
+- `createCollector()` 检查工具结果并存储 `CollectedUiResource` 对象。
+- `buildCompositeUi()` 生成一个 `CompositeUiDescriptor`，其中包含已解析的同步规则和可选的共享上下文。
+- `renderComposite()` 将该描述符转换为包含内联 CSS 和 JS 的完整 HTML 文档。
+
+## 当前已实现的功能
+
+- 根包导出了 collector、同步辅助函数、composer、host renderer、SDK 辅助函数和 host 类型。
+- 当省略编排参数时，`buildCompositeUi()` 默认使用 `layout: "stack"`。
+- 无效的同步规则不会从 composer 中抛出异常。未知的 `from` 或 `to` 引用会被静默排除，除非你先进行验证。
+- 导出的 renderer 来自 `host` 层，而非较旧的 `core` renderer 树。
+- host renderer 支持预设布局（`split`、`tabs`、`grid`、`stack`）和基于对象的 areas 布局。
+
+## 各层的用途
+
+- [`@casys/mcp-compose`](./api-reference/) 是默认入口。
+- [`collector`](./collector/) 负责 `_meta.ui.resourceUri` 提取和槽位分配。
+- [`composer`](./composer/) 负责布局、共享上下文和描述符生成。
+- [`renderer`](./renderer/) 负责生成 HTML、CSS 和事件总线行为。
+- [`sync-rules`](./sync-rules/) 负责验证、解析和广播路由。
+
+仓库还暴露了 `sdk`、`host`、`runtime` 和 `deploy` 子路径。`deploy` 目前仅有类型：类型已存在，但尚未导出任何 deploy 函数。

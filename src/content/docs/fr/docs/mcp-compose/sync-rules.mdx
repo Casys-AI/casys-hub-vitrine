@@ -1,0 +1,177 @@
+---
+title: Sync Rules
+description: "Validez les regles par nom d'outil, resolvez-les en slots, et routez les evenements entre les UIs."
+---
+
+import Mermaid from '../../../../../components/Mermaid.astro';
+
+## `UiSyncRule`
+
+Les sync rules sont ecrites avec des noms d'outils :
+
+```typescript
+interface UiSyncRule {
+  from: string;
+  event: string;
+  to: string;
+  action: string;
+}
+```
+
+Exemple issu des tests du repo :
+
+```typescript
+const rules = [
+  { from: "postgres:query", event: "filter", to: "viz:render", action: "update" },
+  { from: "date:picker", event: "change", to: "*", action: "refresh" },
+];
+```
+
+`to: "*"` signifie broadcast a tous les autres iframes.
+
+## `validateSyncRules(rules, knownSources)`
+
+```typescript
+import { validateSyncRules } from "@casys/mcp-compose";
+```
+
+```typescript
+const result = validateSyncRules(rules, ["postgres:query", "viz:render"]);
+```
+
+Le validateur verifie deux choses :
+
+- les references orphelines : noms `from` ou `to` absents de `knownSources`
+- l'auto-reference sur les regles non-broadcast : `from === to`
+
+Il retourne :
+
+```typescript
+interface ValidationResult {
+  valid: boolean;
+  issues: ValidationIssue[];
+}
+```
+
+```typescript
+interface ValidationIssue {
+  code: ErrorCode;
+  message: string;
+  path?: string;
+}
+```
+
+Les codes d'erreur pertinents sont :
+
+- `ORPHAN_SYNC_REFERENCE`
+- `CIRCULAR_SYNC_RULE`
+
+Important : `CIRCULAR_SYNC_RULE` couvre uniquement le cas d'auto-reference directe. Le validateur ne detecte pas les cycles plus longs du type `a -> b -> a`.
+
+## `resolveSyncRules(rules, resources)`
+
+```typescript
+import { resolveSyncRules } from "@casys/mcp-compose";
+```
+
+Convertit les regles par nom d'outil en regles basees sur les slots :
+
+```typescript
+interface ResolvedSyncRule {
+  from: number;
+  event: string;
+  to: number | "*";
+  action: string;
+}
+```
+
+`resolveSyncRules()` retourne a la fois `rules` et `issues` :
+
+```typescript
+const result = resolveSyncRules(
+  [{ from: "postgres:query", event: "filter", to: "viz:render", action: "update" }],
+  [
+    { source: "postgres:query", resourceUri: "ui://pg/1", slot: 0 },
+    { source: "viz:render", resourceUri: "ui://viz/2", slot: 1 },
+  ],
+);
+
+// result.rules[0] === { from: 0, event: "filter", to: 1, action: "update" }
+```
+
+Les references inconnues sont reportees dans `result.issues` et exclues de `result.rules`.
+
+## Interaction avec le composer
+
+`buildCompositeUi()` appelle `resolveSyncRules()` en interne et ne conserve que `result.rules`. Cela signifie que les mauvaises regles disparaissent silencieusement, sauf si vous validez avant de composer.
+
+Schema recommande :
+
+```typescript
+const validation = validateSyncRules(
+  orchestration.sync ?? [],
+  resources.map((resource) => resource.source),
+);
+
+if (!validation.valid) {
+  console.error(validation.issues);
+  Deno.exit(1);
+}
+
+const descriptor = buildCompositeUi(resources, orchestration);
+```
+
+## Comportement du routage dans le renderer
+
+<Mermaid chart={`sequenceDiagram
+  participant UI1 as postgres:query (slot 0)
+  participant BUS as Bus d'evenements
+  participant UI2 as viz:render (slot 1)
+  UI1->>BUS: ui/update-model-context {event: "filter"}
+  BUS->>BUS: Correspondance sync rule: from=0, event=filter, to=1
+  BUS->>UI2: ui/notifications/tool-result {action: "update", data, sharedContext}
+  UI2-->>UI2: Applique la mise a jour du filtre`} />
+
+Le script host genere correspond aux regles par :
+
+- slot source
+- nom d'evenement
+- slot cible ou broadcast
+
+Note d'implementation : le routeur traite `rule.event === "*"` comme un wildcard d'evenement, meme si les exemples publics utilisent des noms d'evenements concrets. Ce comportement est infere du code source du renderer host.
+
+## Validation au niveau SDK
+
+Si vos outils declarent des contrats UI avec `uiMeta({ emits, accepts })`, utilisez `validateComposition()` depuis `@casys/mcp-compose/sdk` en complement de la validation core des sync rules :
+
+```typescript
+import { uiMeta, validateComposition } from "@casys/mcp-compose/sdk";
+
+const tools = [
+  {
+    name: "erp:customers",
+    ...uiMeta({
+      resourceUri: "ui://erp/customers",
+      emits: ["rowSelected"],
+    }),
+  },
+  {
+    name: "viz:chart",
+    ...uiMeta({
+      resourceUri: "ui://viz/chart",
+      accepts: ["highlight"],
+    }),
+  },
+];
+
+const result = validateComposition(tools, [
+  { from: "erp:customers", event: "rowSelected", to: "viz:chart", action: "highlight" },
+]);
+```
+
+`validateComposition()` ajoute des verifications semantiques telles que :
+
+- `SYNC_EVENT_NOT_EMITTED`
+- `SYNC_ACTION_NOT_ACCEPTED`
+- `ORPHAN_EMIT`
+- `ORPHAN_ACCEPT`

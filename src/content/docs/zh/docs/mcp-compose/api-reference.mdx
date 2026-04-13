@@ -1,0 +1,216 @@
+---
+title: API 参考
+description: "导入路径、导出函数、类型及当前模块边界。"
+---
+
+本文档描述 `mcp-compose` `0.4.0` 中的 API 接口。
+
+## 根包
+
+```typescript
+import {
+  buildCompositeUi,
+  composeEvents,
+  createCollector,
+  createMcpSdkCollector,
+  extractUiMeta,
+  renderComposite,
+  resolveSyncRules,
+  uiMeta,
+  validateComposition,
+  validateSyncRules,
+} from "@casys/mcp-compose";
+```
+
+根导出包括：
+
+- 核心类型，如 `CollectedUiResource`、`UiLayout`、`UiOrchestration`、`UiSyncRule`、`CompositeUiDescriptor`
+- `ErrorCode`、`UI_LAYOUT_PRESETS`、`isValidLayout`
+- `createCollector`、`extractUiMeta`
+- `resolveSyncRules`、`validateSyncRules`
+- `buildCompositeUi`
+- `renderComposite`
+- SDK 辅助函数：`createMcpSdkCollector`、`uiMeta`、`validateComposition`、`composeEvents`
+- host 类型：`CompositeUiHost`、`HostConfig`
+
+## `@casys/mcp-compose/core`
+
+当你只需要纯组合原语时，使用 `core`：
+
+```typescript
+import {
+  buildCompositeUi,
+  createCollector,
+  extractUiMeta,
+  resolveSyncRules,
+  validateSyncRules,
+  ErrorCode,
+  isLayoutAreas,
+  isLayoutPreset,
+  isValidLayout,
+  UI_LAYOUT_PRESETS,
+} from "@casys/mcp-compose/core";
+```
+
+`core` 导出类型、collector、同步辅助函数、composer 和布局验证器。它不导出 renderer。
+
+## `@casys/mcp-compose/sdk`
+
+```typescript
+import {
+  composeEvents,
+  createMcpSdkCollector,
+  uiMeta,
+  validateComposition,
+  COMPOSE_EVENT_METHOD,
+} from "@casys/mcp-compose/sdk";
+```
+
+导出：
+
+- `createMcpSdkCollector()`
+- `uiMeta(options)`
+- `validateComposition(tools, syncRules)`
+- `composeEvents(parent?, source?)`
+- `COMPOSE_EVENT_METHOD` — 常量 `"ui/compose/event"`
+- 相关 SDK 类型，如 `McpSdkCallToolResult`、`UiMetaOptions`、`CompositionValidationResult`、`ComposeEvents`
+
+注意：
+
+- `createMcpSdkCollector()` 仅添加了 SDK 形式的类型和 `isError: true` 跳过功能。
+- `composeEvents()` 面向浏览器。即使没有父窗口，创建通道也会成功，但如果没有可用的父窗口，`emit()` 会抛出异常。
+
+## `@casys/mcp-compose/host`
+
+```typescript
+import {
+  renderComposite,
+  serveDashboard,
+} from "@casys/mcp-compose/host";
+```
+
+导出：
+
+- `renderComposite(descriptor)`
+- `serveDashboard(html, options?)`
+- `CompositeUiHost`、`HostConfig`
+- `ServeDashboardHandle`、`ServeDashboardOptions`
+
+注意：
+
+- `renderComposite()` 是纯函数。
+- `serveDashboard()` 仅限 Deno。它使用 `Deno.serve()` 且可能会打开默认浏览器。
+
+## `@casys/mcp-compose/runtime`
+
+```typescript
+import {
+  composeDashboard,
+  composeDashboardFromFiles,
+  connectHttp,
+  createCluster,
+  injectArgs,
+  loadManifest,
+  loadManifests,
+  loadTemplate,
+  parseManifest,
+  parseTemplate,
+  startServer,
+  validateManifest,
+  validateTemplate,
+} from "@casys/mcp-compose/runtime";
+```
+
+导出：
+
+- manifest 辅助函数：`validateManifest`、`parseManifest`、`loadManifest`、`loadManifests`
+- 模板辅助函数：`validateTemplate`、`parseTemplate`、`loadTemplate`、`injectArgs`
+- cluster 辅助函数：`connectHttp`、`startServer`、`createCluster`
+- compose 入口：`composeDashboard`、`composeDashboardFromFiles`
+- 运行时类型：`ComposeRequest`、`ComposeResult`、`DashboardTemplate`、`McpManifest`、`TemplateSource`、`TemplateToolCall`、`RuntimeErrorCode` 及相关传输/cluster 类型
+
+来自源码的重要运行时行为：
+
+- 如果缺少 `--http --port=0` 参数，stdio 服务器会以这些参数启动
+- 启动等待 `stderr` 上的 `listening on http://...` 行
+- 工具调用发送到 `POST <baseUrl>/mcp`
+- `composeDashboard()` 将 `ui://server/...` URI 解析为 `${uiBaseUrl}/ui?uri=...`
+- `composeDashboardFromFiles()` 不暴露 `composeDashboard()` 支持的 `keepAlive` 选项
+
+关键模板类型：
+
+```typescript
+interface TemplateToolCall {
+  /** Tool name (bare, scoped to the source's manifest). */
+  tool: string;
+  /** Static arguments. {{key}} placeholders are replaced at compose time. */
+  args?: Record<string, unknown>;
+}
+
+interface TemplateSource {
+  /** Short ID for use in layout areas grid. */
+  id?: string;
+  /** Manifest name (must match an McpManifest.name). */
+  manifest: string;
+  /** Tools to call on this server. */
+  calls: TemplateToolCall[];
+}
+```
+
+## `@casys/mcp-compose/deploy`
+
+```typescript
+import type {
+  DeployCredentials,
+  DeployManifestEntry,
+  DeployRequest,
+  DeployResult,
+  DeployTransport,
+  TunnelConnection,
+} from "@casys/mcp-compose/deploy";
+import { DeployErrorCode } from "@casys/mcp-compose/deploy";
+```
+
+当前状态：
+
+- `deploy` 导出类型和 `DeployErrorCode`
+- 尚未实现或导出任何 deploy 函数
+
+仓库的 deploy readme 描述了计划中的 API，如 `deployDashboard()` 和 `createTunnel()`，但这些函数在 `0.4.0` 中尚不存在。
+
+`DeployError` 是与 `DeployErrorCode` 一起导出的结构化错误类型：
+
+```typescript
+interface DeployError {
+  code: DeployErrorCode;
+  message: string;
+  project?: string;
+  cause?: unknown;
+}
+```
+
+## 关键类型
+
+```typescript
+interface CollectedUiResource {
+  source: string;
+  resourceUri: string;
+  context?: Record<string, unknown>;
+  slot: number;
+}
+
+interface UiOrchestration {
+  layout: UiLayout;
+  sync?: UiSyncRule[];
+  sharedContext?: string[];
+}
+
+interface UiSyncRule {
+  from: string;
+  event: string;
+  to: string;
+  action: string;
+}
+```
+
+关于这些类型之间的数据流，请参阅 [Collector](./collector/)、[Composer](./composer/)、[Renderer](./renderer/) 和[同步规则](./sync-rules/)。

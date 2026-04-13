@@ -1,0 +1,163 @@
+---
+title: Collector
+description: "Extrayez `_meta.ui.resourceUri` des resultats d'outils et assignez des slots stables."
+---
+
+## API
+
+```typescript
+import { createCollector, extractUiMeta } from "@casys/mcp-compose";
+```
+
+`createCollector()` retourne un `UiCollector` avec etat :
+
+```typescript
+interface UiCollector {
+  collect(
+    toolName: string,
+    result: unknown,
+    context?: Record<string, unknown>,
+  ): CollectedUiResource | null;
+
+  getResources(): CollectedUiResource[];
+  clear(): void;
+}
+```
+
+## `extractUiMeta(result)`
+
+C'est le helper bas niveau utilise en interne par le collector. Il cherche uniquement `_meta.ui.resourceUri` et la `visibility` optionnelle.
+
+```typescript
+const meta = extractUiMeta({
+  content: [{ type: "text", text: "OK" }],
+  _meta: { ui: { resourceUri: "ui://pg/table/1", visibility: ["model", "app"] } },
+});
+
+// meta === { resourceUri: "ui://pg/table/1", visibility: ["model", "app"] }
+```
+
+Si l'entree n'est pas un objet, si `_meta` est absent, si `ui` est absent, ou si `resourceUri` est vide ou n'est pas une chaine, la fonction retourne `null`.
+
+## `collect(toolName, result, context?)`
+
+`collect()` encapsule `extractUiMeta()` et stocke un `CollectedUiResource` quand un `resourceUri` valide existe :
+
+```typescript
+const collector = createCollector();
+
+const resource = collector.collect(
+  "postgres:query",
+  {
+    _meta: { ui: { resourceUri: "ui://pg/table/1" } },
+  },
+  { query: "SELECT * FROM users", userId: "u123" },
+);
+
+// resource === {
+//   source: "postgres:query",
+//   resourceUri: "ui://pg/table/1",
+//   context: { query: "SELECT * FROM users", userId: "u123" },
+//   slot: 0,
+// }
+```
+
+Comportement reel issu de l'implementation et des tests :
+
+- Les numeros de slot sont bases a `0` et n'augmentent que lorsqu'une ressource est effectivement collectee.
+- Les resultats sans UI sont ignores et ne consomment pas de slot.
+- `context` est stocke tel quel et utilise ensuite par `buildCompositeUi()` pour l'extraction du contexte partage.
+
+Exemple :
+
+```typescript
+collector.collect("a", { _meta: { ui: { resourceUri: "ui://a" } } }); // slot 0
+collector.collect("no-ui", { content: [] }); // null, aucun slot consomme
+collector.collect("b", { _meta: { ui: { resourceUri: "ui://b" } } }); // slot 1
+```
+
+## `getResources()`
+
+Retourne les ressources collectees dans l'ordre des slots :
+
+```typescript
+const resources = collector.getResources();
+```
+
+Retourne une copie du tableau. Muter le tableau retourne ne mute pas l'etat interne du collector.
+
+## `clear()`
+
+Reinitialise le collector :
+
+```typescript
+collector.clear();
+```
+
+Apres `clear()`, la prochaine ressource collectee obtient `slot: 0`.
+
+## Structure d'une ressource collectee
+
+```typescript
+interface CollectedUiResource {
+  source: string;
+  resourceUri: string;
+  context?: Record<string, unknown>;
+  slot: number;
+}
+```
+
+## Collector SDK
+
+Si vos entrees correspondent deja a la forme `CallToolResult` du `@modelcontextprotocol/sdk`, utilisez `createMcpSdkCollector()` depuis `@casys/mcp-compose/sdk`. Il delegue au meme collector core et ajoute un comportement : les resultats avec `isError: true` sont automatiquement ignores.
+
+### Interface `McpSdkCollector`
+
+```typescript
+import { createMcpSdkCollector } from "@casys/mcp-compose/sdk";
+
+interface McpSdkCollector {
+  /**
+   * Collect a UI resource from an MCP SDK CallToolResult.
+   * Returns null if the result has isError: true or no _meta.ui.resourceUri.
+   */
+  collectFromSdk(
+    toolName: string,
+    result: McpSdkCallToolResult,
+    context?: Record<string, unknown>,
+  ): CollectedUiResource | null;
+
+  /** Get all collected resources in slot order. */
+  getResources(): CollectedUiResource[];
+
+  /** Reset collected resources. */
+  clear(): void;
+
+  /** Access the underlying core collector. */
+  readonly inner: UiCollector;
+}
+```
+
+La methode s'appelle `collectFromSdk()`, pas `collect()`. La propriete `inner` expose le `UiCollector` sous-jacent si vous avez besoin d'un acces direct a l'API core.
+
+### Exemple
+
+```typescript
+import { createMcpSdkCollector } from "@casys/mcp-compose/sdk";
+import { buildCompositeUi, renderComposite } from "@casys/mcp-compose";
+
+const collector = createMcpSdkCollector();
+
+// sdkResult matches the @modelcontextprotocol/sdk CallToolResult shape
+for (const [toolName, sdkResult] of toolCallResults) {
+  collector.collectFromSdk(toolName, sdkResult, { workflowId: "wf-1" });
+}
+
+// Error results (isError: true) are automatically skipped
+// Proceed with the standard pipeline
+const resources = collector.getResources();
+const descriptor = buildCompositeUi(resources, { layout: "split" });
+const html = renderComposite(descriptor);
+```
+
+Note : `createMcpSdkCollector()` encapsule un `createCollector()` standard. La propriete `inner` vous donne acces a ce collector sous-jacent si vous avez besoin de melanger des resultats SDK et non-SDK.

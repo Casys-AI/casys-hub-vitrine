@@ -1,0 +1,146 @@
+---
+title: Composer
+description: "Construisez un `CompositeUiDescriptor` a partir de ressources collectees et d'une orchestration."
+---
+
+## API
+
+```typescript
+import { buildCompositeUi } from "@casys/mcp-compose";
+```
+
+```typescript
+function buildCompositeUi(
+  resources: CollectedUiResource[],
+  orchestration?: UiOrchestration,
+): CompositeUiDescriptor
+```
+
+## Ce que ca retourne
+
+`buildCompositeUi()` produit :
+
+```typescript
+interface CompositeUiDescriptor {
+  type: "composite";
+  resourceUri: string;
+  layout: UiLayout;
+  children: CollectedUiResource[];
+  sync: ResolvedSyncRule[];
+  sharedContext?: Record<string, unknown>;
+  areaMap?: Record<string, string>;
+}
+```
+
+Details d'implementation importants :
+
+- `type` est toujours `"composite"`.
+- `resourceUri` est toujours `ui://mcp-compose/workflow/<uuid>`.
+- `children` sont les ressources collectees dans l'ordre d'origine.
+- `layout` vaut `"stack"` par defaut quand l'orchestration est omise.
+- `sync` contient des regles basees sur les slots, pas sur les noms d'outils.
+
+## Exemple de base
+
+```typescript
+const descriptor = buildCompositeUi(
+  [
+    { source: "postgres:query", resourceUri: "ui://pg/1", slot: 0 },
+    { source: "viz:render", resourceUri: "ui://viz/2", slot: 1 },
+  ],
+  {
+    layout: "split",
+    sync: [
+      { from: "postgres:query", event: "filter", to: "viz:render", action: "update" },
+    ],
+    sharedContext: ["workflowId"],
+  },
+);
+
+// descriptor.sync[0] === { from: 0, event: "filter", to: 1, action: "update" }
+```
+
+## `UiOrchestration`
+
+```typescript
+interface UiOrchestration {
+  layout: UiLayout;
+  sync?: UiSyncRule[];
+  sharedContext?: string[];
+}
+```
+
+### Layouts predefinis
+
+Les layouts predefinis en chaine de caracteres sont :
+
+- `"split"` : panneaux flex cote a cote
+- `"tabs"` : barre d'onglets avec un seul iframe visible a la fois
+- `"grid"` : grille CSS auto-fit
+- `"stack"` : empilement vertical
+
+### Layout areas
+
+`UiLayout` peut aussi etre un objet :
+
+```typescript
+const layout = {
+  areas: [
+    ["filter", "list", "detail"],
+    ["filter", "chart", "chart"],
+  ],
+  columns: [1, 2, 2],
+  rows: [3, 1],
+  gap: "normal" as const,
+};
+```
+
+Le renderer traite les noms d'areas repetes comme des spans CSS grid. `gap` est un token, pas un nombre : `"none"`, `"compact"`, `"normal"`, ou `"spacious"`.
+
+## Contexte partage
+
+Quand vous passez `sharedContext`, le composer parcourt les objets `context` des ressources dans l'ordre et prend la premiere valeur trouvee pour chaque cle demandee :
+
+```typescript
+const descriptor = buildCompositeUi(
+  [
+    {
+      source: "postgres:query",
+      resourceUri: "ui://pg/1",
+      slot: 0,
+      context: { workflowId: "wf-123", query: "SELECT *" },
+    },
+    {
+      source: "viz:render",
+      resourceUri: "ui://viz/2",
+      slot: 1,
+      context: { workflowId: "wf-999", userId: "user-456" },
+    },
+  ],
+  {
+    layout: "split",
+    sharedContext: ["workflowId", "userId"],
+  },
+);
+
+// descriptor.sharedContext === {
+//   workflowId: "wf-123",
+//   userId: "user-456",
+// }
+```
+
+C'est une logique "premier trouve gagne", pas "derniere ecriture gagne".
+
+## Resolution des sync rules
+
+`buildCompositeUi()` appelle `resolveSyncRules()` en interne. Cela signifie :
+
+- les regles valides par nom d'outil deviennent des regles basees sur les slots
+- `to: "*"` reste `"*"`
+- les references `from` ou `to` inconnues sont exclues du descripteur final
+
+Si vous voulez exposer les mauvaises sync rules aux appelants, executez [`validateSyncRules`](./sync-rules/) avant de composer.
+
+## `areaMap`
+
+Le type de descripteur inclut `areaMap`, mais `buildCompositeUi()` ne le renseigne pas. Dans ce repo, `areaMap` est ajoute ulterieurement par la couche runtime quand un template de dashboard assigne des IDs sources pour les layouts areas.

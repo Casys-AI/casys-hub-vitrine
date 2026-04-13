@@ -1,0 +1,82 @@
+---
+title: MCP 平台概览
+description: "使用 @casys/mcp-server、@casys/mcp-bridge 和 @casys/mcp-compose 构建、连接并组合 MCP 应用。"
+---
+
+import { Card, CardGrid, LinkCard, Aside } from '@astrojs/starlight/components';
+import Mermaid from '../../../../../components/Mermaid.astro';
+
+MCP 平台由三个协同工作的软件包组成：**构建**带有 UI 生成工具的 MCP 服务器，**连接**到消息平台，以及将多个 UI **组合**成单一仪表板。
+
+## 三个软件包
+
+<CardGrid>
+  <Card title="@casys/mcp-server" icon="rocket">
+    基于 Deno 构建 MCP 服务器的框架。提供中间件管道、OAuth2、并发控制以及 `McpApp` — 用于注册工具并提供 `ui://` 资源的核心类。**v0.14.0，稳定版，301 个测试。**
+  </Card>
+  <Card title="@casys/mcp-bridge" icon="laptop">
+    将 MCP 应用 UI 桥接到消息平台（Telegram、LINE）。运行 HTTP 资源服务器，通过 WebSocket JSON-RPC 将 HTML 页面嵌入平台 Webview。**v0.2.0，原型阶段。**
+  </Card>
+  <Card title="@casys/mcp-compose" icon="list-format">
+    收集多个工具调用返回的 `_meta.ui` 结果，并将其组合成分栏 HTML 仪表板。内置事件总线，允许 iframe 之间通信。**v0.4.0，Alpha 阶段。**
+  </Card>
+</CardGrid>
+
+## 成熟度
+
+| 软件包 | 版本 | 状态 | 测试数 |
+|---|---|---|---|
+| `@casys/mcp-server` | 0.14.0 | 稳定版 | 301 |
+| `@casys/mcp-bridge` | 0.2.0 | 原型阶段 | — |
+| `@casys/mcp-compose` | 0.4.0 | Alpha 阶段 | — |
+
+<Aside type="caution">
+  `mcp-bridge` 和 `mcp-compose` 处于早期阶段。API 可能在次要版本之间发生变化。在生产环境中使用时，请锁定精确版本号。
+</Aside>
+
+## `_meta.ui` 约定
+
+三个软件包通过一个共享约定相互连接：当工具返回结果时，包含一个 `_meta.ui.resourceUri` 字段。其值是一个 `ui://` URI，指向服务器上注册的 HTML 页面。
+
+```typescript
+// 携带 UI 资源的工具结果
+{
+  content: [{ type: "text", text: "Invoice INV-001 loaded" }],
+  _meta: { ui: { resourceUri: "ui://invoices/invoice-viewer" } }
+}
+```
+
+`mcp-server` 在该 URI 处注册 HTML。`mcp-bridge` 解析该 URI 并将 HTML 嵌入 Telegram Mini App Webview。`mcp-compose` 收集多个此类结果，并在 iframe 仪表板中并排渲染。
+
+## 数据流
+
+<Mermaid chart={`graph LR
+  AGENT[LLM 智能体] -->|工具调用| APP[McpApp]
+  APP -->|_meta.ui 结果| BRIDGE[mcp-bridge\n消息 Webview]
+  APP -->|_meta.ui 结果| COMPOSE[mcp-compose\n仪表板]
+  APP -->|ui:// 资源| BRIDGE
+  APP -->|ui:// 资源| COMPOSE
+  BRIDGE -->|Telegram 中的 iframe| USER1[Telegram 用户]
+  COMPOSE -->|分栏 HTML| USER2[浏览器用户]
+  style APP fill:#6750A4,color:#fff
+  style BRIDGE fill:#FFB86F,color:#000
+  style COMPOSE fill:#FFB86F,color:#000`} />
+
+## 何时使用哪个软件包
+
+**单独使用 `mcp-server`**：当你需要 MCP 服务器时 — 适用于任何工具构建场景。它不依赖 `mcp-bridge` 或 `mcp-compose`。
+
+**添加 `mcp-bridge`**：当用户通过消息平台（Telegram、LINE）与服务器交互，且你希望在平台 Webview 中打开交互式 HTML 页面时。
+
+**添加 `mcp-compose`**：当 LLM 工作流调用多个工具且每个工具都返回 UI，而你希望在单一仪表板中并排展示这些 UI 时。`mcp-compose` 可以在不使用 `mcp-bridge` 的情况下独立运行 — 它输出纯 HTML。
+
+**同时使用三者**：当你需要完整的流水线时：带 UI 的 MCP 工具、通过消息平台分发、支持跨 UI 事件通信。
+
+## 开始使用
+
+<CardGrid>
+  <LinkCard title="快速开始" href="/zh/docs/platform/quickstart" description="三个软件包协同工作的完整示例。" />
+  <LinkCard title="架构说明" href="/zh/docs/platform/architecture" description="_meta.ui 约定、registerViewers 和组合事件的工作原理。" />
+  <LinkCard title="mcp-server 文档" href="/zh/docs/getting-started/introduction" description="完整框架参考：中间件、认证、并发控制、MCP 应用。" />
+  <LinkCard title="mcp-bridge 文档" href="/zh/docs/mcp-bridge/introduction" description="资源服务器、Telegram 适配器、安全模型。" />
+</CardGrid>
