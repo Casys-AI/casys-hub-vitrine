@@ -1,0 +1,327 @@
+---
+title: "AI 智能體在 Deno Deploy 上：原型踩坑的 6 個教訓（KV、sandbox、Prisma）"
+description: "關於使用 Deno Deploy 建構 AI 智能體的完整實戰總結：Deno KV、@deno/sandbox、Worker 權限、檔案系統、物件儲存、Prisma。六個真實踩出來的教訓。"
+author: "Erwan Lee Pesle"
+date: 2026-04-15
+tags:
+  - deno
+  - deno-deploy
+  - deno-kv
+  - agents-ia
+  - sandbox
+  - prisma
+  - edge-computing
+  - workers
+  - typescript
+  - infrastructure
+category: "基礎架構"
+language: zh-TW
+snippet: "我花了好幾個月在 Deno Deploy 上搭了一個 AI 智能體原型。原型還算初階——但這個平台，我現在摸透了。這六條教訓，是在 Deno KV、@deno/sandbox、Worker 權限和檔案系統上真實撞牆後總結出來的，能幫你省下好幾個禮拜。"
+featured: true
+draft: false
+---
+
+import ExcalidrawDiagram from '../../../components/ExcalidrawDiagram.astro';
+
+# AI 智能體在 Deno Deploy 上：原型踩坑六教訓
+
+> 這不是產品指南，而是一本航行日誌：在 Deno Deploy 上搭 AI 智能體時會撞到的那些牆，以及那些你希望在推第一個 `deno deploy` 之前就讀到的事。
+
+---
+
+## 背景，不說謊的那種
+
+我有個叫 [denoclaw](https://github.com/Casys-AI/DenoClaw) 的個人專案。這是一個用 Deno 寫的**多智能體 AI** 編排原型。它能跑 —— 多智能體 Worker、A2A 訊息傳遞、Ollama tool calling、本地 subprocess sandbox —— 但說清楚：這是個**原型**。不是產品，不是 OpenClaw 或任何人的競品。四十個 commit、八個 ADR、八十三個測試。漂亮，但遠未完成。
+
+這段旅程真正的收穫不是交付的程式碼。而是為了把這個東西跑在 Deno Deploy 上，我被迫摸遍了平台的**每個角落**：CLI v2（替代了 `deployctl`）、Deno KV、Prisma 的耦合方式、Worker 粒度權限、`@deno/sandbox`、tunnel、OIDC、isolate 檔案系統、以及物件儲存的缺失。每個角落都有驚喜。
+
+這篇文章匯集了從這塊實驗田裡挖出的六條教訓。它們不在「getting started」指南裡 —— 都是撞牆發現的。如果你要在 **Deno Deploy 上搭 AI 智能體專案**，先讀這些。
+
+### 為什麼選 Deno Deploy 跑 AI 智能體？
+
+這是個合理問題，因為 2026 年 AI 智能體可以跑在任何地方 —— Node on Vercel、Python on Modal、Rust on Fly。讓我專門為 denoclaw 選 Deno Deploy，有三個原因：
+
+- **Worker 粒度權限。** 每個智能體跑在一個 Deno Worker 裡，網路、檔案、env 權限比父程序**更嚴格**。沒有其他主流 JavaScript runtime 支援這個。教訓 4 詳解為什麼這是結構性的。
+- **原生 Deno KV。** 多智能體編排器需要即時共享狀態：智能體狀態、trace、任務佇列。KV + `kv.watch()` 取代 Redis + 事件匯流排，不需要安裝任何東西。教訓 3。
+- **`@deno/sandbox` 執行任意程式碼。** 執行 LLM 產生程式碼的 AI 智能體需要真正的 VM，不只是權限 flag。`@deno/sandbox` 跑 Firecracker，有個我在別處沒見過的 secret-proxy 模型。教訓 5。
+
+其餘的 —— 冷啟動、edge computing、按請求計費 —— 是附加好處。上面三個原語才是真正的壁壘。
+
+---
+
+## 一張圖定位
+
+深入之前，先看最終架構在兩種模式下長什麼樣 —— 本地 dev，Deploy prod。三層：編排、智能體、執行。原語變了，契約不變。
+
+<ExcalidrawDiagram src="deno-deploy-tips-denoclaw/architecture-3-couches" alt="三層架構：本地 Process/Worker/Subprocess vs Deploy 上的 Broker/Subhosting/Sandbox" />
+
+這種等價性讓事情變得可行。本地以 `Worker` 運行的智能體，理論上應該以 Subhosting isolate 同樣的方式運行。但實踐中，**不是的**。這正是前兩條教訓的主題。
+
+---
+
+## 教訓 1 —— Subhosting 不是長執行的 Deno
+
+這是第一記耳光，直接推翻了初始設計。
+
+我最初把智能體想像成**常駐程序**：一個啟動後保持 `kv.listenQueue()` 連線開著、用 `Deno.cron()` 安排定時任務、然後就在那裡的程序。這是 Node 或本地 Deno 的自然做法。核查之後，和官方文件交叉驗證：
+
+> *"Deno Cron and Queues do not currently work for Subhosting."*
+
+再往下：Subhosting isolate 有 5 秒到 10 分鐘不等的**閒置逾時**，取決於負載，之後 SIGKILL。不保證持久性。我最初的整套模型 —— 記憶體裡快取 `pendingRequests`、始終活躍的 queue listener、boot 時宣告的 cron —— 在雲端字面上不能工作。程式碼載入了，啟動了，什麼都沒做。
+
+**需要內化的規則：** Deploy 上的智能體 app 是一個**響應式 HTTP handler**，不是服務。它因請求而醒來，做完工作，下一秒可能被幹掉。所有共享狀態必須存在 KV 裡，不能存在程序記憶體結構裡。所有定時邏輯必須從外部觸發（**Broker** 裡的 `Deno.cron()`，Broker 應該保持熱狀態；或者一個外部 cron POST 給智能體）。
+
+具體來說，我不得不重構 broker→agent 客戶端：從基於佇列的 `pendingRequests` 模型，改成簡單的 HTTP POST，等待回應，把結果寫進 KV。建模更複雜 —— 但這是唯一能在 SIGKILL 下存活的模型。
+
+---
+
+## 教訓 2 —— 檔案系統不是檔案系統
+
+直接後果：如果你的智能體從程式碼裡讀寫檔案（設定、prompt、記憶、skill），你需要一個方案。
+
+denoclaw 裡每個智能體有一個 workspace：`agent.json`、`soul.md`（系統 prompt）、`skills/*.md`。本地，這些在 `./data/agents/<id>/` 裡。程式碼用 `Deno.readDir()` 和 `Deno.readTextFile()`，經典寫法。
+
+在 Deploy 上，那個目錄**不存在**。預設情況下，部署的 bundle 不包含這些檔案。觀察到的結果：線上智能體**沒有載入任何 skill**，靜默地。`loadSkills()` 回傳空陣列，智能體仍然回答問題，只是沒有工具。沒有錯誤，沒有警告日誌。最糟糕的 bug 類型。
+
+解決方案根據檔案性質分兩種形式：
+
+<ExcalidrawDiagram src="deno-deploy-tips-denoclaw/fs-routing-deploy-vs-local" alt="檔案系統工具：本地透明 FS 路由 vs 透過 DENO_DEPLOYMENT_ID 在 Deploy 上路由到 KV" />
+
+**對於不可變定義**（`soul.md`、`agent.json`、skill 清單）—— 在 `denoclaw publish` 時**bake** 成 string literal 寫進產生的 `main.ts`。代價：要改一條系統指令，需要重新 publish。不夠理想，但可追蹤且是原子操作。
+
+**對於活文件**（智能體記憶、對話、筆記）—— 在檔案工具裡實作透明路由。`src/shared/helpers.ts` 裡一個函式決定一切：
+
+```ts
+export const isDeployEnvironment = () =>
+  !!Deno.env.get("DENO_DEPLOYMENT_ID");
+```
+
+上層的 `read_memory`、`write_memory`、`list_memories` 工具不知道自己在打 FS 還是 KV。它們委託給 adapter。本地，讀 `./data/agents/alice/memories/note.md`。Deploy 上，讀 `kv.get(["workspace", "alice", "memories", "note.md"])`。同一套 API，兩個後端。
+
+**附帶陷阱**：`~/.denoclaw/agents/`（home 目錄）dev 時能用，但**從 CI 無法部署**。不可版本化，不可重現。所有智能體定義移到了 `./data/agents/`（版本控制）。只有私有的 `memory.db` 留在 `~/.denoclaw/agents/<id>/` —— 機器本地，永不提交。規則總結：
+
+| 類型 | 位置 |
+|---|---|
+| 定義（設定、prompt、skill） | `./data/agents/<id>/`（版本控制） |
+| 私有 runtime（memory.db 對話） | `~/.denoclaw/agents/<id>/`（機器本地） |
+| 跨機器 runtime（Deploy 記憶） | KV `["workspace", id, ...]` |
+
+### 那二進位物件呢？
+
+上述一切的尷尬推論：**Deploy 沒有原生物件儲存**。沒有託管 S3，沒有整合 GCS，沒有 R2 等價物。對於所有二進位且不小的東西 —— 使用者上傳、產生的 PDF、匯出、圖片、資料集、ML 模型 —— 需要接入外部服務。
+
+可行的選項：
+
+- **Cloudflare R2**（S3 相容，免費出流量，我專案的預設選擇）。
+- **AWS S3 / Backblaze B2 / Wasabi**，如果已有這套架構。
+- **KV 加 chunking**（透過 `@kitsonk/kv-toolbox` 處理 blob 分片）—— 適用於幾 MB 以內的檔案，再大就痛苦了：Deno KV 有**每值 64 KB** 和**每交易 1000 ops** 的限制。這是繞道，不是解法。
+- **Prisma Postgres 的 `bytea` 欄** —— 幾百 KB 嵌在列裡還行；大檔案絕對不行。
+
+沒有原生物件儲存不是罪 —— 大多數現代平台都做這個選擇。但在你的智能體需要存一個產生的 PDF 或 100 MB 的 embedding 模型時才發現這件事，就是摩擦。**從第零天**就選好一個外部 bucket 並把 URL 傳進 env。我最後某天早上接上了 R2，因為 denoclaw 需要存匯出內容，而我沒有地方放。
+
+---
+
+## 教訓 3 —— KV 走熱路徑，Prisma 走冷路徑
+
+發現 Deno KV 時，很容易想把所有東西都往裡塞。小、整合、交易性、免費。既然有 KV，為什麼要裝 Postgres？
+
+答：因為兩者用途不同，強行讓它們做同樣的事，結果是扭曲又慢的程式碼。
+
+<ExcalidrawDiagram src="deno-deploy-tips-denoclaw/kv-prisma-hot-cold" alt="KV（熱路徑 - 狀態、trace、sentinel）vs Prisma Postgres（冷路徑 - LlmCall、Conversation、DailyMetrics with GROUP BY）" />
+
+**KV 在熱路徑上發光**：即時智能體狀態、TTL 24 小時的 span trace、供 `kv.watch()` 用的 sentinel、透過 [`@olli/kvdex`](https://jsr.io/@olli/kvdex) 按 session 索引的對話。所有頻繁讀寫、生命週期短、需要被 dashboard 串流看到的東西。
+
+KV 的魔法是 `kv.watch()`。一次呼叫給你一個 `ReadableStream`，每次 mutation 都 emit。denoclaw 的 SSE dashboard 就三行：
+
+```ts
+const stream = kv.watch([["agent_tasks"]]);
+for await (const [entry] of stream) {
+  send(entry.value);
+}
+```
+
+不用 Redis，不用事件匯流排，不用 NATS。一個 runtime 原語就夠了。我給自己定的內部規則：**只有一個程序呼叫 `kv.watch()`** —— Broker。Worker 向 Broker emit，Broker 寫 KV，KV 向 dashboard emit。單向鏈，無遞迴 observer。
+
+**Prisma on Postgres 接管冷路徑**：`LlmCall`（token、延遲、成本、模型）、`ToolExecution`（參數、結果、時長）、`Conversation`（每 session 的完整歷史）、帶 `GROUP BY agent_id, day` 的 `DailyMetrics`。所有用於分析或稽核、需要長期保留的查詢。在 KV 上用 tuple key 做 `GROUP BY` 是在折磨自己。
+
+Deno 上的 Prisma 設定有三個實踐要點：
+
+1. **`prisma.config.ts` 必須手動載入 `.env`**。Deno 的 `--env` flag 對 Prisma 不夠 —— 它的 loader 不透過標準 Deno runtime 呼叫。解法：在設定檔頂部 `import fs from "node:fs"`，手動解析 `.env`，寫入 `process.env`。三行程式碼，但在搞懂為什麼 `DATABASE_URL` 是 `undefined` 之前你會把頭髮薅光。
+2. **schema 用 `runtime = "deno"` 加 `@prisma/adapter-pg`**。沒有 adapter，Prisma 會嘗試載入原生 binary，在 isolate 裡不能工作。
+3. **`DATABASE_URL` 到處一樣**。本地是 Docker Postgres。Deploy 上是 `deno deploy database provision <name> --kind prisma` 給你一個託管 Postgres。程式碼不需要知道差別。
+
+這個雙層架構，讓 KV 在需要快的地方保持快，Postgres 在需要查詢的地方可以查詢。不是二選一 —— 是兩者各居其位。
+
+---
+
+## 教訓 4 —— Worker 粒度權限：Deno 真正的壁壘
+
+這是讓我徹底倒向 Deno 做這類專案的點。Deno Worker 可以以**嚴格少於**父程序的權限啟動：
+
+```ts
+const worker = new Worker(import.meta.resolve("./agent.ts"), {
+  type: "module",
+  deno: {
+    permissions: {
+      read: [Deno.cwd() + "/data/agents/alice"],
+      net: ["api.openai.com"],
+      env: ["OPENAI_API_KEY"],
+      run: false,
+      write: false,
+    },
+  },
+});
+```
+
+這個智能體在自己目錄外什麼都讀不了，只能連 OpenAI API，只看得到一個環境變數，不能啟動任何 subprocess，也寫不了任何檔案。不管它做什麼，都被限制住了。不靠約定 —— 靠 runtime。
+
+Node 的 `worker_threads` **沒有**等價 API。可以用 `vm`、用容器湊合，但在 Node 程序內部，worker 會完整繼承父程序的權限。這個差別是結構性的。
+
+三個要避免的坑：
+
+**1. `permissions: []` ≠ "跳過沙箱"。**
+恰好相反。空陣列的意思是「零權限」—— 最大限制。如果你想「把所有權限給 Worker」，用 `permissions: "inherit"`。這個混淆讓我損失了半天。
+
+**2. `--deny-*` 優先於 `--allow-*`。**
+父程序用 `--deny-net=github.com` 啟動。即使子 Worker 請求 `allow-net=*`，`github.com` 依然被封鎖。適合絕對禁止某些目標（比如企業內部網域，不管智能體怎麼設計）。
+
+**3. Shell，永遠不透過 `sh -c`。**
+`--allow-run=sh` 取消了所有粒度。`sh -c "command"` 可以執行任何東西。denoclaw 裡的規則刻在一個 ADR 裡：`--allow-run=git,jq,deno`，直接用 `Deno.Command("git", [...])`。Shell 解譯器（`sh`、`bash`、`zsh`）在沙箱的 `direct` 模式裡**明確禁止**。在 `allowlist` 模式，即使一個 `python -c '...'` 也被封 —— 否則 allowlist 不保護任何東西。
+
+一個 review 找出的小 bug：`if (allowedCommands.length > 0 && !allowedCommands.includes(binary))`。如果 `allowedCommands: []`，檢查短路，**所有指令**都被放行。正確的修法：`if (!allowedCommands.includes(binary))` —— 空列表意味著「什麼都不允許」，句點。
+
+---
+
+## 教訓 5 —— `@deno/sandbox`：永不進入 VM 的 secret
+
+Worker 權限管理你自己程式碼的隔離。但當智能體需要執行**任意程式碼** —— LLM 產生的程式碼、使用者提交的程式碼、notebook 裡的 snippet —— 需要別的東西。真正的 VM。這就是 `@deno/sandbox`。
+
+API 很簡潔：建立 sandbox，請求執行，讀取結果。底層是 Firecracker microVM。啟動約 1 秒，記憶體隔離，網路過濾。
+
+讓我驚艷的是 secret 管理模型：
+
+<ExcalidrawDiagram src="deno-deploy-tips-denoclaw/sandbox-secret-proxy" alt="Sandbox Firecracker microVM，API_KEY 在 VM 內以 placeholder ${SECRET_API_KEY} 的形式可見，出向 proxy 負責替換，真實 secret 從不進入 VM 記憶體" />
+
+你宣告：
+
+```ts
+const sandbox = await Sandbox.create({
+  secrets: { OPENAI_KEY: "sk-real-XYZ..." },
+});
+```
+
+在 VM **內部**執行的程式碼裡，`Deno.env.get("OPENAI_KEY")` 回傳的是 **`${OPENAI_KEY}`** —— 一個 placeholder。程式碼在 fetch 裡寫 `Authorization: Bearer ${OPENAI_KEY}`。請求離開 VM，穿過一個屬於 `@deno/sandbox` 的出向 proxy，**是這個 proxy 在發送時做替換**。真實的 key 從未出現在 VM 的記憶體裡。
+
+後果：如果沙箱裡的惡意程式碼 dump 記憶體並把它外洩，外洩的是 **placeholder**。真實值保持在觸及不到的地方。我在 E2B、Modal、Fly、Daytona 和 Docker 都沒找到等價的東西。這是 runtime 原語，不是插件。
+
+誠實的 trade-off：這些 `secrets` **只在出向 HTTPS 請求上**注入。如果你的 tool 是一個讀 `process.env.OPENAI_KEY` 並把值寫進設定檔的 CLI，placeholder 保持原樣 —— 檔案裡是一個無用的字串。對這類情況，有 `SandboxOptions.env`（明文，像經典容器），代價是失去 placeholder 保證。這是每個 tool 要有意識地做的選擇。
+
+還有三個雲端沙箱的細節要知道：
+
+- **pre-release 階段每 org 最多 5 個 sandbox。** 多個智能體同時活躍時，Broker 側需要一個佇列。每個智能體（`agentId`）一個 sandbox，在同一智能體的呼叫間複用（第一次 `execute()` 時懶初始化），永不在智能體間共享。
+- **並行初始化出問題。** 如果兩個請求並行呼叫 `getOrCreateSandbox(agentId)`，會得到兩個 VM。有效的模式：`this.initPromise ??= Sandbox.create(...)`。並在 `catch` 裡清除 `this.initPromise = null` —— 否則一個中毒的 `initPromise` 會阻塞所有後續請求。
+- **孤兒 VM 要監控。** `sandbox.kill().catch(() => {})` 是個陷阱 —— 如果 kill 靜默失敗，VM 繼續計費。要加錯誤日誌，以及定期清理。
+
+---
+
+## 教訓 6 —— 那些靜默出錯的東西（範例裡看不到的）
+
+六個具體的坑要注意。它們不是 denoclaw 特有的 —— 任何碰到 KV、Worker 和 SSE 的專案都會遇到。
+
+**`Deno.openKv()` 不做 memoize 會洩漏 handle。**
+兩個並行呼叫者在沒有 memoize 的情況下呼叫 `getKv()` → 兩次 open → 第一個 handle 再也不會被回收。有效的模式：
+
+```ts
+let kvOpenPromise: Promise<Deno.Kv> | null = null;
+export const getKv = () => (kvOpenPromise ??= Deno.openKv());
+```
+
+簡單，但在多呼叫下是關鍵。
+
+**多 region 下的 cron：沒有 CAS = 雙重 dispatch。**
+如果 Broker 執行在 multi-region（Deploy 上的預設），兩個實例可能在同一毫秒 dispatch 同一個 cron。技巧：`kv.atomic().check(current).set(updated).commit()`。如果 commit 失敗，說明別人已經做了 —— 放棄這次 dispatch。否則你付了兩倍的 LLM 費用。
+
+**新部署上 `kv.enqueue()` 已廢棄。**
+如果你讀到使用 `kv.enqueue()` + `kv.listenQueue()` 做週期性合併的舊範例，忘掉它們。在新的 Deploy 部署上，直接用 `Deno.cron()`（在「always-on」服務裡 —— 不是在 Subhosting 智能體 app 裡）。
+
+**Preact signals 模組級 = SSR 跨租戶 bleed。**
+Fresh 的隱蔽 bug：在 island 檔案頂層宣告的 `signal()` 在**所有 SSR 請求間共享**。如果你在裡面存使用者特定的 state，使用者 B 會收到為使用者 A 渲染的 HTML。要在**元件內**或透過 context 宣告，永遠不要在模組級宣告。
+
+**Worker 的 `onReady` 從未移除 → zombie workers。**
+如果你監聽 `worker.onmessage` 等待「ready」訊號，但沒有在收到後（或逾時/錯誤時）`removeEventListener`，pool 會累積死 handler。pool 增長，worker 永不被 GC，程序慢慢漏 RAM。始終把 `onReady` 包在一個在 `finally` 裡清理的 promise 裡。
+
+**Deploy 上的 embedding：未解之問。**
+先說一個鮮為人知的細節：Ollama 的雲端 API 不支援 `/api/embed`。他們目錄裡沒有一個 embedding 模型。如果你打算搭向量記憶卻以為能打 Ollama Cloud，你會收到一個不透明的 `unauthorized`。
+
+然後是陷阱 —— 這裡我在教訓 2 的邏輯追上了我自己：`fastembed`（本地 ONNX）在 dev 效果很好，但首次執行時要下載約 100 MB 的模型。在 Subhosting 上行不通。沒有持久檔案系統，下載結束前 isolate 可能被 SIGKILL，而且每次冷啟動都得重來。那些在 Node 部落格上流傳的「本地 fastembed」方案在 Deploy 上活不下去。
+
+誠實的選項，按專案情況選：
+
+- **遠端 endpoint**（OpenAI、Voyage、Cohere、Together）—— 按 token 付費，有網路延遲，但零基礎設施。大多數情況下的合理預設。
+- **HTTP sidecar** —— 一個託管 `fastembed` 的小服務（在便宜的 VPS 或 Brev/Modal 實例上），透過 HTTP 暴露給 Broker。無 token 費用，一個地址傳進 env 就行。量大時的好折中。
+- **在 `@deno/sandbox` 裡計算** —— microVM 有暫時 FS。可以在裡面裝 `fastembed`，接受每個 sandbox 第一次呼叫時的下載成本，然後複用。我這邊沒認真測過 —— 值得探索。
+- **儲存側已解決**：Prisma + pgvector。`--kind prisma`（會 provision 一個託管 Postgres）支援 pgvector。有了向量，不管從哪裡算來的，索引和查詢都像普通欄位一樣。在 Deploy 上唯一還開著的問題是 embedding 的**計算**。
+
+在 denoclaw 裡，這個點被明確留作空缺。這是原型的一個已知架構空洞，也是一個很好的例子說明人們會晚發現的事：「Deploy 沒有持久檔案系統」是一句顯而易見的話，但它的連鎖後果會一路蔓延到 embedding 模型的選型。
+
+---
+
+## 其餘：tunnel、OIDC、CLI v2
+
+三件小事，不值得單獨一節，但需要知道。
+
+**CLI 叫 `deno deploy`，不叫 `deployctl`。**
+幾乎所有還在被索引的教學都提 `deployctl`。已死。當前 CLI 整合在 Deno CLI 裡：
+
+```bash
+deno deploy create --org casys --app denoclaw-broker \
+  --source github --owner Casys-AI --repo DenoClaw \
+  --entrypoint main.ts --region global
+
+deno deploy --prod
+deno deploy env add OPENAI_API_KEY sk-... --secret
+deno deploy env load .env.production --non-secrets SITE_NAME
+deno deploy database provision shared-kv --kind denokv --org casys
+deno deploy logs --org casys --app denoclaw-broker
+```
+
+透過 keyring 鑑權（首次呼叫時瀏覽器彈窗），framework preset（`astro`、`fresh`、`nextjs`、`nuxt`、`remix`、`solidstart`、`sveltekit`、`lume`），`--no-wait` 用於 CI，`deno deploy switch` 切換上下文。全部命令列，不需要 web dashboard —— 可以版本化進 runbook。
+
+**WebSocket 上的 OIDC：可能會崩。**
+最初的計劃是透過 OIDC（IdP 簽發的 JWT）讓智能體向 Broker 鑑權。實踐中，JWT 體積大，一個攜帶大 JWT 的 WebSocket handshake 放在 query string 或 header 裡在 Deploy 上很脆弱。務實的選擇：**先用靜態 token（`DENOCLAW_BROKER_TOKEN`），OIDC 作為 fallback**。不夠優雅，但能用。
+
+有個陷阱：這個 token 必須**到處**保持一致 —— Broker、本地執行 `denoclaw publish` 的機器、以及每個部署的智能體 app 的 env。任何偏差都會產生一個不透明的 `401 AUTH_FAILED`。一個真相來源，明確傳播。
+
+**Tunnel：接受 catalog 前先驗證身份。**
+`deno deploy --tunnel` 把本地 app 暴露得好像它在 Deploy 上執行一樣。適合把家裡的 Mac mini 接到雲端 Broker，不需要開連接埠。但如果你讓任何 tunnel 註冊並把它的 `catalog`（可用智能體清單）同步給 Broker，你就是在讓任何 tunnel 向你的拓撲注入路由。最低規則：Broker 側在接受 sync 之前檢查 `status: "trusted"`。一次內部 review（SEC-19）發現了這個漏洞。
+
+---
+
+## 延伸閱讀
+
+幾個我希望一開始就有的資源。尤其是第一個 —— 如果你用 AI 助手在 Deno 上寫程式碼，把這些加進上下文，回答品質會有顯著變化。
+
+- **[denoland/skills](https://github.com/denoland/skills)** —— Claude、Copilot、Cursor 的官方 skill。涵蓋 `deno-guidance`、`deno-deploy`、`deno-frontend`（Fresh）、`deno-expert`、`deno-sandbox`。粘進 `CLAUDE.md` 或等價檔案的 markdown 檔案。這讓我避開了本文一半的錯誤。
+- **[docs.deno.com](https://docs.deno.com/)** —— 官方文件。「Deploy」、「KV」和「Runtime > Permissions」章節很精確，但不總是突出 gotcha（這篇文章試圖填補那個空缺）。
+- **[denoland/deploy_examples](https://github.com/denoland/deploy_examples)** —— 具體的 Deploy 範例，在用預設定 framework（Fresh、Astro、Next.js）起步時很有用。
+- **[denoland/deno/CLAUDE.md](https://github.com/denoland/deno/blob/main/CLAUDE.md)** —— Deno 團隊自己用 Claude 在 runtime 上工作時用的指令。內部慣例的優秀快照。
+- **[Casys-AI/DenoClaw](https://github.com/Casys-AI/DenoClaw)** —— 原型本身。ADR 在 `docs/adr/`，踩過的 bug 在 `docs/issues/`。適合 fork 來學習，不適合直接上線。
+
+---
+
+## 我的收穫
+
+我不打算賣 denoclaw：這是個原型，在 GitHub 上開放，如果你覺得有意思可以 fork，但不要拿去上線。目標從來不是交付一個產品 —— 而是學透這個平台，我學透了。
+
+我的收穫，也是我會對任何認真開始 Deno 專案的人說的：
+
+1. **Subhosting 是響應式的，不是長執行的。** 一切設計成 HTTP handler，狀態在 KV，永遠不在程序記憶體。
+2. **isolate 檔案系統不是你筆電的檔案系統。** 要麼把檔案 bake 進 bundle，要麼路由到 KV。`Deno.readDir()` 靜默回傳空是個隱患。對於二進位檔案，從第零天就規劃好外部 bucket（R2、S3）—— 沒有原生物件儲存。
+3. **KV 走熱路徑，Postgres 走冷路徑。** 兩者都要，不是二選一。KV 在串流上發光（`kv.watch` = 近乎免費的 SSE），Postgres 在分析上發光（GROUP BY）。
+4. **Worker 粒度權限 = 相對 Node 的結構性差異點。** 結合 `--deny-*`，是一個其他地方沒有的程序內隔離模型。但 `permissions: []` 意味著「什麼都沒有」，不是「什麼都有」，`sh -c` 在沙箱裡被禁止。
+5. **`@deno/sandbox` 在 proxy 注入 secret，不在 VM 裡。** 獨特模型。接受 trade-off：僅限 HTTPS，不能透過傳統 env 使用。
+6. **Runtime 有隱蔽的靜默。** 未 memoize 的 `kv.openKv()` 洩漏，multi-region 下沒有 CAS 的 cron 雙重 dispatch，模組級 Preact signals 在 SSR 裡 bleed，`kv.enqueue()` 已廢棄，Ollama Cloud 沒有 embedding。這些事，不要在線上才學到。
+
+Deno 平台已經成熟到可以上線。不是所有場景 —— 如果你需要一個不中斷 24/7 執行的服務，你會把它放在 VM 上，不是 Subhosting。但對於響應式 handler、SSE dashboard、事件驅動的智能體，以及任何執行任意程式碼（LLM 產生的、使用者提交的）的場景，它有一些其他地方根本不存在的原語。
+
+如果你想看程式碼裡的這些模式，repo 在這裡：[github.com/Casys-AI/DenoClaw](https://github.com/Casys-AI/DenoClaw)。`docs/adr/` 裡的 ADR 記錄了每個決策。`docs/issues/` 列出了踩過的 bug 及其修法。祝探索順利。

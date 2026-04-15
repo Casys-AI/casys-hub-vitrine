@@ -1,6 +1,6 @@
 ---
-title: "MCP Apps on Mobile: The iframe Scroll Problem Nobody Talks About"
-description: "I spent three days trying to fix horizontal scroll inside a third-party WebView iframe. You can't. Here's the pattern that replaces it: compact cards, requestDisplayMode, and a master-detail flow with zero round-trips."
+title: "MCP Apps on Mobile: The WebView iframe Scroll Trap (and the Pattern That Replaces It)"
+description: "Horizontal scroll inside a claude.ai WebView iframe on mobile cannot be fixed. Here's the pattern that replaces it: compact cards, requestDisplayMode, and a master-detail flow with zero round-trips."
 author: "Erwan Lee Pesle"
 date: 2026-04-12
 tags:
@@ -8,11 +8,12 @@ tags:
   - mcp-apps
   - mobile
   - ux
+  - iframe
   - claude-code
   - agents
 category: "Product"
 language: en
-snippet: "claude.ai on mobile loads your MCP App in a WebView iframe. The iframe has its own laws of physics. Most of what you know about responsive design does not apply."
+snippet: "claude.ai on mobile loads your MCP App in a WebView iframe. That iframe has its own laws of physics. Most of what you know about responsive design does not apply — here's what does."
 featured: true
 draft: false
 ---

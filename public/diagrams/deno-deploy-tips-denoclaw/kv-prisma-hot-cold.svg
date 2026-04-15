@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 725" width="1000" height="725">
+  <!-- svg-source:excalidraw — kv-prisma-hot-cold.excalidraw -->
+  <rect x="0" y="0" width="1000" height="725" fill="#0d1117"/>
+  <text x="500" y="46" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="26" fill="#f0ede8" text-anchor="middle">Persistence split  —  KV hot, Prisma cold</text>
+  <rect x="60" y="95" width="420" height="530" rx="18" fill="#3d1f1f" stroke="#ff6b6b" stroke-width="2"/>
+  <text x="80" y="135" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="20" fill="#ff6b6b" text-anchor="start">KV  —  hot path</text>
+  <text x="80" y="162" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="15" fill="#94a3b8" text-anchor="start">real-time · ephemeral · streamable</text>
+  <rect x="90" y="190" width="360" height="75" rx="10" fill="#332a14" stroke="#f59e0b" stroke-width="1"/>
+  <text x="110" y="230" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="18" fill="#f59e0b" text-anchor="start">Live agent status</text>
+  <rect x="90" y="285" width="360" height="75" rx="10" fill="#332a14" stroke="#f59e0b" stroke-width="1"/>
+  <text x="110" y="325" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="18" fill="#f59e0b" text-anchor="start">Trace spans  (TTL 24h)</text>
+  <rect x="90" y="380" width="360" height="75" rx="10" fill="#332a14" stroke="#f59e0b" stroke-width="1"/>
+  <text x="110" y="420" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="18" fill="#f59e0b" text-anchor="start">SSE sentinels  (kv.watch)</text>
+  <rect x="90" y="475" width="360" height="75" rx="10" fill="#332a14" stroke="#f59e0b" stroke-width="1"/>
+  <text x="110" y="515" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="18" fill="#f59e0b" text-anchor="start">Conversations  (@olli/kvdex)</text>
+  <text x="80" y="599" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="14" fill="#94a3b8" text-anchor="start">provision :  deno deploy database --kind denokv</text>
+  <rect x="520" y="95" width="420" height="530" rx="18" fill="#1e1b4b" stroke="#818cf8" stroke-width="2"/>
+  <text x="540" y="135" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="20" fill="#818cf8" text-anchor="start">Prisma Postgres  —  cold path</text>
+  <text x="540" y="162" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="15" fill="#94a3b8" text-anchor="start">durable · queryable · audit-friendly</text>
+  <rect x="550" y="190" width="360" height="75" rx="10" fill="#1f1a3d" stroke="#a78bfa" stroke-width="1"/>
+  <text x="570" y="230" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="18" fill="#a78bfa" text-anchor="start">LlmCall  (tokens · cost · latency)</text>
+  <rect x="550" y="285" width="360" height="75" rx="10" fill="#1f1a3d" stroke="#a78bfa" stroke-width="1"/>
+  <text x="570" y="325" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="18" fill="#a78bfa" text-anchor="start">ToolExecution</text>
+  <rect x="550" y="380" width="360" height="75" rx="10" fill="#1f1a3d" stroke="#a78bfa" stroke-width="1"/>
+  <text x="570" y="420" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="18" fill="#a78bfa" text-anchor="start">Conversation  (full history)</text>
+  <rect x="550" y="475" width="360" height="75" rx="10" fill="#1f1a3d" stroke="#a78bfa" stroke-width="1"/>
+  <text x="570" y="515" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="18" fill="#a78bfa" text-anchor="start">DailyMetrics  (GROUP BY)</text>
+  <text x="540" y="599" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="14" fill="#94a3b8" text-anchor="start">provision :  deno deploy database --kind prisma</text>
+  <rect x="60" y="655" width="880" height="50" rx="10" fill="#1a4d4d" stroke="#06b6d4" stroke-width="2"/>
+  <text x="80" y="688" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="15" fill="#06b6d4" text-anchor="start">Long-term agent memories  →  plain Markdown, not KV, not Prisma</text>
+</svg>

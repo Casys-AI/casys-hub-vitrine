@@ -1,120 +1,188 @@
 ---
-title: "Similaire vs Relié : Comment PML Trouve le Bon Outil"
-description: "Google trouve des pages similaires. Votre cerveau trouve des idées reliées. PML fait les deux — et c'est pour ça qu'il trouve les outils dont vous ignoriez avoir besoin."
+title: "GraphRAG vs Vector RAG : pourquoi le RAG similaire ne suffit plus pour les agents IA"
+description: "Vector RAG trouve ce qui ressemble, GraphRAG trouve ce qui est relié. Comparaison technique, benchmarks, pattern hybride en prod, arbre de décision — pour choisir (ou combiner) sans se tromper."
 author: "Erwan Lee Pesle"
 date: 2025-12-18
 tags:
-  - pml
+  - rag
+  - graphrag
+  - vector-rag
+  - agents-ia
+  - knowledge-graph
+  - mcp
   - recherche
-  - découverte
-  - outils
-category: "Produit"
+category: "Research"
 language: fr
-snippet: "Google trouve des pages similaires. Votre cerveau trouve des idées reliées. PML fait les deux — et c'est pour ça qu'il trouve les outils dont vous ignoriez avoir besoin."
+snippet: "Vector RAG récupère des chunks similaires. GraphRAG traverse des relations. Ce n'est pas un duel — c'est deux outils à combiner selon l'intent de la requête. Benchmarks, exemples et carte de décision X/Y."
 featured: true
 draft: false
 ---
+import ExcalidrawDiagram from '../../../components/ExcalidrawDiagram.astro';
 
-## Deux façons de chercher
+## Le vrai problème de la recherche sémantique
 
-Quand vous cherchez quelque chose, deux approches s'offrent à vous :
+Tous les tutos RAG commencent pareil : on embed les documents, on embed la question, on récupère les vecteurs les plus proches, on empile les chunks dans le contexte. Ça marche étonnamment bien pour les questions simples. Pour tout ce qui demande un raisonnement à travers des **relations**, ça casse d'une façon difficile à déboguer et quasi impossible à corriger au moment de la requête.
 
-**Le similaire :** « Trouve ce qui ressemble à ça »
-- Google : des pages avec les mêmes mots
-- Spotify : des morceaux qui sonnent pareil
-- Netflix : des films du même genre
+Le mode d'échec n'est pas que le retriever retourne des mauvais résultats. C'est qu'il retourne des résultats **localement corrects mais globalement trompeurs**. Vous demandez « qu'est-ce qui a causé la baisse du chiffre d'affaires du T3 ? » et vous récupérez trois chunks parlant du T3, tous exacts, aucun ne contenant le problème fournisseur du T2 qui avait tout déclenché. La relation existe dans votre corpus. Vector RAG ne sait pas la traverser.
 
-**Le relié :** « Trouve ce qui est connecté à ça »
-- Votre cerveau : « café » → « matin » → « réveil »
-- Wikipédia : des liens entre concepts
-- Votre workflow : « git commit » mène généralement à « git push »
+<ExcalidrawDiagram src="graphrag-vs-vectorrag/vector-vs-graph-same-question" alt="Même question, deux stratégies : Vector RAG récupère les chunks similaires et rate la cause racine, GraphRAG traverse la chaîne de relations et la trouve" />
 
-Ce n'est pas la même chose. Et pour les outils IA, **il vous faut les deux**.
-
-## Le problème du moteur de recherche
-
-La plupart des systèmes de découverte d'outils IA fonctionnent comme des moteurs de recherche.
-
-Vous demandez : *« J'ai besoin d'envoyer une notification »*
-
-Ils trouvent : les outils qui contiennent « notification » dans leur description.
-
-Ça fonctionne... parfois. Mais ça passe à côté de :
-- Des outils que vous avez déjà utilisés avec succès dans des situations similaires
-- Des outils qui suivent logiquement ce que vous venez de faire
-- Des outils que vos collègues utilisent pour ce type de tâche
-
-**Les moteurs de recherche trouvent ce qui correspond. Ils ne trouvent pas ce qui fonctionne.**
-
-## L'approche du cerveau
-
-Votre cerveau ne fait pas que comparer des mots. Il suit des connexions.
-
-Vous pensez « déploiement » et votre cerveau active automatiquement :
-- « tests » (parce que vous lancez toujours les tests avant)
-- « docker » (parce que c'est comme ça que vous déployez)
-- « slack » (parce que vous prévenez l'équipe après)
-
-Ces connexions viennent de l'expérience. Vous avez déjà suivi ce workflow.
-
-**PML construit ces connexions pour les outils IA.**
-
-## Comment PML combine les deux
-
-PML utilise deux systèmes ensemble :
-
-| Système | Ce qu'il fait | Comparable à... |
-| ------- | ------------- | --------------- |
-| **Similarité** | Trouve les outils correspondant à votre intention | La recherche Google |
-| **Relations** | Trouve les outils connectés par l'expérience | Votre cerveau |
-
-Demandez « envoyer une notification » et PML :
-1. Trouve les outils liés aux notifications (similarité)
-2. Vérifie lesquels ont fonctionné dans des workflows similaires (relations)
-3. Suggère celui qui correspond le mieux à votre contexte
-
-## Pourquoi c'est important
-
-### De meilleures suggestions dès le départ
-
-Au lieu de vous montrer tous les outils « notification », PML vous montre celui dont vous avez le plus probablement besoin — en fonction de ce que vous êtes en train de faire.
-
-### Des workflows qui ont du sens
-
-PML sait qu'après un « git commit », il y a généralement un « git push ». Il ne suggère pas des outils au hasard — il suggère l'étape logique suivante.
-
-### Apprendre du succès
-
-Quand un outil fonctionne bien dans un workflow, la connexion se renforce. Quand il échoue, la connexion s'affaiblit. PML apprend ce qui marche vraiment, pas juste ce qui sonne bien.
-
-## Un exemple concret
-
-Vous travaillez sur du code et vous dites : *« Vérifie s'il y a des erreurs »*
-
-**Approche par recherche seule :**
-Affiche tous les outils de linting, de test et de débogage par ordre alphabétique.
-
-**Approche PML :**
-1. Détecte que vous êtes dans un projet JavaScript
-2. Sait que vous utilisez habituellement ESLint pour ça
-3. Se souvient qu'ESLint a bien fonctionné la dernière fois
-4. Suggère ESLint en premier, avec des alternatives si besoin
-
-Même question. Réponse plus pertinente.
-
-## En résumé
-
-Trouver le bon outil ne se résume pas à comparer des mots.
-
-C'est comprendre :
-- Ce que vous essayez de faire
-- Ce qui a fonctionné avant
-- Ce qui a du sens maintenant
-
-PML combine la similarité (comme un moteur de recherche) et les relations (comme votre cerveau) pour trouver les outils qui correspondent vraiment.
-
-**Pas juste similaire. Relié. Et ça change tout.**
+GraphRAG a été construit pour résoudre ce cas. Mais la littérature et les commerciaux le présentent souvent comme le **remplaçant** de Vector RAG. Ce post défend l'inverse : ce sont deux outils **complémentaires**, répondant à deux intents de requête différents, et qu'une bonne stack fait tourner ensemble.
 
 ---
 
-*Découvrez une recherche d'outils plus intelligente sur [casys.ai](https://casys.ai)*
+## Vector RAG, et pourquoi ça marche la plupart du temps
+
+Vector RAG est devenu le défaut pour une raison simple : **dans la majorité des cas documentaires, la similarité sémantique est un proxy raisonnable de la pertinence**.
+
+Le principe tient en trois étapes :
+
+1. **Indexation** — chunker les documents, embedder chaque chunk avec un modèle (OpenAI, Voyage, Cohere, ou un modèle local type bge-small), stocker les vecteurs dans un index (pgvector, Qdrant, Pinecone, Weaviate, Milvus).
+2. **Requête** — embedder la question, calculer la similarité cosinus entre le vecteur de la question et celui des chunks.
+3. **Synthèse** — prendre les top-k chunks, les passer en contexte à un LLM.
+
+Ça tient en une après-midi de code, ça scale à des millions de documents avec de la vraie infra, et ça répond correctement à la plupart des questions factuelles. C'est pour ça que tous les frameworks (LangChain, LlamaIndex, Haystack) en font leur primitive de base.
+
+Là où ça coince — sans complexe, parce qu'aucune ingénierie de prompt ne surmonte ces contraintes :
+
+- **Pas de raisonnement multi-hop.** Si la réponse relie A → B → C et que chaque lien vit dans un chunk séparé, le retriever renvoie le chunk le plus proche de la requête. Il n'enchaîne pas. Une évaluation systématique ([arxiv 2502.11371](https://arxiv.org/abs/2502.11371)) montre que Vector RAG peut scorer **0 %** sur certaines tâches dépendantes des relations.
+- **Similarité sémantique ≠ pertinence.** « Le déploiement a échoué » et « on a tourné la clé d'API hier » ont une similarité cosinus faible. Leur lien est causal, pas sémantique.
+- **Pas de résolution d'entité.** « MSFT », « Microsoft » et « Microsoft Corporation » sont trois vecteurs distincts.
+- **Retrieval indépendant de la requête.** Que la question soit factuelle ou de synthèse, on récupère le même type de chunks.
+- **Fragmentation des frontières de chunks.** Une relation qui traverse un paragraphe se scinde en deux chunks orphelins.
+
+Aucun de ces points n'est bloquant pour du QA documentaire à échelle raisonnable. Ils se composent dans des environnements d'entreprise — corpus large, hétérogène, internement interconnecté. C'est là qu'on a besoin d'autre chose.
+
+---
+
+## Ce que GraphRAG ajoute vraiment
+
+GraphRAG (Graph Retrieval-Augmented Generation) combine un graphe de connaissances avec la boucle RAG. La couche de retrieval n'est plus un index vectoriel plat : c'est un **graphe** où les nœuds sont des entités (personnes, concepts, lieux, organisations) et les arêtes sont des relations typées.
+
+La différence fondamentale : **la récupération devient une traversée**. On ne cherche plus les chunks qui ressemblent à la requête — on suit des chemins depuis une entité ancre vers le contexte connecté que la similarité d'embeddings ne ferait jamais émerger.
+
+<ExcalidrawDiagram src="graphrag-vs-vectorrag/graphrag-knowledge-graph" alt="Visualisation d'un knowledge graph : entités typées, relations typées, chemin de traversal surligné depuis l'anchor de requête jusqu'à la cause racine" />
+
+Les implémentations sérieuses partagent toutes la même séquence offline :
+
+1. **Chunking** — découpage du corpus en text units. Classique.
+2. **Extraction d'entités et de relations** — une passe LLM extrait les entités nommées, les relations typées (« a acquis », « a causé », « a mitigé ») et les claims clés. C'est l'étape coûteuse : 20 à 50 $ par million de tokens aux tarifs GPT-4, et la qualité du graphe final dépend directement de cette extraction.
+3. **Détection de communautés** — un algorithme de clustering (Leiden dans Microsoft GraphRAG, hierarchical clustering ailleurs) regroupe les entités, chaque cluster reçoit un résumé généré. Ces résumés hiérarchiques permettent les requêtes thématiques à travers tout le corpus.
+4. **Requête locale ou globale** — la **local search** traverse le voisinage d'entités pour des faits précis, la **global search** agrège les résumés de communautés pour de la synthèse thématique.
+
+### Un écosystème plus large qu'on ne le dit
+
+Le nom qui circule le plus est [Microsoft GraphRAG](https://github.com/microsoft/graphrag), parce que Microsoft l'a publié en open source avec un bon marketing. Ce n'est ni le seul, ni forcément le meilleur pour votre cas :
+
+- **[LightRAG](https://github.com/HKUDS/LightRAG)** (HKU) — open source plus léger, indexation plus rapide, moins cher en tokens.
+- **[nano-graphrag](https://github.com/gusye1234/nano-graphrag)** — ~1 000 lignes Python, sans dépendances Microsoft, parfait pour apprendre le pattern.
+- **[Neo4j + LangChain](https://python.langchain.com/docs/integrations/graphs/neo4j_cypher/)** — graphe Cypher natif, intégration LangChain mature.
+- **[LlamaIndex PropertyGraphIndex](https://docs.llamaindex.ai/en/stable/module_guides/indexing/lpg_index_guide/)** — route la plus rapide pour un POC.
+- **[FalkorDB](https://www.falkordb.com/)** — graph DB Redis-based, conçue pour les pipelines RAG/agent.
+- **[Kùzu](https://kuzudb.com/)** — graph DB embedded, colonne + Cypher, zéro infra.
+
+Les approches varient sur le coût d'indexation, la latence de requête, le support multilingue, la possibilité de mise à jour incrémentale. **Aucune n'est universellement meilleure.**
+
+### Les coûts réels
+
+Parlons vrai sur ce que GraphRAG coûte :
+
+- **Build time** : extraction LLM payante, clustering offline de minutes à heures. Toute mise à jour demande une ré-indexation (totale ou partielle selon l'implémentation).
+- **Query time** : local search ~200 ms, global search plusieurs secondes (map-reduce sur communautés).
+- **Qualité** : elle dépend de la capacité du LLM extracteur à normaliser les entités (« MSFT » = « Microsoft » ?) et à typer correctement les relations. Un extracteur médiocre donne un graphe médiocre.
+
+Là où GraphRAG brille :
+- Synthèse thématique (« quels facteurs de risque à travers ces 500 rapports ? »)
+- Questions causales et multi-hop (« qu'est-ce qui a causé X ? »)
+- Corpus denses, hétérogènes, avec des relations explicites (papiers de recherche, documents juridiques, bases réglementaires)
+
+Là où il déçoit :
+- Questions factuelles simples (sur-équipement)
+- Petits corpus (coût d'indexation non justifié)
+- Mises à jour en temps réel (batch par conception)
+
+Le [papier arxiv 2506.05690](https://arxiv.org/abs/2506.05690) est explicite : **GraphRAG sous-performe souvent sur le retrieval simple, et inverse fortement la tendance sur les tâches multi-hop**. Le point de décision, c'est la nature de la question — pas la taille du corpus.
+
+---
+
+## Head-to-head
+
+| | **Vector RAG** | **GraphRAG** |
+|---|---|---|
+| **Modèle de données** | Index vectoriel plat | Graphe d'entités typées |
+| **Opération de retrieval** | Nearest-neighbour cosinus | Traversée + communautés |
+| **Multi-hop** | Non | Oui (par design) |
+| **Mise à jour** | Incrémentale (ré-embed du doc) | Batch (ré-index des entités) |
+| **Coût d'indexation** | Faible (passe embed) | Élevé (extraction LLM) |
+| **Latence requête** | ~10–50 ms | Local : ~200 ms · Global : secondes |
+| **Force** | Fact retrieval, similarité | Synthèse thématique, chaînes causales |
+| **Faiblesse** | Raisonnement relationnel | Lookup factuel simple |
+
+Lu en diagonale : Vector RAG gagne sur le simple, GraphRAG gagne sur le relationnel, aucun des deux ne gagne les deux. C'est précisément cette asymétrie qui rend la suite intéressante.
+
+---
+
+## Le vrai pattern de prod : l'hybride
+
+La question piège n'est pas « lequel choisir ? ». C'est « **comment router la requête vers le bon** ? ».
+
+<ExcalidrawDiagram src="graphrag-vs-vectorrag/rag-decision-tree" alt="Carte de décision X/Y pour choisir entre Vector RAG, GraphRAG, Vector streaming ou Hybrid selon la complexité de la requête et la fréquence de mise à jour du corpus" />
+
+Les stacks sérieuses ne choisissent pas — elles combinent. Trois patterns qui marchent :
+
+**1. Router en amont par intent de requête.** Un petit classifieur (ou un LLM léger) détermine si la question est factuelle-similaire ou relationnelle-causale, et dispatche vers le vector store ou vers le graphe. LangChain propose ce pattern via ses routers. Simple, explicite, mesurable séparément.
+
+**2. Vector RAG en premier pass, GraphRAG pour enrichir.** Le retriever vectoriel sort k candidats (rapide, pas cher), puis une passe graphe ajoute les entités connexes aux chunks récupérés. Le LLM synthétise sur les deux. Vous payez ~50 ms de vectoriel + ~200 ms de passe graphe locale — acceptable dans la plupart des cas.
+
+**3. Deux indexes sur le même contenu, scoring hybride.** Chaque document est indexé deux fois (embedding + extraction entités). Au query time on fait les deux lookups et on fusionne les scores. Plus cher à l'indexation mais très robuste — c'est l'approche par défaut du `PropertyGraphIndex` de LlamaIndex.
+
+Le vrai sujet architectural, c'est **la latence et le coût d'indexation**. Vector RAG peut tenir un million de documents pour quelques dollars par mois. GraphRAG sur le même corpus coûte des milliers à l'indexation. Le bon sens veut qu'on réserve GraphRAG aux questions où il change quelque chose de mesurable — ce qui veut dire monitorer les deux pipelines en prod et comparer par type de question.
+
+---
+
+## Par où commencer
+
+Si vous partez de zéro, l'ordre qui marche :
+
+1. **Vector RAG d'abord**, n'importe quel framework (pgvector + LangChain ou LlamaIndex) sur un sous-ensemble du corpus. Mesurez la qualité sur vos vraies questions.
+2. **Identifiez les questions où Vector RAG rate**. Si c'est « quels thèmes » ou « qu'est-ce qui a causé », vous avez un problème relationnel, passez à l'étape 3. Sinon, restez Vector RAG.
+3. **Essayez nano-graphrag ou LightRAG** avant Microsoft GraphRAG — plus rapide à prototyper, moins cher. Mesurez sur les mêmes questions que l'étape 1.
+4. **Intégrez les deux via un router**. Le code du router fait trente lignes. Le gain en qualité sur les questions relationnelles vaut largement le coût d'un appel supplémentaire.
+
+```bash
+# Exemple minimal avec nano-graphrag
+pip install nano-graphrag
+```
+
+```python
+from nano_graphrag import GraphRAG
+
+graph = GraphRAG(working_dir="./cache")
+graph.insert(["doc1 text...", "doc2..."])
+print(graph.query("qu'est-ce qui a causé X ?"))
+```
+
+Pour un corpus sérieux, comptez deux à trois jours d'indexation plus prompt engineering avant que la qualité stabilise. Le premier run coûte toujours plus que prévu à cause d'extractions d'entités ratées — ça se corrige en itérant sur le prompt d'extraction.
+
+---
+
+## La décision, en une phrase
+
+Vector RAG répond à « trouve-moi ce qui ressemble ». GraphRAG répond à « trouve-moi ce qui est connecté ». Si vos requêtes sont majoritairement du premier type, restez en Vector RAG. Si elles font régulièrement du second, **ajoutez** un étage GraphRAG — pas à la place, en complément, routé par intent.
+
+Le vrai choix n'est pas binaire. C'est un choix de **routing**.
+
+---
+
+*Lectures complémentaires : [Pourquoi MCP est l'USB-C des outils IA](/blog/why-mcp-protocol) · [Context Engineering : le vrai levier des agents IA](/blog/context-engineering-guide) · [MCP Gateway : pourquoi vos agents IA en ont besoin](/blog/mcp-gateway-guide)*
+
+Sources :
+- [Microsoft GraphRAG — GitHub](https://github.com/microsoft/graphrag)
+- [LightRAG (HKU) — GitHub](https://github.com/HKUDS/LightRAG)
+- [nano-graphrag — GitHub](https://github.com/gusye1234/nano-graphrag)
+- [Neo4j GraphRAG integration — LangChain](https://python.langchain.com/docs/integrations/graphs/neo4j_cypher/)
+- [LlamaIndex PropertyGraphIndex](https://docs.llamaindex.ai/en/stable/module_guides/indexing/lpg_index_guide/)
+- [RAG vs GraphRAG — évaluation systématique (arxiv 2502.11371)](https://arxiv.org/abs/2502.11371)
+- [When to use Graphs in RAG (arxiv 2506.05690)](https://arxiv.org/abs/2506.05690)
+- [GraphRAG-Bench — raisonnement domaine-spécifique (arxiv 2506.02404)](https://arxiv.org/abs/2506.02404)
+- [Benchmark accuracy GraphRAG vs Vector RAG — FalkorDB](https://www.falkordb.com/blog/graphrag-accuracy-diffbot-falkordb/)

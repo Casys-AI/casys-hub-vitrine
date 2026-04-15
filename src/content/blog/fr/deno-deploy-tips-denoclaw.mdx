@@ -1,0 +1,327 @@
+---
+title: "Agents IA sur Deno Deploy : 6 leçons d'un prototype (KV, sandbox, Prisma)"
+description: "Retour d'expérience complet sur Deno Deploy pour construire des agents IA : Deno KV, @deno/sandbox, permissions Workers, file system, stockage objet, Prisma. Six leçons apprises à la dure."
+author: "Erwan Lee Pesle"
+date: 2026-04-15
+tags:
+  - deno
+  - deno-deploy
+  - deno-kv
+  - agents-ia
+  - sandbox
+  - prisma
+  - edge-computing
+  - workers
+  - typescript
+  - infrastructure
+category: "Infrastructure"
+language: fr
+snippet: "J'ai construit un prototype d'agents IA sur Deno Deploy pendant plusieurs mois. Le prototype reste modeste — mais la plateforme, je la connais maintenant par cœur. Voici les six leçons concrètes qui m'auraient fait gagner des semaines sur Deno KV, @deno/sandbox, les permissions Workers et le file system."
+featured: true
+draft: false
+---
+
+import ExcalidrawDiagram from '../../../components/ExcalidrawDiagram.astro';
+
+# Agents IA sur Deno Deploy : six leçons d'un prototype
+
+> Ce n'est pas un guide produit. C'est un carnet de bord : tout ce qu'on découvre en frappant le mur de l'évidence quand on construit des agents IA sur Deno Deploy, et qu'on aurait aimé lire avant de pousser le premier `deno deploy`.
+
+---
+
+## Le contexte, pour ne pas mentir
+
+J'ai un projet personnel qui s'appelle [denoclaw](https://github.com/Casys-AI/DenoClaw). C'est un prototype d'orchestrateur **multi-agents IA** écrit en Deno. Il fonctionne — Workers multi-agents, messaging A2A, tool calling Ollama, sandbox subprocess local — mais soyons clair : c'est un **prototype**. Pas un produit, pas un concurrent à OpenClaw ou à qui que ce soit. Quarante commits, huit ADRs, quatre-vingt-trois tests. Joli, mais loin d'être abouti.
+
+Le vrai bénéfice de cette aventure, ce n'est pas le code livré. C'est qu'en essayant de mettre ce machin debout sur Deno Deploy, j'ai dû rentrer dans **tous** les coins de la plateforme : le CLI v2 (qui a remplacé `deployctl`), Deno KV, le couplage avec Prisma, les permissions par Worker, `@deno/sandbox`, les tunnels, OIDC, le file system d'isolate, l'absence de stockage objet. Et à chaque coin, une surprise.
+
+Cet article rassemble six leçons sorties de ce terrain. Elles ne sont pas dans les guides "getting started" — ce sont des découvertes faites en se cognant. Si vous démarrez un projet d'**agents IA sur Deno Deploy**, lisez-les avant.
+
+### Pourquoi Deno Deploy pour des agents IA ?
+
+Question légitime, parce qu'en 2026 un agent IA peut tourner à peu près n'importe où — Node sur Vercel, Python sur Modal, Rust sur Fly. Trois raisons m'ont fait choisir Deno Deploy spécifiquement pour denoclaw :
+
+- **Les permissions par Worker.** Chaque agent tourne dans un Worker Deno avec des permissions réseau, fichier et env **plus restreintes** que son parent. Aucun autre runtime JavaScript mainstream ne permet ça. Leçon 4 détaille pourquoi c'est structurel.
+- **Deno KV natif.** Pour un orchestrateur multi-agents, on a besoin d'état partagé en temps réel : statut des agents, traces, file de tâches. KV + `kv.watch()` remplacent Redis + un bus d'événements, sans rien installer. Leçon 3.
+- **`@deno/sandbox` pour l'exécution de code arbitraire.** Un agent IA qui exécute du code généré par un LLM a besoin d'une vraie VM, pas juste de flags de permissions. `@deno/sandbox` monte du Firecracker avec un modèle de secret-proxy que je n'ai vu nulle part ailleurs. Leçon 5.
+
+Le reste — le cold start, l'edge computing, la facturation à la requête — est un bonus. Les trois primitives ci-dessus sont le vrai moat.
+
+---
+
+## Un schéma pour situer
+
+Avant de plonger, voilà à quoi ressemble l'architecture finale, dans ses deux modes — local pour le dev, Deploy pour la prod. Trois couches : orchestration, agent, exécution. Les primitives changent, le contrat reste le même.
+
+<ExcalidrawDiagram src="deno-deploy-tips-denoclaw/architecture-3-couches" alt="Architecture 3 couches : Process/Worker/Subprocess en local vs Broker/Subhosting/Sandbox en Deploy" />
+
+C'est cette équivalence qui rend la chose viable. Un agent qui tourne en `Worker` localement est censé tourner pareil en isolate Subhosting. Sauf que dans la pratique, **non**. C'est précisément l'objet des deux premières leçons.
+
+---
+
+## Leçon 1 — Subhosting n'est pas un Deno long-running
+
+C'est la première claque, et elle remet en cause le design initial.
+
+J'avais imaginé l'agent comme un **daemon** : un process qui démarre, garde une connexion `kv.listenQueue()` ouverte, programme des `Deno.cron()` pour ses tâches périodiques, et reste là. C'est ce qu'on fait naturellement en Node ou en Deno local. Audit fait, vérification croisée avec la doc officielle :
+
+> *"Deno Cron and Queues do not currently work for Subhosting."*
+
+Et plus bas : les isolates Subhosting ont un **idle timeout** entre 5 secondes et 10 minutes selon la charge, après quoi ils sont SIGKILL. Pas de garantie de persistance. Tout mon modèle initial — `pendingRequests` cachés en mémoire, listener de queue toujours actif, cron déclaré au boot — ne marchait littéralement pas en cloud. Le code se chargeait, démarrait, mais ne faisait rien.
+
+**La règle qu'il faut intérioriser :** un agent app sur Deploy est un **handler HTTP réactif**, pas un service. Il s'éveille sur une requête, fait son travail, peut être tué la seconde d'après. Tout l'état partagé doit vivre dans KV, pas dans des structures en mémoire. Toute logique périodique doit être déclenchée depuis l'extérieur (un `Deno.cron()` dans le **Broker**, qui lui est censé rester chaud, ou un cron externe qui POST sur l'agent).
+
+Concrètement, j'ai dû refactor le client broker→agent : passer d'un modèle queue-based avec `pendingRequests` à un POST HTTP simple, attendre la réponse, ranger le résultat en KV. Plus complexe à modeler — mais c'est le seul modèle qui survit aux SIGKILL.
+
+---
+
+## Leçon 2 — Le file system n'est pas le file system
+
+Conséquence directe : si vos agents lisent ou écrivent des fichiers depuis le code (config, prompts, mémoires, skills), il faut un plan.
+
+Dans denoclaw, chaque agent a un workspace : `agent.json`, `soul.md` (le system prompt), `skills/*.md`. Localement, c'est dans `./data/agents/<id>/`. Le code utilise `Deno.readDir()` et `Deno.readTextFile()`, classique.
+
+Sur Deploy, ce répertoire **n'existe pas**. Le bundle déployé n'embarque pas ces fichiers par défaut. Résultat observé : les agents en prod n'avaient **aucune skill chargée**, silencieusement. `loadSkills()` retournait un tableau vide, l'agent répondait quand même à la question, juste sans son outillage. Aucune erreur, aucun log d'avertissement. Le pire genre de bug.
+
+La solution prend deux formes selon la nature du fichier :
+
+<ExcalidrawDiagram src="deno-deploy-tips-denoclaw/fs-routing-deploy-vs-local" alt="Tools file system : routing transparent FS en local vs KV en Deploy via DENO_DEPLOYMENT_ID" />
+
+**Pour les définitions immuables** (`soul.md`, `agent.json`, listes de skills) — on les **bake** comme string literals dans le `main.ts` généré au moment du `denoclaw publish`. Le compromis : pour changer une instruction système, il faut re-publish. Pas idéal, mais traçable et atomique.
+
+**Pour les fichiers vivants** (mémoires d'agent, conversations, notes) — on met en place un routing transparent dans les file tools. Une seule fonction décide, depuis `src/shared/helpers.ts` :
+
+```ts
+export const isDeployEnvironment = () =>
+  !!Deno.env.get("DENO_DEPLOYMENT_ID");
+```
+
+Au-dessus, les tools `read_memory`, `write_memory`, `list_memories` ne savent pas s'ils tapent dans le FS ou dans KV. Ils délèguent à un adapter. En local, ça lit `./data/agents/alice/memories/note.md`. En Deploy, ça lit `kv.get(["workspace", "alice", "memories", "note.md"])`. Même API, deux backends.
+
+**Le piège annexe** : `~/.denoclaw/agents/` (le dossier home) marchait en dev mais **n'est pas déployable depuis CI**. Pas versionnable, pas reproductible. Tout ce qui est définition d'agent est passé en `./data/agents/` (versionné). Seuls les `memory.db` privés restent dans `~/.denoclaw/agents/<id>/` — machine-local, jamais commités. La règle se résume :
+
+| Type | Emplacement |
+|---|---|
+| Définition (config, prompt, skills) | `./data/agents/<id>/` (versionné) |
+| Runtime privé (memory.db conversation) | `~/.denoclaw/agents/<id>/` (machine) |
+| Runtime cross-machine (souvenirs Deploy) | KV `["workspace", id, ...]` |
+
+### Et les objets binaires, alors ?
+
+Corollaire gênant de tout ce qui précède : **Deploy n'a pas de stockage objet natif**. Pas de S3 managé, pas de GCS intégré, pas d'équivalent de R2. Pour tout ce qui est binaire et pas petit — uploads utilisateurs, PDFs générés, exports, images, datasets, modèles ML — il faut brancher un service externe.
+
+Les options réalistes :
+
+- **Cloudflare R2** (S3-compatible, egress gratuit, le choix par défaut pour mes projets).
+- **AWS S3 / Backblaze B2 / Wasabi** si vous avez déjà une stack.
+- **KV avec chunking** (via `@kitsonk/kv-toolbox` qui gère le blob splitting) — utilisable pour des fichiers < quelques MB, au-delà ça devient douloureux : Deno KV a une limite de **64 KB par valeur** et **1000 ops / transaction**. C'est un workaround, pas une solution.
+- **Prisma Postgres avec une colonne `bytea`** — OK pour quelques centaines de KB embarqués dans la ligne ; mauvaise idée pour du gros.
+
+L'absence de stockage objet natif n'est pas un crime — la plupart des plateformes modernes font ce choix. Mais c'est une friction à ne pas découvrir quand votre agent doit stocker un PDF généré ou un modèle d'embedding de 100 MB. Choisissez un bucket externe **dès le démarrage** du projet et passez son URL en variable d'env. J'ai fini par brancher R2, un matin, parce que denoclaw devait stocker des exports et je n'avais pas d'endroit pour les mettre.
+
+---
+
+## Leçon 3 — KV pour le hot path, Prisma pour le cold path
+
+Quand on découvre Deno KV, l'envie est forte de tout y mettre. Petit, intégré, transactionnel, gratuit. Pourquoi installer Postgres si KV existe ?
+
+Réponse : parce que les deux ne servent pas à la même chose, et essayer de les faire faire le même boulot mène à du code tordu et lent.
+
+<ExcalidrawDiagram src="deno-deploy-tips-denoclaw/kv-prisma-hot-cold" alt="KV (hot path - statut, traces, sentinels) vs Prisma Postgres (cold path - LlmCall, Conversation, DailyMetrics avec GROUP BY)" />
+
+**KV brille pour le hot path** : statut d'agent en temps réel, traces de spans avec TTL 24h, sentinelles pour `kv.watch()`, conversations indexées par session via [`@olli/kvdex`](https://jsr.io/@olli/kvdex). Tout ce qui est lu/écrit constamment, vit court, et doit être vu en streaming par un dashboard.
+
+Le truc magique de KV, c'est `kv.watch()`. Un seul appel te donne un `ReadableStream` qui émet à chaque mutation. Le dashboard SSE de denoclaw, c'est trois lignes :
+
+```ts
+const stream = kv.watch([["agent_tasks"]]);
+for await (const [entry] of stream) {
+  send(entry.value);
+}
+```
+
+Pas de Redis, pas de bus d'événements, pas de NATS. Une primitive runtime, ça suffit. Règle interne que je me suis imposée : **un seul process appelle `kv.watch()`** — le Broker. Les Workers émettent vers le Broker, qui écrit en KV, qui émet vers le dashboard. Chaîne unidirectionnelle, pas d'observateurs récursifs.
+
+**Prisma sur Postgres prend le relais pour le cold path** : `LlmCall` (tokens, latence, coût, modèle), `ToolExecution` (args, résultat, durée), `Conversation` (historique complet par session), `DailyMetrics` avec `GROUP BY agent_id, day`. Tout ce qu'on requête en analytique ou en audit, et qu'on garde longtemps. Essayer de faire un `GROUP BY` sur KV avec des clés tuples, c'est de la torture.
+
+Le setup Prisma sur Deno mérite trois notes pratiques :
+
+1. **`prisma.config.ts` doit charger `.env` à la main**. Le flag `--env` de Deno ne suffit pas pour Prisma — son loader n'est pas appelé via le runtime Deno standard. Solution : un `import fs from "node:fs"` en haut du fichier de config, parser le `.env` à la main, mettre dans `process.env`. Trois lignes, mais on s'arrache les cheveux avant de comprendre pourquoi `DATABASE_URL` est `undefined`.
+2. **Schema avec `runtime = "deno"` et `@prisma/adapter-pg`**. Sans l'adapter, Prisma essaie de charger ses binaries natifs, ce qui ne marche pas dans un isolate.
+3. **Même `DATABASE_URL` partout**. En local, c'est un Postgres docker. Sur Deploy, c'est `deno deploy database provision <name> --kind prisma` qui te file un Postgres managed. Le code n'a pas à savoir.
+
+Avec ce double étage, KV reste rapide pour ce qui doit l'être, Postgres reste interrogeable pour ce qui doit l'être. Pas l'un ou l'autre — les deux, chacun sa place.
+
+---
+
+## Leçon 4 — Permissions par Worker : le vrai moat de Deno
+
+Voilà l'élément qui m'a fait basculer définitivement sur Deno pour ce type de projet. Un Worker Deno peut démarrer avec **strictement moins** de permissions que son parent :
+
+```ts
+const worker = new Worker(import.meta.resolve("./agent.ts"), {
+  type: "module",
+  deno: {
+    permissions: {
+      read: [Deno.cwd() + "/data/agents/alice"],
+      net: ["api.openai.com"],
+      env: ["OPENAI_API_KEY"],
+      run: false,
+      write: false,
+    },
+  },
+});
+```
+
+Cet agent ne peut rien lire en dehors de son dossier, ne peut joindre que l'API OpenAI, ne voit qu'une seule variable d'environnement, ne peut lancer aucun subprocess ni écrire le moindre fichier. Quoi qu'il fasse, il est confiné. Pas par convention — par le runtime.
+
+`worker_threads` de Node n'a **aucune** API équivalente. On peut bricoler avec `vm`, avec des containers, mais à l'intérieur d'un process Node, un worker hérite intégralement des droits du parent. Cette différence est structurelle.
+
+Trois pièges à éviter :
+
+**1. `permissions: []` ≠ "skip sandbox".**
+C'est l'inverse. Un tableau vide veut dire "zéro permission accordée" — restriction maximale. Si vous voulez "donner tout au Worker", c'est `permissions: "inherit"`. La confusion m'a coûté une demi-journée.
+
+**2. Les `--deny-*` priment sur les `--allow-*`.**
+Lancez le parent avec `--deny-net=github.com`. Même si un Worker enfant demande `allow-net=*`, `github.com` reste bloqué. Idéal pour interdire des destinations en absolu (ex. domaines internes corporate, peu importe ce que les agents inventent).
+
+**3. Le shell, jamais via `sh -c`.**
+`--allow-run=sh` annule toute la granularité. `sh -c "command"` peut exécuter n'importe quoi. La règle dans denoclaw est gravée dans une ADR : `--allow-run=git,jq,deno` avec `Deno.Command("git", [...])` directement. Les interpréteurs shell (`sh`, `bash`, `zsh`) sont **explicitement interdits** dans le mode `direct` du sandbox. En mode `allowlist`, même un `python -c '...'` est bloqué — sinon l'allowlist ne protège plus rien.
+
+Petit bug que la review a sorti : `if (allowedCommands.length > 0 && !allowedCommands.includes(binary))`. Si `allowedCommands: []`, le check court-circuite et **tout** est autorisé. Le fix correct : `if (!allowedCommands.includes(binary))` — liste vide veut dire "rien d'autorisé", point.
+
+---
+
+## Leçon 5 — `@deno/sandbox` : le secret qui n'entre jamais dans la VM
+
+Les permissions Workers gèrent l'isolation de votre code. Mais quand un agent doit exécuter du code **arbitraire** — code généré par un LLM, code soumis par un utilisateur, snippet d'un notebook — il faut autre chose. Une vraie VM. C'est `@deno/sandbox`.
+
+L'API est sobre : tu crées un sandbox, tu demandes une exécution, tu lis le résultat. Sous le capot, c'est une microVM Firecracker. Boot ~1s, mémoire isolée, réseau filtré.
+
+Ce qui m'a soufflé, c'est le modèle de gestion des secrets :
+
+<ExcalidrawDiagram src="deno-deploy-tips-denoclaw/sandbox-secret-proxy" alt="Sandbox Firecracker microVM avec secret API_KEY visible en placeholder ${SECRET_API_KEY}, substitution réalisée par un proxy outbound, vrai secret jamais en mémoire de la VM" />
+
+Tu déclares :
+
+```ts
+const sandbox = await Sandbox.create({
+  secrets: { OPENAI_KEY: "sk-real-XYZ..." },
+});
+```
+
+Dans le code qui tourne **dans** la VM, `Deno.env.get("OPENAI_KEY")` retourne **`${OPENAI_KEY}`** — un placeholder. Le code écrit `Authorization: Bearer ${OPENAI_KEY}` dans son fetch. La requête sort de la VM, traverse un proxy outbound qui appartient à `@deno/sandbox`, **et c'est lui qui fait la substitution** au moment de l'envoi sortant. La vraie clé n'a jamais été en RAM de la VM.
+
+Conséquence : si du code malveillant dans la sandbox dump la mémoire et l'exfiltre, il exfiltre des **placeholders**. La vraie valeur reste hors de portée. Je n'ai pas trouvé d'équivalent chez E2B, Modal, Fly, Daytona ni Docker. C'est une primitive runtime, pas un add-on.
+
+Le trade-off honnête : ces `secrets` ne sont injectés **que sur les requêtes HTTPS sortantes**. Si votre tool est un CLI qui lit `process.env.OPENAI_KEY` pour mettre la valeur dans un fichier de config, le placeholder reste tel quel — et le fichier contient une chaîne inutilisable. Pour ces cas-là, il y a `SandboxOptions.env` (clear, comme un container classique), au prix de la garantie placeholder. Choix conscient à faire par tool.
+
+Trois autres détails du sandbox cloud à connaître :
+
+- **5 sandboxes max par org en pre-release.** Avec plusieurs agents simultanément actifs, il faut une file d'attente côté Broker. Un sandbox par agent (`agentId`), réutilisé entre les calls du même agent (lazy init au premier `execute()`), jamais partagé entre agents.
+- **Init concurrente foireuse.** Si deux requêtes appellent `getOrCreateSandbox(agentId)` en parallèle, on se retrouve avec deux VMs. Le pattern qui marche : `this.initPromise ??= Sandbox.create(...)`. Et clear `this.initPromise = null` dans le `catch` — sinon une `initPromise` poisonnée bloque toutes les requêtes futures.
+- **VMs orphelines à monitorer.** `sandbox.kill().catch(() => {})` est un piège — si le kill échoue silencieusement, la VM continue à être facturée. Mettre un log d'erreur, et un cleanup périodique.
+
+---
+
+## Leçon 6 — Ce qui se casse silencieusement (et qu'on ne voit pas dans les exemples)
+
+Six pépins concrets à surveiller. Ils ne sont pas spécifiques à denoclaw — n'importe quel projet qui touche à KV, Workers et SSE va les rencontrer.
+
+**`Deno.openKv()` non mémoïsé fuit des handles.**
+Deux appelants parallèles à `getKv()` sans memoization → deux opens → le premier handle n'est plus jamais récupéré. Le pattern qui marche :
+
+```ts
+let kvOpenPromise: Promise<Deno.Kv> | null = null;
+export const getKv = () => (kvOpenPromise ??= Deno.openKv());
+```
+
+Bête, mais critique en multi-call.
+
+**Cron en multi-region : pas de CAS = double dispatch.**
+Si votre Broker tourne en multi-region (ce qui est le défaut sur Deploy), deux instances peuvent dispatcher le même cron à la même milliseconde. L'astuce : `kv.atomic().check(current).set(updated).commit()`. Si le commit échoue, c'est qu'un autre l'a déjà fait — abandonner le dispatch. Sinon vous payez le LLM en double.
+
+**`kv.enqueue()` est déprécié sur les nouveaux déploiements.**
+Si vous lisez de vieux exemples qui utilisent `kv.enqueue()` + `kv.listenQueue()` pour de la consolidation périodique, oubliez. Sur les nouveaux déploiements Deploy, utilisez `Deno.cron()` directement (dans un service "always-on" — pas dans une agent app Subhosting).
+
+**Preact signals module-level = bleed cross-tenant en SSR.**
+Bug sneaky de Fresh : un `signal()` déclaré au top-level d'un fichier d'island est partagé entre **toutes les requêtes SSR**. Si vous y stockez un state user-specific, l'utilisateur B reçoit le HTML rendu pour l'utilisateur A. À déclarer **dans** le composant ou via context, jamais module-level.
+
+**`onReady` du Worker jamais retiré → workers zombies.**
+Si vous écoutez `worker.onmessage` pour le signal "ready" sans le `removeEventListener` après réception (ou sur timeout/error), le pool accumule des handlers morts. Le pool grossit, les workers ne sont jamais GC'd, le process saigne de la RAM. Toujours wrap `onReady` dans une promise qui clean dans le `finally`.
+
+**Embeddings sur Deploy : la question pas résolue.**
+Détail méconnu d'abord : l'API cloud d'Ollama ne supporte pas `/api/embed`. Pas un seul modèle d'embedding dans leur catalogue. Si vous comptez monter une mémoire vectorielle en pensant taper Ollama Cloud, vous allez vous prendre un `unauthorized` opaque.
+
+Le piège ensuite — et c'est là que mon propre raisonnement de la leçon 2 me rattrape : `fastembed` (ONNX local) marche très bien en dev, mais télécharge ~100 MB de modèle au premier lancement. Sur Subhosting, ça ne tient pas. Pas de file system persistant, isolate qui peut être SIGKILL avant la fin du download, et de toute façon il faudrait recommencer à chaque cold start. La recette "fastembed local" qui circule sur les blogs Node ne survit pas à Deploy.
+
+Les options honnêtes, à choisir selon le profil du projet :
+
+- **Endpoint distant** (OpenAI, Voyage, Cohere, Together) — paie au token, latence réseau, mais zéro infra à gérer. Le défaut raisonnable pour la plupart des cas.
+- **Sidecar HTTP** — un petit service qui héberge `fastembed` (sur un VPS bon marché, ou un Brev/Modal), exposé via HTTP au Broker. Token-free, une seule adresse à passer en variable d'env. Bon compromis si le volume est important.
+- **Calcul dans une sandbox `@deno/sandbox`** — la microVM, elle, a un FS éphémère. On peut y installer `fastembed`, accepter le coût du download au premier appel par sandbox, puis réutiliser. Pas testé sérieusement chez moi — à explorer.
+- **Côté stockage, c'est résolu** : Prisma + pgvector. Le `--kind prisma` (qui provisionne un Postgres managé) supporte pgvector. Une fois qu'on a les vecteurs, peu importe d'où, ils s'indexent et se requêtent comme des colonnes normales. C'est uniquement la question du **calcul** des embeddings qui reste ouverte sur Deploy.
+
+Sur denoclaw, ce point est explicitement laissé en chantier. C'est un trou architectural assumé du prototype, et un bon exemple de truc qu'on découvre tard : "Deploy n'a pas de file system persistant" est une phrase évidente qui a des conséquences en cascade jusqu'au choix du modèle d'embedding.
+
+---
+
+## Le reste : tunnels, OIDC, CLI v2
+
+Trois petites choses qui ne méritent pas de section mais qu'il faut connaître.
+
+**Le CLI s'appelle `deno deploy`, pas `deployctl`.**
+Quasiment tous les tutos encore indexés parlent de `deployctl`. C'est mort. Le CLI actuel est intégré à la CLI Deno :
+
+```bash
+deno deploy create --org casys --app denoclaw-broker \
+  --source github --owner Casys-AI --repo DenoClaw \
+  --entrypoint main.ts --region global
+
+deno deploy --prod
+deno deploy env add OPENAI_API_KEY sk-... --secret
+deno deploy env load .env.production --non-secrets SITE_NAME
+deno deploy database provision shared-kv --kind denokv --org casys
+deno deploy logs --org casys --app denoclaw-broker
+```
+
+Auth via keyring (prompt navigateur au premier appel), framework presets (`astro`, `fresh`, `nextjs`, `nuxt`, `remix`, `solidstart`, `sveltekit`, `lume`), `--no-wait` pour CI, `deno deploy switch` pour changer de contexte. Tout en ligne de commande, rien dans le dashboard web — versionnable dans un runbook.
+
+**OIDC sur WebSocket : ça peut casser.**
+Le plan initial était d'authentifier les agents auprès du Broker via OIDC (un JWT signé par un IdP). En pratique, le JWT est volumineux, et un handshake WebSocket avec un large JWT en query string ou en header est fragile sur Deploy. Choix pragmatique : **token statique en premier (`DENOCLAW_BROKER_TOKEN`), OIDC en fallback**. Pas glamour, mais ça marche.
+
+Avec un piège : ce token doit rester cohérent **partout** — le Broker, votre machine locale qui fait `denoclaw publish`, et l'env de chaque agent app déployée. Toute dérive produit un `401 AUTH_FAILED` opaque. Une seule source de vérité, propagée explicitement.
+
+**Tunnels : vérifier l'identité avant d'accepter le catalog.**
+`deno deploy --tunnel` expose une app locale comme si elle tournait sur Deploy. Utile pour brancher un Mac mini de la maison sur le Broker cloud, sans ouvrir de port. Mais si vous laissez n'importe quel tunnel s'enregistrer et synchroniser son `catalog` (liste d'agents disponibles) avec le Broker, vous laissez n'importe quel tunnel injecter des routes dans votre topologie. La règle minimale : vérifier `status: "trusted"` côté Broker avant d'accepter un sync. Une review interne (SEC-19) a sorti ce trou.
+
+---
+
+## Pour aller plus loin
+
+Quelques ressources que j'aurais aimé avoir sous la main au début. La première surtout — si vous utilisez un assistant IA pour coder sur Deno, les charger en contexte change la qualité des réponses de manière spectaculaire.
+
+- **[denoland/skills](https://github.com/denoland/skills)** — skills officiels pour Claude, Copilot, Cursor. Couvre `deno-guidance`, `deno-deploy`, `deno-frontend` (Fresh), `deno-expert`, `deno-sandbox`. Fichiers markdown à coller dans `CLAUDE.md` ou équivalent. C'est ce qui m'a épargné la moitié des erreurs de ce post.
+- **[docs.deno.com](https://docs.deno.com/)** — la doc officielle. Les sections "Deploy", "KV" et "Runtime > Permissions" sont précises, mais ne mettent pas toujours en avant les gotchas (ce post essaie de combler ce trou).
+- **[denoland/deploy_examples](https://github.com/denoland/deploy_examples)** — exemples concrets pour Deploy, utiles quand on démarre un framework préconfiguré (Fresh, Astro, Next.js).
+- **[denoland/deno/CLAUDE.md](https://github.com/denoland/deno/blob/main/CLAUDE.md)** — les instructions que l'équipe Deno elle-même utilise pour bosser sur le runtime avec Claude. Excellent snapshot des conventions internes.
+- **[Casys-AI/DenoClaw](https://github.com/Casys-AI/DenoClaw)** — le prototype lui-même. ADRs dans `docs/adr/`, bugs vécus dans `docs/issues/`. À forker pour apprendre, pas à mettre en prod.
+
+---
+
+## Ce que je retiens
+
+Je ne vais pas vendre denoclaw : c'est un prototype, ouvert sur GitHub, à fourcher si ça vous amuse, mais pas à mettre en prod. L'objectif n'a jamais été de livrer un produit — c'était d'apprendre cette plateforme, et je l'ai apprise.
+
+Ce que je retiens, et que je redirais à quiconque démarre un projet sérieux sur Deno :
+
+1. **Subhosting est réactif, pas long-running.** Concevoir tout en handlers HTTP, état dans KV, jamais en mémoire process.
+2. **Le file system des isolates n'est pas le file system de votre laptop.** Soit on bake les fichiers dans le bundle, soit on route vers KV. Le silence de `Deno.readDir()` qui retourne vide est traître. Et pour les binaires, prévoir un bucket externe (R2, S3) dès le jour zéro — il n'y a pas de stockage objet natif.
+3. **KV pour le hot path, Postgres pour le cold path.** Les deux, pas l'un ou l'autre. KV brille en streaming (`kv.watch` = SSE quasi gratuit), Postgres brille en analytique (GROUP BY).
+4. **Permissions par Worker = différenciateur structurel vs Node.** Combinées aux `--deny-*`, c'est un modèle d'isolation in-process qu'on n'a pas ailleurs. Mais `permissions: []` veut dire "rien", pas "tout", et `sh -c` est interdit en sandbox.
+5. **`@deno/sandbox` injecte les secrets au proxy, pas dans la VM.** Modèle unique. Acceptez le trade-off : HTTPS-only, pas dispo via env classique.
+6. **Le runtime a des silences traîtres.** `kv.openKv()` non memoïsé fuit, le cron multi-region sans CAS double-dispatch, les Preact signals top-level bleedent en SSR, `kv.enqueue()` est déprécié, Ollama Cloud n'a pas d'embedding. Ces choses-là, ne les apprenez pas en prod.
+
+La plateforme Deno est mûre pour de la prod. Pas pour tous les cas — si vous avez besoin d'un service qui tourne 24/7 sans interruption, vous le mettrez sur une VM, pas sur Subhosting. Mais pour des handlers réactifs, des dashboards SSE, des agents qui s'éveillent sur événement, et n'importe quoi qui exécute du code arbitraire (LLM-generated, user-submitted), elle a des primitives qui n'existent simplement pas chez les autres.
+
+Si vous voulez voir ces patterns en code, le repo est là : [github.com/Casys-AI/DenoClaw](https://github.com/Casys-AI/DenoClaw). Les ADRs dans `docs/adr/` documentent chaque décision. Les `docs/issues/` listent les bugs vécus, avec leurs fixes. Bon plongeon.

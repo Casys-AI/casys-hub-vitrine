@@ -1,18 +1,20 @@
 ---
-title: "Connecter Votre Serveur MCP à claude.ai : Le Guide Auth0 + OAuth2"
-description: "Tutoriel complet pour authentifier un serveur MCP distant sur claude.ai avec Auth0. Couvre la configuration OAuth2, les tokens RFC 9068, le toggle Resource Parameter, le middleware de vérification JWT, et les erreurs que personne ne vous dit d'avance."
+title: "Connecter un serveur MCP à claude.ai : guide Auth0, OAuth2 et vérification JWT"
+description: "Guide complet pour authentifier un serveur MCP distant sur claude.ai avec Auth0 : configuration OAuth2, tokens RFC 9068, toggle Resource Parameter, middleware de vérification JWT et pièges à éviter."
 author: "Erwan Lee Pesle"
 date: 2026-04-12
 tags:
   - mcp
+  - mcp-server
   - oauth2
   - auth0
+  - jwt
   - security
   - agents
   - tutorial
 category: "Tutoriel"
 language: fr
-snippet: "claude.ai parle à vos serveurs MCP en OAuth2 — pas de bearer token statique, pas de secret partagé. Voici la configuration complète avec Auth0, de la création de l'API jusqu'à la vérification du JWT dans votre middleware."
+snippet: "claude.ai parle à vos serveurs MCP en OAuth2 — pas de bearer token statique, pas de secret partagé. Voici la configuration complète avec Auth0, de la création de l'API Resource Server jusqu'à la vérification du JWT (RFC 9068) dans votre middleware."
 featured: true
 draft: false
 ---

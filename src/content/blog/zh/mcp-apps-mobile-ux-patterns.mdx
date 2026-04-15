@@ -1,6 +1,6 @@
 ---
-title: "MCP App 移动端适配：那个没人说的 iframe 滚动问题"
-description: "我花了三天时间试图修复第三方 WebView iframe 内的横向滚动。没有办法修。以下是替代方案：紧凑卡片、requestDisplayMode，以及零网络往返的主从视图流。"
+title: "MCP Apps 移动端：WebView iframe 滚动陷阱（以及替代它的模式）"
+description: "claude.ai 移动端 WebView iframe 内的横向滚动根本无法修复。以下是替代方案：紧凑卡片、requestDisplayMode，以及零网络往返的主从视图流。"
 author: "Erwan Lee Pesle"
 date: 2026-04-12
 tags:
@@ -8,11 +8,12 @@ tags:
   - mcp-apps
   - mobile
   - ux
+  - iframe
   - claude-code
   - agents
 category: "产品"
 language: zh
-snippet: "claude.ai 移动端会把你的 MCP App 加载在一个 WebView iframe 里。这个 iframe 有自己的物理规则，你熟悉的大多数响应式设计知识在这里全部失效。"
+snippet: "claude.ai 移动端会把你的 MCP App 加载在一个 WebView iframe 里。这个 iframe 有自己的物理规则，你熟悉的大多数响应式设计知识在这里全部失效——以下是真正有效的做法。"
 featured: true
 draft: false
 ---

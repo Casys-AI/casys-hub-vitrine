@@ -18,260 +18,170 @@ draft: false
 ---
 import ExcalidrawDiagram from '../../../components/ExcalidrawDiagram.astro';
 
-## The Core Problem with Semantic Search
+## The Real Problem with Semantic Search
 
-Every RAG tutorial starts the same way: embed your documents, embed the query, find the nearest vectors, stuff the chunks into the context window. It works surprisingly well for simple questions. For anything that requires reasoning across relationships, it breaks in ways that are hard to debug and impossible to fix at query time.
+Every RAG tutorial starts the same way: embed your documents, embed the query, find the nearest vectors, stuff the chunks into the context window. It works surprisingly well for simple questions. For anything that requires reasoning across **relationships**, it breaks in ways that are hard to debug and impossible to fix at query time.
 
-The failure mode is not that the retriever returns wrong results. It is that it returns *locally correct* results that are globally misleading. You ask "what caused the Q3 revenue drop?" and get three chunks about Q3, all accurate, none of which contains the supplier issue from Q2 that set it off. The relationship exists in your corpus. Vector RAG cannot traverse it.
+The failure mode is not that the retriever returns wrong results. It is that it returns results that are **locally correct but globally misleading**. You ask "what caused the Q3 revenue drop?" and get three chunks about Q3, all accurate, none of which contains the supplier issue from Q2 that set everything off. The relationship exists in your corpus. Vector RAG cannot traverse it.
 
-GraphRAG was built to address exactly this. But "GraphRAG" now covers a spectrum from Microsoft's batch indexing pipeline to runtime graph attention networks. Understanding where on that spectrum your problem sits determines which approach is right.
+<ExcalidrawDiagram src="graphrag-vs-vectorrag/vector-vs-graph-same-question" alt="Same question, two strategies: Vector RAG retrieves similar chunks and misses the root cause; GraphRAG traverses the relationship chain and finds it" />
 
----
-
-## What is GraphRAG?
-
-GraphRAG (Graph Retrieval-Augmented Generation) combines a knowledge graph with the standard RAG retrieval loop. Instead of a flat vector index, the retrieval layer is a graph where nodes are entities (people, concepts, tools, documents) and edges are typed relationships between them.
-
-The key difference from vector search: **retrieval becomes graph traversal**. You do not just find chunks similar to your query — you follow relationship paths from an anchor entity to connected context that a pure embedding similarity would never surface.
-
-<ExcalidrawDiagram src="_shared/context-engineering-hierarchy" alt="RAG ⊂ GraphRAG ⊂ Context Engineering" />
-
-There are two distinct families:
-
-**Static GraphRAG** — Build the graph offline from a document corpus. Query time is fast because the graph is pre-computed. Microsoft's open-source GraphRAG library is the canonical example.
-
-**Dynamic GraphRAG** — Build and update the graph from runtime signals (execution traces, API calls, user sessions). Query time involves a live graph attention pass. This is what SHGAT (Sparse Heterogeneous Graph Attention) does in PML.
-
-Both are real GraphRAG. They solve different problems.
+GraphRAG was built to solve exactly this. But the literature and vendors often present it as a **replacement** for Vector RAG. This post argues the opposite: they are two **complementary** tools, answering two different query intents, and a good stack runs both together.
 
 ---
 
-## The Limitations of Vector RAG
+## Vector RAG, and Why It Works Most of the Time
 
-Before comparing approaches, it is worth being precise about what vector RAG cannot do — not as a critique, but because these are architectural constraints that no amount of prompt engineering will overcome.
+Vector RAG became the default for a simple reason: **in the majority of document QA cases, semantic similarity is a reasonable proxy for relevance**.
 
-**No multi-hop reasoning.** If the answer requires connecting A → B → C, and each connection lives in a separate chunk, vector RAG will retrieve whichever chunk is closest to your query string. It will not chain the steps. A study from Diffbot showed GraphRAG outperforming vector RAG 3.4x on schema-bound queries that required multi-hop traversal — and vector RAG scoring 0% on some relationship-dependent task classes.
+The principle boils down to three steps:
 
-**Semantic similarity ≠ relevance.** Two sentences can be semantically far apart in embedding space and logically inseparable. "The deployment failed" and "we rotated the API key yesterday" have low cosine similarity. Their connection is causal, not semantic.
+1. **Indexing** — chunk the documents, embed each chunk with a model (OpenAI, Voyage, Cohere, or a local model like bge-small), store the vectors in an index (pgvector, Qdrant, Pinecone, Weaviate, Milvus).
+2. **Query** — embed the question, compute cosine similarity between the query vector and chunk vectors.
+3. **Synthesis** — take the top-k chunks, pass them as context to an LLM.
 
-**No entity resolution.** "MSFT", "Microsoft", and "Microsoft Corporation" are three separate vectors unless you explicitly handle deduplication. A knowledge graph normalizes these to one node.
+This fits in an afternoon of code, scales to millions of documents with real infra, and correctly answers most factual questions. That is why every framework (LangChain, LlamaIndex, Haystack) makes it their base primitive.
 
-**Retrieval is query-independent.** The index is static. Whether you ask a simple fact question or a complex synthesis question, you get back the same type of chunk. Graph retrieval can adapt the traversal depth and direction based on query structure.
+Where it breaks down — and no prompt engineering will overcome these constraints:
 
-**Chunk boundary fragmentation.** Sentence chunking cuts through ideas. A relationship between two concepts that spans a paragraph boundary gets split into two orphaned chunks, neither of which retrieves the other.
+- **No multi-hop reasoning.** If the answer connects A → B → C and each link lives in a separate chunk, the retriever returns the chunk closest to the query. It does not chain. A systematic evaluation ([arxiv 2502.11371](https://arxiv.org/abs/2502.11371)) shows Vector RAG can score **0%** on some relationship-dependent tasks.
+- **Semantic similarity ≠ relevance.** "The deployment failed" and "we rotated the API key yesterday" have low cosine similarity. Their connection is causal, not semantic.
+- **No entity resolution.** "MSFT", "Microsoft", and "Microsoft Corporation" are three separate vectors.
+- **Query-independent retrieval.** Whether the question is factual or synthetic, you get back the same type of chunk.
+- **Chunk boundary fragmentation.** A relationship spanning a paragraph gets split into two orphaned chunks.
 
-None of these are showstopper failures for document QA at reasonable scale. But they compound in enterprise settings where the corpus is large, heterogeneous, and internally interconnected.
-
----
-
-## How GraphRAG Works: The Build Phase
-
-Microsoft's GraphRAG pipeline, as published in their research and open-sourced at [github.com/microsoft/graphrag](https://github.com/microsoft/graphrag), illustrates the canonical static GraphRAG approach.
-
-**1. Text Unit Extraction**
-
-The corpus is sliced into text units (configurable chunks). Each text unit is the atomic retrieval granule — small enough to be meaningful in isolation, large enough to contain a complete idea.
-
-**2. Entity and Relationship Extraction**
-
-An LLM pass over each text unit extracts:
-- Named entities (people, organizations, concepts, locations)
-- Typed relationships between entities ("acquired", "reported", "caused")
-- Key claims associated with entities
-
-This is expensive. A 1M-token corpus at GPT-4 rates can cost $20–50 just for the indexing phase. The graph is only as good as the LLM extraction quality, which means entity resolution errors propagate through all downstream queries.
-
-**3. Community Detection**
-
-Microsoft GraphRAG applies the Leiden algorithm (a graph community detection method) to cluster entities into semantic communities. Each community gets a generated summary. These hierarchical community summaries are what enable "global" queries — questions about themes across the entire corpus rather than specific facts.
-
-**4. Query with Map-Reduce**
-
-At query time, GraphRAG dispatches the question across relevant community summaries in a map-reduce pattern:
-- **Local search**: traverses entity neighborhoods for specific fact retrieval
-- **Global search**: aggregates community summaries for thematic synthesis
-
-The global search path is particularly powerful for questions like "what are the main themes in this dataset?" — something that vector RAG handles poorly because the answer is distributed and non-local.
+None of these are blockers for document QA at reasonable scale. They compound in enterprise environments — large, heterogeneous, internally interconnected corpora. That is where you need something else.
 
 ---
 
-## Microsoft GraphRAG: Strengths and Honest Limitations
+## What GraphRAG Actually Adds
 
-Microsoft GraphRAG is genuinely impressive for what it was designed to do. Their [research blog post](https://www.microsoft.com/en-us/research/blog/graphrag-new-tool-for-complex-data-discovery-now-on-github/) demonstrated substantial improvements on question-answering benchmarks requiring synthesis across large, heterogeneous corpora. The GraphRAG-Bench benchmark (accepted at ICLR 2026) showed community-level augmentation providing the best contextual breadth for multi-disciplinary synthesis tasks.
+GraphRAG (Graph Retrieval-Augmented Generation) combines a knowledge graph with the RAG retrieval loop. The retrieval layer is no longer a flat vector index: it is a **graph** where nodes are entities (people, concepts, places, organizations) and edges are typed relationships.
 
-**Where it works well:**
-- Corpus exploration and thematic synthesis ("what are the main risk factors across these 500 reports?")
-- Entity-centric queries that require aggregating mentions across many documents
-- Datasets with dense, explicit relationships (research papers, legal documents, knowledge bases)
-- Offline analytics pipelines where indexing latency is acceptable
+The fundamental difference: **retrieval becomes traversal**. You are not looking for chunks similar to the query — you follow paths from an anchor entity to connected context that embedding similarity would never surface.
 
-**Where it struggles:**
+<ExcalidrawDiagram src="graphrag-vs-vectorrag/graphrag-knowledge-graph" alt="Knowledge graph visualization: typed entities, typed relationships, traversal path highlighted from query anchor to root cause" />
 
-*Latency.* The indexing phase is batch. Updating the graph when new documents arrive requires a partial re-index. For dynamic environments — production API calls, real-time tool usage, live sessions — this is a fundamental mismatch. You cannot re-run Leiden community detection on a new user workflow in under 100ms.
+All serious implementations share the same offline sequence:
 
-*Homogeneous graph.* Microsoft GraphRAG extracts one type of node (entity from text) with typed edges. Real enterprise environments have heterogeneous entity types: tools, users, workflows, capabilities, databases. A homogeneous extractor cannot model "this user in this context uses this tool which requires this permission."
+1. **Chunking** — split the corpus into text units. Standard.
+2. **Entity and relationship extraction** — an LLM pass extracts named entities, typed relationships ("acquired", "caused", "mitigated") and key claims. This is the expensive step: $20–50 per million tokens at GPT-4 rates, and the final graph quality depends directly on extraction quality.
+3. **Community detection** — a clustering algorithm (Leiden in Microsoft GraphRAG, hierarchical clustering elsewhere) groups entities, each cluster gets a generated summary. These hierarchical summaries enable thematic queries across the entire corpus.
+4. **Local or global query** — **local search** traverses entity neighborhoods for precise facts; **global search** aggregates community summaries for thematic synthesis.
 
-*LLM dependency at index time.* Every entity and relationship goes through an LLM call. At scale, the extraction quality variance introduces noise that is hard to audit and harder to correct without re-indexing.
+### A Broader Ecosystem Than You Might Think
 
-*Context vs. execution signals.* The graph is built from document content. It captures what is *written* about relationships, not what is *demonstrated* by runtime behavior. A tool that is always used after a database query will not appear connected to that query in a text-extracted graph — unless someone wrote documentation about that pattern.
+The name that circulates most is [Microsoft GraphRAG](https://github.com/microsoft/graphrag), because Microsoft open-sourced it with solid marketing. It is neither the only option, nor necessarily the best for your use case:
 
----
+- **[LightRAG](https://github.com/HKUDS/LightRAG)** (HKU) — lighter open-source, faster indexing, cheaper on tokens.
+- **[nano-graphrag](https://github.com/gusye1234/nano-graphrag)** — ~1,000 lines of Python, no Microsoft dependencies, perfect for learning the pattern.
+- **[Neo4j + LangChain](https://python.langchain.com/docs/integrations/graphs/neo4j_cypher/)** — native Cypher graph, mature LangChain integration.
+- **[LlamaIndex PropertyGraphIndex](https://docs.llamaindex.ai/en/stable/module_guides/indexing/lpg_index_guide/)** — fastest route to a working POC.
+- **[FalkorDB](https://www.falkordb.com/)** — Redis-based graph DB designed for RAG/agent pipelines.
+- **[Kùzu](https://kuzudb.com/)** — embedded graph DB, columnar + Cypher, zero infrastructure.
 
-## Real-Time GraphRAG: The SHGAT Approach
+Approaches vary on indexing cost, query latency, multilingual support, and incremental update capability. **None is universally better.**
 
-Casys's approach is different in premise. Rather than indexing documents, it indexes *execution behavior*.
+### The Real Costs
 
-PML (Procedural Memory Layer) observes every tool invocation: which tools were called, in what order, in what capability context, with what outcomes. These execution traces accumulate into a dynamic graph where:
+Let's be honest about what GraphRAG costs:
 
-- **Nodes** are tools, capabilities, and workflow patterns (heterogeneous types)
-- **Edges** are co-occurrence, sequence, and hierarchical relationships (from actual runtime data)
-- **Edge weights** reflect frequency and recency, not LLM extraction confidence
+- **Build time**: paid LLM extraction, offline clustering from minutes to hours. Any update requires re-indexing (full or partial depending on implementation).
+- **Query time**: local search ~200ms, global search several seconds (map-reduce over communities).
+- **Quality**: depends on the extractor LLM's ability to normalize entities ("MSFT" = "Microsoft"?) and correctly type relationships. A weak extractor gives you a weak graph.
 
-<ExcalidrawDiagram src="_shared/gateway-architecture" alt="MCP Gateway with GraphRAG" />
+Where GraphRAG excels:
+- Thematic synthesis ("what risk factors appear across these 500 reports?")
+- Causal and multi-hop questions ("what caused X?")
+- Dense, heterogeneous corpora with explicit relationships (research papers, legal documents, regulatory databases)
 
-<ExcalidrawDiagram src="graphrag-vs-vectorrag/graphrag-knowledge-graph" alt="GraphRAG knowledge graph: tools, capabilities, and execution relationships" />
+Where it disappoints:
+- Simple factual lookups (over-engineered)
+- Small corpora (indexing cost not justified)
+- Real-time updates (batch by design)
 
-**SHGAT (Sparse Heterogeneous Graph Attention)** applies a graph attention mechanism over this heterogeneous graph at query time. The key architectural choices:
-
-**Vertex-to-edge message passing with residual.** SHGAT applies the attention formula `E_new[c] = ELU(Σα·H') + γ(n_c)·E[c]`, where `γ` is a learned function of the number of children per capability. Capabilities with few examples preserve their initial embedding more strongly; capabilities with dense execution history get aggressively updated by message passing. This prevents low-data nodes from collapsing to noise.
-
-**Heterogeneous attention.** Tools and capabilities are different node types with different embedding spaces. SHGAT uses type-specific projection matrices, so the attention mechanism does not conflate a "tool node" (an API call) with a "capability node" (a workflow pattern). Microsoft GraphRAG uses a homogeneous graph; SHGAT explicitly models the type distinction.
-
-**GRU transition prediction.** Enriched SHGAT embeddings feed into a GRU (Gated Recurrent Unit) that models the *sequence* of tool invocations. The GRU predicts the next tool given the current workflow state — not just "what is related to this intent" but "what comes next in this execution context."
-
-The numbers from internal benchmarks: the combined SHGAT+GRU pipeline achieves Hit@1 of 63.4% on tool prediction (tool vocab: 920), with capability nodes reaching 79.8% — in a vocabulary of 1,165 nodes. Latency is in the sub-100ms range because SHGAT inference runs as a forward pass, not a database round-trip or LLM call.
-
----
-
-## Comparison Table
-
-| | **Vector RAG** | **Microsoft GraphRAG** | **Casys SHGAT-GraphRAG** |
-|---|---|---|---|
-| **Graph type** | None (flat index) | Homogeneous entity graph | Heterogeneous (tools + caps) |
-| **Build source** | Document embeddings | LLM entity extraction | Runtime execution traces |
-| **Update model** | Reindex on change | Batch rebuild (Leiden) | Incremental (online) |
-| **Query latency** | ~10–50ms | Local: ~200ms, Global: seconds | ~20–80ms |
-| **Multi-hop** | No | Yes (graph traversal) | Yes (attention + GRU sequence) |
-| **Community detection** | No | Yes (Leiden algorithm) | Implicit (via execution co-occurrence) |
-| **Runtime adaptation** | No | No | Yes (traces update graph) |
-| **MCP-native** | No | No | Yes (tool nodes = MCP tools) |
-| **Primary use case** | Document QA | Corpus exploration / synthesis | MCP tool routing / prediction |
-| **Cost to index** | Low (embed) | High (LLM extraction) | Zero (passive observation) |
-| **Open source** | Many options | Yes (github.com/microsoft/graphrag) | PML (Apache 2.0) |
-
-<ExcalidrawDiagram src="graphrag-vs-vectorrag/graphrag-vs-vectorrag-comparison" alt="Vector RAG vs Microsoft GraphRAG vs Casys SHGAT: visual comparison" />
+The [arxiv 2506.05690 paper](https://arxiv.org/abs/2506.05690) is explicit: **GraphRAG often underperforms on simple retrieval, and strongly inverts the trend on multi-hop tasks**. The decision point is the nature of the question — not the size of the corpus.
 
 ---
 
-## When to Use What
+## Head-to-Head
 
-**Use vector RAG when:**
-- Your queries are mostly semantic similarity lookups ("find documents about X")
-- Your corpus is well-structured and chunks are self-contained
-- Latency is critical and you cannot afford graph overhead
-- You need to be up and running in hours, not days
-- The questions are fact retrieval, not relational synthesis
+| | **Vector RAG** | **GraphRAG** |
+|---|---|---|
+| **Data model** | Flat vector index | Typed entity graph |
+| **Retrieval operation** | Cosine nearest-neighbour | Traversal + communities |
+| **Multi-hop** | No | Yes (by design) |
+| **Updates** | Incremental (re-embed doc) | Batch (re-index entities) |
+| **Indexing cost** | Low (embed pass) | High (LLM extraction) |
+| **Query latency** | ~10–50 ms | Local: ~200 ms · Global: seconds |
+| **Strength** | Fact retrieval, similarity | Thematic synthesis, causal chains |
+| **Weakness** | Relational reasoning | Simple factual lookup |
 
-**Use Microsoft GraphRAG when:**
-- You have a large, static corpus with complex internal relationships
-- You need thematic synthesis queries ("what are the main themes across these 10,000 papers?")
-- You can afford the indexing cost and latency (batch pipeline is acceptable)
-- Your entities are text-derived and homogeneous (all the same type)
-- The graph does not need to update in real time
-
-**Use real-time GraphRAG (SHGAT) when:**
-- Your "documents" are runtime events: API calls, tool invocations, workflow executions
-- You need to predict the *next action* not just retrieve related context
-- Your entity types are heterogeneous (tools are different from capabilities are different from users)
-- The graph must update incrementally as new workflows run
-- You are routing MCP tool calls and need sub-100ms latency
-
-The [arxiv paper from February 2026](https://arxiv.org/abs/2502.11371) on systematic evaluation of RAG vs. GraphRAG reaches a consistent conclusion: GraphRAG frequently underperforms on simple retrieval tasks, but the gap inverts strongly when queries require multi-step reasoning. The decision point is query complexity, not corpus size.
+Read diagonally: Vector RAG wins on simple, GraphRAG wins on relational, neither wins both. That asymmetry is precisely what makes the next section interesting.
 
 ---
 
-## GraphRAG and MCP Tool Discovery
+## The Real Production Pattern: Hybrid
 
-The most concrete application of runtime GraphRAG in production is MCP tool routing.
+The trick question is not "which one to pick?". It is "**how do you route the query to the right one?**".
 
-An MCP gateway handles dozens to hundreds of tool calls per session. Choosing the right tool for an intent is a retrieval problem — but it is not a semantic similarity problem. The right tool is not the one most similar to the query. It is the one that:
-1. Has been used successfully for this type of intent before
-2. Fits the current execution context (what tools just ran)
-3. Is appropriate for the user's current capability scope
+<ExcalidrawDiagram src="graphrag-vs-vectorrag/rag-decision-tree" alt="X/Y decision map for choosing between Vector RAG, GraphRAG, Vector streaming, or Hybrid based on query complexity and corpus update frequency" />
 
-Vector similarity handles criterion 1 weakly. It handles 2 and 3 not at all.
+Serious stacks do not choose — they combine. Three patterns that work:
 
-PML solves this by treating tool selection as a graph traversal + sequence prediction problem. The SHGAT graph encodes historical co-occurrence and hierarchical capability relationships. The GRU encodes sequential execution patterns. Together they produce tool rankings that account for context, not just intent text.
+**1. Upstream router by query intent.** A small classifier (or a lightweight LLM) determines whether the question is factual-similar or relational-causal, then dispatches to the vector store or the graph. LangChain offers this pattern via its routers. Simple, explicit, measurable independently.
 
-A minimal example of how PML exposes this via the `pml_discover` interface:
+**2. Vector RAG first pass, GraphRAG for enrichment.** The vector retriever surfaces k candidates (fast, cheap), then a graph pass adds connected entities to the retrieved chunks. The LLM synthesizes over both. You pay ~50ms of vector + ~200ms of local graph pass — acceptable in most cases.
 
-```typescript
-// Find tools by intent — SHGAT+GRU ranks by execution context
-const result = await mcp.pml.pml_discover({
-  intent: "analyze database query performance",
-  limit: 5,
-  filter: { type: "tool" }
-});
-// Returns tools ranked by: semantic similarity × graph centrality × transition probability
-// Not: semantic similarity alone
-```
+**3. Dual indexes on the same content, hybrid scoring.** Each document is indexed twice (embeddings + entity extraction). At query time, both lookups run and scores are merged. More expensive at indexing but very robust — this is the default approach of LlamaIndex's `PropertyGraphIndex`.
 
-The difference is visible when the intent is ambiguous or when the correct tool is not the most lexically similar to the query. A semantic search for "send message" returns every messaging tool. SHGAT-GraphRAG returns the one you actually use for this type of workflow, based on what came before it in past sessions.
+The real architectural question is **latency and indexing cost**. Vector RAG can handle a million documents for a few dollars a month. GraphRAG on the same corpus costs thousands to index. Good judgment means reserving GraphRAG for questions where it makes a measurably different — which means monitoring both pipelines in production and comparing by question type.
 
 ---
 
-## Getting Started
+## Where to Start
 
-**Microsoft GraphRAG (document corpus):**
-```bash
-pip install graphrag
-graphrag init --root ./my-project
-# Configure LLM credentials in .env
-graphrag index --root ./my-project
-graphrag query --root ./my-project --method global "main themes"
-```
-Full documentation at [microsoft.github.io/graphrag](https://microsoft.github.io/graphrag/).
+Starting from scratch, the order that works:
 
-**PML with SHGAT-GraphRAG (MCP tool routing):**
-```bash
-# Install PML CLI
-curl -fsSL https://pml.casys.ai/install.sh | bash
-
-# Initialize with your MCP servers
-pml init
-# Configure .pml.json with your mcpServers block
-
-# PML starts observing execution traces immediately
-# SHGAT graph builds incrementally as workflows run
-pml serve
-```
-
-The graph is not a one-time build step. It improves as your agents run more workflows. After ~100 executions, the tool predictions become meaningfully better than cold-start semantic search. After ~1,000, the GRU starts surfacing non-obvious tool sequences that no one would have thought to put in a description.
-
-The underlying `@casys/mcp-server` package is available on npm for embedding the MCP gateway into your own stack:
+1. **Vector RAG first**, any framework (pgvector + LangChain or LlamaIndex) on a subset of your corpus. Measure quality on your real questions.
+2. **Identify where Vector RAG fails.** If it's "what are the themes" or "what caused X", you have a relational problem — move to step 3. Otherwise, stay with Vector RAG.
+3. **Try nano-graphrag or LightRAG** before Microsoft GraphRAG — faster to prototype, cheaper. Measure on the same questions as step 1.
+4. **Integrate both via a router.** The router code is thirty lines. The quality gain on relational questions is well worth the cost of one extra call.
 
 ```bash
-npm install @casys/mcp-server
+# Minimal example with nano-graphrag
+pip install nano-graphrag
 ```
 
-![The @casys/mcp-server package on JSR — the runtime powering PML's GraphRAG](/images/screenshots/jsr-casys-mcp-server.png)
+```python
+from nano_graphrag import GraphRAG
+
+graph = GraphRAG(working_dir="./cache")
+graph.insert(["doc1 text...", "doc2..."])
+print(graph.query("what caused X?"))
+```
+
+For a serious corpus, expect two to three days of indexing plus prompt engineering before quality stabilizes. The first run always costs more than expected because of failed entity extractions — that gets fixed by iterating on the extraction prompt.
 
 ---
 
-## The Architecture Decision in One Sentence
+## The Decision in One Sentence
 
-If your retrieval problem is "find relevant text in a static corpus," vector RAG is sufficient. If it is "find relevant text while traversing complex entity relationships in a static corpus," Microsoft GraphRAG is the right tool. If it is "predict the next action in a live agent workflow using runtime execution patterns," you need a dynamic heterogeneous graph — and that is what SHGAT was built for.
+Vector RAG answers "find me what looks like this". GraphRAG answers "find me what is connected to this". If most of your queries are the first type, stay with Vector RAG. If they regularly require the second, **add** a GraphRAG layer — not instead of, but alongside, routed by intent.
 
-The three are not competing for the same problem. They are solving adjacent problems at different points in the complexity-latency tradeoff space.
+The real choice is not binary. It is a **routing** choice.
 
 ---
 
-*Further reading: [Why MCP is the USB-C of AI Tools](/blog/why-mcp-protocol) · [How PML Combines Similarity and Relationships](/blog/graphrag-vs-vectorrag) · [PML Documentation](https://pml.casys.ai)*
+*Further reading: [Why MCP is the USB-C of AI Tools](/blog/why-mcp-protocol) · [Context Engineering: the real lever for AI agents](/blog/context-engineering-guide) · [MCP Gateway: why your AI agents need it](/blog/mcp-gateway-guide)*
 
 Sources:
-- [Microsoft GraphRAG GitHub](https://github.com/microsoft/graphrag)
-- [Microsoft Research GraphRAG Blog](https://www.microsoft.com/en-us/research/blog/graphrag-new-tool-for-complex-data-discovery-now-on-github/)
-- [RAG vs. GraphRAG: A Systematic Evaluation (arxiv 2502.11371)](https://arxiv.org/abs/2502.11371)
-- [GraphRAG-Bench: Challenging Domain-Specific Reasoning (arxiv 2506.02404)](https://arxiv.org/abs/2506.02404)
-- [GraphRAG vs Vector RAG accuracy benchmark — FalkorDB](https://www.falkordb.com/blog/graphrag-accuracy-diffbot-falkordb/)
+- [Microsoft GraphRAG — GitHub](https://github.com/microsoft/graphrag)
+- [LightRAG (HKU) — GitHub](https://github.com/HKUDS/LightRAG)
+- [nano-graphrag — GitHub](https://github.com/gusye1234/nano-graphrag)
+- [Neo4j GraphRAG integration — LangChain](https://python.langchain.com/docs/integrations/graphs/neo4j_cypher/)
+- [LlamaIndex PropertyGraphIndex](https://docs.llamaindex.ai/en/stable/module_guides/indexing/lpg_index_guide/)
+- [RAG vs GraphRAG — systematic evaluation (arxiv 2502.11371)](https://arxiv.org/abs/2502.11371)
 - [When to use Graphs in RAG (arxiv 2506.05690)](https://arxiv.org/abs/2506.05690)
+- [GraphRAG-Bench — domain-specific reasoning (arxiv 2506.02404)](https://arxiv.org/abs/2506.02404)
+- [GraphRAG vs Vector RAG accuracy benchmark — FalkorDB](https://www.falkordb.com/blog/graphrag-accuracy-diffbot-falkordb/)

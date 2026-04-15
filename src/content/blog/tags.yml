@@ -188,3 +188,63 @@ security:
   label: Security
   permalink: /security
   description: Authentication, authorization, and secure infrastructure
+
+deno:
+  label: Deno
+  permalink: /deno
+  description: Deno runtime, Deploy, KV, permissions and TypeScript-first tooling
+
+deno-deploy:
+  label: Deno Deploy
+  permalink: /deno-deploy
+  description: Deploying apps to Deno Deploy — CLI, KV, Prisma, tunnels, OIDC
+
+deno-kv:
+  label: Deno KV
+  permalink: /deno-kv
+  description: Deno's built-in key-value store — kv.watch, kvdex, hot-path state
+
+agents-ia:
+  label: Agents IA
+  permalink: /agents-ia
+  description: Construction d'agents IA — orchestration, sandbox, tool calling, mémoire
+
+sandbox:
+  label: Sandbox
+  permalink: /sandbox
+  description: Code execution sandboxes — Firecracker microVMs, @deno/sandbox, isolation
+
+prisma:
+  label: Prisma
+  permalink: /prisma
+  description: Prisma ORM — schema, migrations, Postgres, Deno adapter
+
+edge-computing:
+  label: Edge Computing
+  permalink: /edge-computing
+  description: Edge runtimes, cold start, multi-region deployment patterns
+
+workers:
+  label: Workers
+  permalink: /workers
+  description: Web Workers and platform Workers — isolation, permissions, parallelism
+
+typescript:
+  label: TypeScript
+  permalink: /typescript
+  description: TypeScript patterns, types, and runtime integration
+
+mcp-server:
+  label: MCP Server
+  permalink: /mcp-server
+  description: Building and deploying Model Context Protocol servers
+
+jwt:
+  label: JWT
+  permalink: /jwt
+  description: JWT signing, verification, RFC 9068 access tokens, middleware
+
+iframe:
+  label: iframe
+  permalink: /iframe
+  description: iframe embedding, WebView constraints, sandbox boundaries

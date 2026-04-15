@@ -1,18 +1,20 @@
 ---
-title: "将 MCP 服务器接入 claude.ai：Auth0 + OAuth2 完整指南"
-description: "手把手教你用 Auth0 为 claude.ai 上的远程 MCP 服务器配置身份认证。涵盖 OAuth2 配置、RFC 9068 令牌、Resource Parameter 开关、JWT 验证中间件，以及那些没人告诉你的失败场景。"
+title: "将 MCP 服务器接入 claude.ai：Auth0、OAuth2 与 JWT 验证指南"
+description: "完整指南：使用 Auth0 为 claude.ai 上的远程 MCP 服务器配置身份认证——涵盖 OAuth2 配置、RFC 9068 令牌、Resource Parameter 开关、JWT 验证中间件，以及常见踩坑点。"
 author: "Erwan Lee Pesle"
 date: 2026-04-12
 tags:
   - mcp
+  - mcp-server
   - oauth2
   - auth0
+  - jwt
   - security
   - agents
   - tutorial
 category: "教程"
 language: zh
-snippet: "claude.ai 与 MCP 服务器之间通过 OAuth2 通信——不接受静态 Bearer 令牌，不接受共享密钥。本文用 Auth0 完整演示整个配置流程，从创建 API 到在中间件中验证 JWT。"
+snippet: "claude.ai 通过 OAuth2 与你的 MCP 服务器通信——没有静态 Bearer token，没有共享密钥。本文用 Auth0 完整演示整个配置流程，从创建 API Resource Server 到在中间件中验证 JWT（RFC 9068）。"
 featured: true
 draft: false
 ---

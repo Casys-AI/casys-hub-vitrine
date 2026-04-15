@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 790" width="1120" height="790">
+  <!-- svg-source:excalidraw — rag-decision-tree.excalidraw -->
+  <defs>
+    <marker id="ah-f0ede8" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#f0ede8"/></marker>
+  </defs>
+
+  <rect x="0" y="0" width="1120" height="790" fill="#0d1117"/>
+  <text x="560" y="46" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="26" fill="#f0ede8" text-anchor="middle">Which RAG for your problem?</text>
+  <text x="560" y="70" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="15" fill="#94a3b8" text-anchor="middle">Two axes. Four zones. Pick the dominant one — or combine.</text>
+  <text x="240" y="143" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="18" fill="#f0ede8" text-anchor="middle">↑  Update frequency</text>
+  <path d="M240 615 L955 615" fill="none" stroke="#f0ede8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ah-f0ede8)"/>
+  <path d="M240 615 L240 180" fill="none" stroke="#f0ede8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#ah-f0ede8)"/>
+  <text x="820" y="683" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="18" fill="#f0ede8" text-anchor="start">Query complexity  →</text>
+  <path d="M590 615 L590 195" fill="none" stroke="#868e96" stroke-width="1" stroke-dasharray="8 4" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M240 405 L940 405" fill="none" stroke="#868e96" stroke-width="1" stroke-dasharray="8 4" stroke-linejoin="round" stroke-linecap="round"/>
+  <text x="210" y="649" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="14" fill="#94a3b8" text-anchor="start">similarity lookup</text>
+  <text x="785" y="649" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="14" fill="#94a3b8" text-anchor="start">multi-hop reasoning</text>
+  <text x="170" y="619" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="14" fill="#94a3b8" text-anchor="start">static</text>
+  <text x="155" y="219" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="14" fill="#94a3b8" text-anchor="start">dynamic</text>
+  <text x="290" y="255" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="20" fill="#06b6d4" text-anchor="start">Vector (streaming)</text>
+  <text x="290" y="284" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="15" fill="#94a3b8" text-anchor="start">incremental re-embed</text>
+  <text x="640" y="255" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="20" fill="#a78bfa" text-anchor="start">Hybrid (router)</text>
+  <text x="640" y="284" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="15" fill="#94a3b8" text-anchor="start">Vector + graph, routed</text>
+  <text x="290" y="475" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="20" fill="#60a5fa" text-anchor="start">Vector RAG</text>
+  <text x="290" y="504" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="15" fill="#94a3b8" text-anchor="start">pgvector · Qdrant · Pinecone</text>
+  <text x="640" y="475" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="20" fill="#22c55e" text-anchor="start">GraphRAG</text>
+  <text x="640" y="504" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="15" fill="#94a3b8" text-anchor="start">Microsoft · LightRAG · Neo4j</text>
+  <rect x="80" y="715" width="960" height="55" rx="10" fill="#1e293b" stroke="#94a3b8" stroke-width="1"/>
+  <text x="100" y="748" font-family='"Inter", "Segoe UI", system-ui, -apple-system, sans-serif' font-size="15" fill="#94a3b8" text-anchor="start">Most production stacks end up in the top-right quadrant : a router dispatches each query to the right retriever.</text>
+</svg>

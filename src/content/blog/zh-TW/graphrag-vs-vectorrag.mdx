@@ -1,120 +1,187 @@
 ---
-title: "相似與關聯：PML 如何找到合適的工具"
-description: "Google 找到相似的頁面。你的大腦找到關聯的想法。PML 兩者兼備——這就是它能找到你不知道自己需要的工具的原因。"
+title: "GraphRAG vs Vector RAG：為什麼只靠相似度的 RAG 不足以支撐 AI 智能體"
+description: "Vector RAG 檢索相似內容，GraphRAG 檢索關聯內容。要讓 AI 智能體真正選對工具，為什麼必須把這兩層疊加起來使用——架構、範例與常見陷阱。"
 author: "Erwan Lee Pesle"
 date: 2025-12-18
 tags:
+  - rag
+  - graphrag
+  - vector-rag
+  - agents-ia
   - pml
   - 搜尋
-  - 探索
-  - 工具
 category: "產品"
 language: zh-TW
-snippet: "Google 找到相似的頁面。你的大腦找到關聯的想法。PML 兩者兼備——這就是它能找到你不知道自己需要的工具的原因。"
+snippet: "Vector RAG 找相似（語意），GraphRAG 找關聯（關係圖譜）。兩者疊加，才是 AI 智能體能找到自己不知道需要的工具的關鍵。"
 featured: true
 draft: false
 ---
+import ExcalidrawDiagram from '../../../components/ExcalidrawDiagram.astro';
 
-## 知識圖譜 vs 向量搜尋：兩種查找方式
+## 語意搜尋的真實問題
 
-當你搜尋某樣東西時，通常有兩種思路：
+所有 RAG 教學都從同一個起點開始：對文件做 embedding，對問題做 embedding，找最近的向量，把 chunks 塞進上下文。對簡單問題來說效果出奇地好。但凡涉及跨**關係**的推理，它就會以一種難以除錯、無法在查詢時修復的方式崩潰。
 
-**相似性：**「找到看起來像這樣的東西」
-- Google：包含匹配關鍵詞的頁面
-- Spotify：聽起來風格相近的歌曲
-- Netflix：同類型的電影
+失敗模式並不是 retriever 回傳了錯誤結果，而是回傳了**局部正確但整體誤導**的結果。你問「Q3 營收下滑的原因是什麼？」，拿到三個關於 Q3 的 chunks，全都準確，但沒有一個包含 Q2 供應商問題——正是那個問題引發了一切。關係就在你的語料庫裡，Vector RAG 就是無法遍歷它。
 
-**關聯性：**「找到與之相關的東西」
-- 你的大腦：「咖啡」→「早晨」→「鬧鐘」
-- Wikipedia：概念之間的連結
-- 你的工作流：`git commit` 之後通常是 `git push`
+<ExcalidrawDiagram src="graphrag-vs-vectorrag/vector-vs-graph-same-question" alt="同一個問題，兩種策略：Vector RAG 檢索相似 chunks 並錯過根因，GraphRAG 遍歷關係鏈並找到它" />
 
-這是兩件完全不同的事情。而對於 AI 工具來說，**你兩者都需要**。
-
-## 搜尋引擎的侷限
-
-大多數 AI 工具查找器的工作方式和搜尋引擎一樣。
-
-你說：*「我需要發送一條通知」*
-
-它找到：描述中包含「通知」的工具。
-
-這……有時管用。但它忽略了：
-- 你之前在類似場景中成功使用過的工具
-- 通常緊跟在你當前操作之後的工具
-- 你的團隊成員處理這類任務時常用的工具
-
-**搜尋引擎找到匹配的東西，卻找不到真正好用的東西。**
-
-## 大腦的思維方式
-
-你的大腦不只是做關鍵詞匹配，它會沿著關聯路徑前進。
-
-當你想到「部署」時，大腦會自動啟動：
-- 「測試」（因為你總是先跑測試）
-- 「Docker」（因為這是你部署的方式）
-- 「Slack」（因為部署完你會通知團隊）
-
-這些關聯來自經驗，因為你已經重複過這個工作流很多次了。
-
-**PML 為 AI 工具建構的正是這種關聯網路。**
-
-## PML 如何結合 GraphRAG 與向量搜尋來推薦 AI 工具
-
-PML 同時使用兩套系統：
-
-| 系統 | 功能 | 類比 |
-| ------ | ------------ | ------- |
-| **相似性** | 找到與你意圖匹配的工具 | Google 搜尋 |
-| **關聯性** | 找到透過經驗關聯的工具 | 你的大腦 |
-
-當你說「發送通知」時，PML 會：
-1. 找到與通知相關的工具（相似性）
-2. 檢查在類似工作流中哪些工具表現良好（關聯性）
-3. 推薦最適合當前上下文的那個
-
-## 為什麼知識圖譜對 AI Agent 工具路由很重要
-
-### 更精準的首選推薦
-
-PML 不會把所有「通知」工具一股腦列給你，而是根據你當前的操作上下文，直接推薦你最可能需要的那個。
-
-### 符合直覺的工作流
-
-PML 知道 `git commit` 之後通常是 `git push`。它不會隨機推薦工具，而是推薦邏輯上的下一步。
-
-### 從成功中學習
-
-當一個工具在某個工作流中表現出色，這條關聯就會加強。當它失敗時，關聯就會減弱。PML 學習的是什麼**真正有效**，而不只是什麼**聽起來對**。
-
-## 一個真實的例子
-
-你正在寫程式碼，然後說：*「幫我檢查一下錯誤」*
-
-**僅靠搜尋的方式：**
-把所有 linting、測試和除錯工具按字母順序排列展示給你。
-
-**PML 的方式：**
-1. 識別出你在一個 JavaScript 專案中
-2. 知道你通常用 ESLint 來做這件事
-3. 記得上次用 ESLint 效果很好
-4. 優先推薦 ESLint，同時備好替代方案
-
-同樣的問題，更聰明的答案。
-
-## 總結
-
-找到合適的工具，不只是匹配關鍵詞那麼簡單。
-
-關鍵在於理解：
-- 你想要做什麼
-- 以前什麼方法有效
-- 當前什麼最合理
-
-PML 將相似性（像搜尋引擎）與關聯性（像你的大腦）結合起來，找到真正適合的工具。
-
-**不只是相似，而是關聯。這才是關鍵所在。**
+GraphRAG 正是為解決這個問題而生的。但文獻和供應商常常把它描述為 Vector RAG 的**替代品**。本文持相反觀點：它們是兩個**互補**的工具，分別回應兩種不同的查詢 intent，一個好的技術堆疊會同時執行兩者。
 
 ---
 
-*體驗更智慧的工具探索：[casys.ai](https://casys.ai)*
+## Vector RAG，以及為什麼它大多數時候有效
+
+Vector RAG 成為預設選擇有個簡單原因：**在大多數文件 QA 場景中，語意相似度是相關性的合理代理**。
+
+原理只需三步：
+
+1. **索引** — 對文件分塊，用模型（OpenAI、Voyage、Cohere，或本地模型如 bge-small）對每個 chunk 做 embedding，將向量存入索引（pgvector、Qdrant、Pinecone、Weaviate、Milvus）。
+2. **查詢** — 對問題做 embedding，計算問題向量與 chunk 向量之間的 cosine 相似度。
+3. **合成** — 取 top-k chunks，作為上下文傳給 LLM。
+
+這套方案半天就能跑起來，借助真正的基礎設施可擴展到百萬級文件，能正確回答大多數事實性問題。這就是為什麼所有框架（LangChain、LlamaIndex、Haystack）都把它作為基礎原語。
+
+它的侷限所在——沒有任何 prompt engineering 能克服這些約束：
+
+- **沒有 multi-hop 推理。** 如果答案需要連接 A → B → C，且每個環節都在不同的 chunk 裡，retriever 只會回傳最接近查詢的那個 chunk，不會串聯。一項系統性評估（[arxiv 2502.11371](https://arxiv.org/abs/2502.11371)）顯示，Vector RAG 在某些依賴關係的任務上得分可達**0%**。
+- **語意相似度 ≠ 相關性。** 「部署失敗了」和「我們昨天輪換了 API 金鑰」的 cosine 相似度很低，它們的聯繫是因果關係，而非語意關係。
+- **沒有實體解析。** 「MSFT」、「Microsoft」和「Microsoft Corporation」是三個不同的向量。
+- **檢索與查詢無關。** 無論問的是事實問題還是綜合問題，回傳的都是同類型的 chunk。
+- **chunk 邊界碎片化。** 跨段落的關係被切成兩個孤立的 chunk，彼此無法感知對方。
+
+這些問題在合理規模的文件 QA 中都不是致命傷。但在企業環境中——語料庫龐大、異構、內部高度互聯——它們會疊加放大。那正是需要別的東西的地方。
+
+---
+
+## GraphRAG 真正增加了什麼
+
+GraphRAG（Graph Retrieval-Augmented Generation）將知識圖譜與 RAG 檢索迴圈結合。檢索層不再是扁平的向量索引，而是一個**圖**，節點是實體（人、概念、地點、組織），邊是有類型的關係。
+
+根本區別在於：**檢索變成了遍歷**。不再是找與查詢相似的 chunks，而是從一個 anchor 實體出發，沿關係路徑找到 embedding 相似度永遠無法發現的關聯上下文。
+
+<ExcalidrawDiagram src="graphrag-vs-vectorrag/graphrag-knowledge-graph" alt="知識圖譜視覺化：類型化實體、類型化關係，從查詢錨點到根因的遍歷路徑高亮顯示" />
+
+所有嚴肅的實作都共享同一套離線流程：
+
+1. **分塊** — 將語料庫切分為文字單元，標準操作。
+2. **實體和關係抽取** — 一次 LLM pass 抽取命名實體、類型化關係（「收購」、「導致」、「緩解」）和關鍵 claims。這是昂貴的步驟：按 GPT-4 的價格每百萬 token 需花 20–50 美元，最終圖的品質直接取決於抽取品質。
+3. **社群偵測** — 叢集演算法（Microsoft GraphRAG 用 Leiden，其他地方用層次聚類）對實體分組，每個叢集產生一個摘要。這些層次摘要讓跨整個語料庫的主題查詢成為可能。
+4. **本地或全域查詢** — **local search** 遍歷實體鄰域以獲取精確事實；**global search** 聚合社群摘要進行主題綜合。
+
+### 比你想像的更廣泛的生態系統
+
+流傳最廣的名字是 [Microsoft GraphRAG](https://github.com/microsoft/graphrag)，因為微軟用不錯的行銷將其開源。但它既不是唯一選擇，也不一定是你場景下的最佳選擇：
+
+- **[LightRAG](https://github.com/HKUDS/LightRAG)**（HKU）—— 更輕量的開源方案，索引更快，token 消耗更少。
+- **[nano-graphrag](https://github.com/gusye1234/nano-graphrag)** —— ~1,000 行 Python，無微軟相依，非常適合學習該模式。
+- **[Neo4j + LangChain](https://python.langchain.com/docs/integrations/graphs/neo4j_cypher/)** —— 原生 Cypher 圖，成熟的 LangChain 整合。
+- **[LlamaIndex PropertyGraphIndex](https://docs.llamaindex.ai/en/stable/module_guides/indexing/lpg_index_guide/)** —— 最快跑起 POC 的路徑。
+- **[FalkorDB](https://www.falkordb.com/)** —— 基於 Redis 的圖資料庫，專為 RAG/agent pipeline 設計。
+- **[Kùzu](https://kuzudb.com/)** —— 嵌入式圖資料庫，欄式儲存 + Cypher，零基礎設施。
+
+各方案在索引成本、查詢延遲、多語言支援和增量更新能力上各有差異，**沒有放諸四海皆準的最優解**。
+
+### 真實成本
+
+直說 GraphRAG 的代價：
+
+- **建構時間**：LLM 抽取要付費，離線叢集需要幾分鐘到幾小時。任何更新都需要重建索引（全量或部分，取決於實作）。
+- **查詢時間**：local search 約 200ms，global search 需要數秒（跨社群的 map-reduce）。
+- **品質**：取決於抽取 LLM 對實體歸一化（「MSFT」= 「Microsoft」？）和關係正確分類的能力。抽取器差，圖就差。
+
+GraphRAG 的優勢場景：
+- 主題綜合（「這 500 份報告中出現了哪些風險因素？」）
+- 因果和 multi-hop 問題（「X 是什麼原因導致的？」）
+- 關係明確的密集異構語料庫（研究論文、法律文件、法規資料庫）
+
+GraphRAG 的不足場景：
+- 簡單事實查詢（大材小用）
+- 小語料庫（索引成本不合算）
+- 即時更新（設計上是批次處理）
+
+[arxiv 2506.05690 論文](https://arxiv.org/abs/2506.05690)明確指出：**GraphRAG 在簡單檢索上往往表現不佳，但在 multi-hop 任務上強勢逆轉**。決策依據是問題的性質，而不是語料庫的大小。
+
+---
+
+## 正面對比
+
+| | **Vector RAG** | **GraphRAG** |
+|---|---|---|
+| **資料模型** | 扁平向量索引 | 類型化實體圖 |
+| **檢索操作** | Cosine 最近鄰 | 遍歷 + 社群 |
+| **Multi-hop** | 否 | 是（設計如此） |
+| **更新方式** | 增量（重新 embed 文件） | 批次（重建實體索引） |
+| **索引成本** | 低（embedding pass） | 高（LLM 抽取） |
+| **查詢延遲** | ~10–50 ms | Local：~200 ms · Global：數秒 |
+| **優勢** | 事實檢索、相似度 | 主題綜合、因果鏈 |
+| **劣勢** | 關係推理 | 簡單事實查詢 |
+
+一眼看完：Vector RAG 在簡單場景勝出，GraphRAG 在關係場景勝出，兩者都無法同時贏得全部場景。正是這種不對稱性，讓接下來的內容變得有趣。
+
+---
+
+## 真正的生產模式：混合
+
+陷阱不是「選哪個？」，而是「**怎麼把查詢路由到對的那個？**」。
+
+<ExcalidrawDiagram src="graphrag-vs-vectorrag/rag-decision-tree" alt="X/Y 決策圖：根據查詢複雜度和語料庫更新頻率，在 Vector RAG、GraphRAG、Vector streaming 和 Hybrid 之間做選擇" />
+
+嚴肅的技術堆疊不會二選一——它們組合使用。三種有效模式：
+
+**1. 按查詢 intent 在上游路由。** 一個小分類器（或輕量 LLM）判斷問題是事實相似型還是關係因果型，然後分發到向量儲存或圖。LangChain 透過其 routers 提供了這個模式。簡單、明確、可分別度量。
+
+**2. Vector RAG 做第一遍，GraphRAG 做增強。** 向量 retriever 先拿出 k 個候選（快且便宜），然後一次圖 pass 為檢索到的 chunks 補充關聯實體。LLM 在兩者之上綜合。你付出約 50ms 向量 + 約 200ms 本地圖 pass 的代價——大多數情況下可以接受。
+
+**3. 同一內容建兩個索引，混合評分。** 每個文件被索引兩次（embedding + 實體抽取）。查詢時同時查兩個，然後合併評分。索引成本更高，但非常健壯——這是 LlamaIndex `PropertyGraphIndex` 的預設做法。
+
+真正的架構問題在於**延遲和索引成本**。Vector RAG 每月幾美元就能處理百萬級文件。同等語料庫的 GraphRAG 索引要花數千美元。明智的做法是把 GraphRAG 留給那些真正能帶來可量化差異的問題——這意味著在生產環境中同時監控兩條 pipeline 並按問題類型對比。
+
+---
+
+## 從哪裡開始
+
+從零開始，有效的順序：
+
+1. **先上 Vector RAG**，任意框架（pgvector + LangChain 或 LlamaIndex）跑語料庫的子集。用你的真實問題衡量品質。
+2. **找出 Vector RAG 失敗的問題。** 如果是「有哪些主題」或「是什麼導致了 X」，你面對的是關係問題，進入第 3 步。否則繼續用 Vector RAG。
+3. **先試 nano-graphrag 或 LightRAG**，再去碰 Microsoft GraphRAG——更快出原型，更便宜。用和第 1 步相同的問題衡量。
+4. **透過 router 整合兩者。** Router 程式碼三十行。在關係型問題上的品質提升完全值得多一次呼叫的開銷。
+
+```bash
+# 用 nano-graphrag 的最小範例
+pip install nano-graphrag
+```
+
+```python
+from nano_graphrag import GraphRAG
+
+graph = GraphRAG(working_dir="./cache")
+graph.insert(["doc1 text...", "doc2..."])
+print(graph.query("X 是什麼原因導致的？"))
+```
+
+對於正式語料庫，預計需要兩到三天的索引加 prompt engineering 才能讓品質穩定。第一次執行總比預期貴，因為實體抽取會有失敗——透過迭代抽取 prompt 可以改善這一點。
+
+---
+
+## 一句話做決定
+
+Vector RAG 回答「找跟這個相似的」。GraphRAG 回答「找跟這個相連的」。如果你的查詢大多屬於第一類，就留在 Vector RAG。如果它們經常需要第二類，就**增加**一層 GraphRAG——不是替代，而是補充，按 intent 路由。
+
+真正的選擇不是對決，而是兩種互補工具。這是一個**路由**的選擇。
+
+---
+
+*延伸閱讀：[為什麼 MCP 是 AI 工具的 USB-C](/blog/why-mcp-protocol) · [Context Engineering：AI 智能體的真正槓桿](/blog/context-engineering-guide) · [MCP Gateway：為什麼你的 AI 智能體需要它](/blog/mcp-gateway-guide)*
+
+參考資料：
+- [Microsoft GraphRAG — GitHub](https://github.com/microsoft/graphrag)
+- [LightRAG (HKU) — GitHub](https://github.com/HKUDS/LightRAG)
+- [nano-graphrag — GitHub](https://github.com/gusye1234/nano-graphrag)
+- [Neo4j GraphRAG 整合 — LangChain](https://python.langchain.com/docs/integrations/graphs/neo4j_cypher/)
+- [LlamaIndex PropertyGraphIndex](https://docs.llamaindex.ai/en/stable/module_guides/indexing/lpg_index_guide/)
+- [RAG vs GraphRAG — 系統性評估 (arxiv 2502.11371)](https://arxiv.org/abs/2502.11371)
+- [When to use Graphs in RAG (arxiv 2506.05690)](https://arxiv.org/abs/2506.05690)
+- [GraphRAG-Bench — 領域專項推理 (arxiv 2506.02404)](https://arxiv.org/abs/2506.02404)
+- [GraphRAG vs Vector RAG 精度基準 — FalkorDB](https://www.falkordb.com/blog/graphrag-accuracy-diffbot-falkordb/)
