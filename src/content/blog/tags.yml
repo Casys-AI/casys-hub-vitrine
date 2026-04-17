@@ -258,3 +258,303 @@ automation:
   label: Automation
   permalink: /automation
   description: Automation workflows — iPaaS, scenario orchestration, agent triggers
+
+agentic-ai:
+  label: Agentic AI
+  permalink: /agentic-ai
+  description: Agentic AI systems — autonomous agents, planning, tool use at production scale
+
+ai-agents:
+  label: AI Agents
+  permalink: /ai-agents
+  description: Building and deploying AI agents — architecture, orchestration, safety
+
+apprentissage:
+  label: Apprentissage
+  permalink: /apprentissage
+  description: Apprentissage automatique et adaptation des systèmes IA
+
+ax:
+  label: AX
+  permalink: /ax
+  description: Agent Experience — designing tools and CLIs for AI agents as operators
+
+capabilities:
+  label: Capabilities
+  permalink: /capabilities
+  description: Emergent and learned capabilities in AI systems
+
+capacités:
+  label: Capacités
+  permalink: /capacités
+  description: Capacités émergentes et apprises dans les systèmes IA
+
+cli:
+  label: CLI
+  permalink: /cli
+  description: Command-line interfaces — design, tooling, agent compatibility
+
+context-engineering:
+  label: Context Engineering
+  permalink: /context-engineering
+  description: Structuring and assembling context for AI agents — RAG, MCP, memory
+
+devops:
+  label: DevOps
+  permalink: /devops
+  description: DevOps practices — CI/CD, containerization, deployment pipelines
+
+discord:
+  label: Discord
+  permalink: /discord
+  description: Discord as a communication layer for multi-agent systems
+
+docker:
+  label: Docker
+  permalink: /docker
+  description: Docker containerization — networking, volumes, production deployment
+
+dx:
+  label: DX
+  permalink: /dx
+  description: Developer Experience — tooling ergonomics, API design, CLI usability
+
+graphrag:
+  label: GraphRAG
+  permalink: /graphrag
+  description: Graph-based retrieval-augmented generation — relational knowledge retrieval
+
+infrastructure:
+  label: Infrastructure
+  permalink: /infrastructure
+  description: Infrastructure for AI agents — networking, containers, cloud deployment
+
+interoperability:
+  label: Interoperability
+  permalink: /interoperability
+  description: Cross-system interoperability — open standards, protocol bridges
+
+interopérabilité:
+  label: Interopérabilité
+  permalink: /interopérabilité
+  description: Interopérabilité entre systèmes et protocoles IA
+
+kakao:
+  label: KakaoTalk
+  permalink: /kakao
+  description: KakaoTalk messaging platform — PlayMCP and MCP integrations
+
+knowledge-graph:
+  label: Knowledge Graph
+  permalink: /knowledge-graph
+  description: Knowledge graphs for AI — entity relationships, graph traversal, GraphRAG
+
+knowledge-management:
+  label: Knowledge Management
+  permalink: /knowledge-management
+  description: Structuring and retrieving organizational knowledge for AI agents
+
+learning:
+  label: Learning
+  permalink: /learning
+  description: Machine learning and adaptive behavior in AI systems
+
+line:
+  label: LINE
+  permalink: /line
+  description: LINE messaging platform and MCP integrations
+
+management:
+  label: Management
+  permalink: /management
+  description: Process management, orchestration, and operational workflows
+
+mcp-gateway:
+  label: MCP Gateway
+  permalink: /mcp-gateway
+  description: MCP Gateway — routing layer between AI clients and MCP server ecosystems
+
+messagerie:
+  label: Messagerie
+  permalink: /messagerie
+  description: Plateformes de messagerie instantanée et intégration IA
+
+messaging:
+  label: Messaging
+  permalink: /messaging
+  description: Messaging platforms as AI delivery channels — WhatsApp, Telegram, LINE, KakaoTalk
+
+microsoft-graphrag:
+  label: Microsoft GraphRAG
+  permalink: /microsoft-graphrag
+  description: Microsoft's open-source GraphRAG framework for community-aware retrieval
+
+networking:
+  label: Networking
+  permalink: /networking
+  description: Network configuration — Docker networking, localhost traps, container communication
+
+openclaw:
+  label: OpenClaw
+  permalink: /openclaw
+  description: OpenClaw — open-source bridge connecting Claude to messaging platforms
+
+outils:
+  label: Outils
+  permalink: /outils
+  description: Outils IA et intégrations pour agents
+
+pml:
+  label: PML
+  permalink: /pml
+  description: Predictive Meta-Learning — workflow pattern learning and proactive suggestions
+
+process:
+  label: Process
+  permalink: /process
+  description: Process management and workflow design for agentic systems
+
+production:
+  label: Production
+  permalink: /production
+  description: Production deployment — reliability, monitoring, scaling AI systems
+
+rag:
+  label: RAG
+  permalink: /rag
+  description: Retrieval-Augmented Generation — indexing, chunking, retrieval strategies
+
+recherche:
+  label: Recherche
+  permalink: /recherche
+  description: Recherche et récupération d'information pour systèmes IA
+
+tailscale:
+  label: Tailscale
+  permalink: /tailscale
+  description: Tailscale VPN mesh for secure agent-to-agent networking
+
+telegram:
+  label: Telegram
+  permalink: /telegram
+  description: Telegram messaging platform and MCP integrations
+
+tooling:
+  label: Tooling
+  permalink: /tooling
+  description: Developer tooling — CLIs, SDKs, build systems for AI agent development
+
+tools:
+  label: Tools
+  permalink: /tools
+  description: MCP tools and function-calling primitives for AI agents
+
+tutorial:
+  label: Tutorial
+  permalink: /tutorial
+  description: Step-by-step tutorials and practical guides
+
+vector-rag:
+  label: Vector RAG
+  permalink: /vector-rag
+  description: Vector-based RAG — semantic similarity search and embedding retrieval
+
+wechat:
+  label: WeChat
+  permalink: /wechat
+  description: WeChat messaging platform and MCP integrations
+
+whatsapp:
+  label: WhatsApp
+  permalink: /whatsapp
+  description: WhatsApp messaging platform — 2B+ users, MCP and AI agent integrations
+
+workflows:
+  label: Workflows
+  permalink: /workflows
+  description: Workflow orchestration for AI agents — pipelines, triggers, automation
+
+互操作性:
+  label: 互操作性
+  permalink: /互操作性
+  description: Cross-system interoperability standards for AI tools (Simplified Chinese)
+
+互通性:
+  label: 互通性
+  permalink: /互通性
+  description: Cross-system interoperability standards for AI tools (Traditional Chinese)
+
+即时通讯:
+  label: 即时通讯
+  permalink: /即时通讯
+  description: Instant messaging platforms as AI delivery channels (Simplified Chinese)
+
+即時通訊:
+  label: 即時通訊
+  permalink: /即時通訊
+  description: Instant messaging platforms as AI delivery channels (Traditional Chinese)
+
+多智慧體:
+  label: 多智慧體
+  permalink: /多智慧體
+  description: Multi-agent systems and coordination (Traditional Chinese)
+
+多智能体:
+  label: 多智能体
+  permalink: /多智能体
+  description: Multi-agent systems and coordination (Simplified Chinese)
+
+学习:
+  label: 学习
+  permalink: /学习
+  description: Machine learning and adaptive AI behavior (Simplified Chinese)
+
+學習:
+  label: 學習
+  permalink: /學習
+  description: Machine learning and adaptive AI behavior (Traditional Chinese)
+
+工作流:
+  label: 工作流
+  permalink: /工作流
+  description: Workflow orchestration for AI agents (Chinese)
+
+工具:
+  label: 工具
+  permalink: /工具
+  description: AI tools and MCP primitives (Chinese)
+
+开发工具:
+  label: 开发工具
+  permalink: /开发工具
+  description: Developer tools for AI agent development (Simplified Chinese)
+
+搜尋:
+  label: 搜尋
+  permalink: /搜尋
+  description: Knowledge retrieval and search for AI systems (Traditional Chinese)
+
+搜索:
+  label: 搜索
+  permalink: /搜索
+  description: Knowledge retrieval and search for AI systems (Simplified Chinese)
+
+智慧體:
+  label: 智慧體
+  permalink: /智慧體
+  description: AI agents and autonomous systems (Traditional Chinese)
+
+智能体:
+  label: 智能体
+  permalink: /智能体
+  description: AI agents and autonomous systems (Simplified Chinese)
+
+能力:
+  label: 能力
+  permalink: /能力
+  description: Emergent capabilities and learned behaviors in AI (Chinese)
+
+開發工具:
+  label: 開發工具
+  permalink: /開發工具
+  description: Developer tools for AI agent development (Traditional Chinese)
