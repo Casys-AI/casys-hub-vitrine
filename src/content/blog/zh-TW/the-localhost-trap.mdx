@@ -1,6 +1,6 @@
 ---
 title: "Localhost 陷阱 — 使用 Docker 編排器部署 OpenClaw 到生產環境"
-description: "你容器化了你的 AI 代理。你容器化了你的編排器。現在它們無法互相通訊。問題不在 Docker，而是容器化基礎設施中最隱蔽的網路壁壘。"
+description: "你容器化了你的 AI 代理，也容器化了你的編排器——然後它們無法互相通訊。127.0.0.1 在容器內外含義完全不同。本文以 OpenClaw 部署為例，拆解 Docker 網路中最隱蔽的 localhost 陷阱及其修復方式。"
 author: "Erwan Lee Pesle"
 date: 2026-02-27
 tags:
