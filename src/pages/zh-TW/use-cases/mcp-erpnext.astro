@@ -6,8 +6,19 @@ import { useTranslations } from '../../../i18n';
 const locale = (Astro as any).currentLocale ?? 'zh-TW';
 const content = useTranslations(locale).mcpErpnextPage;
 const localePrefix = locale === 'en' ? '' : `/${locale}`;
+const jsonLd = [{
+  "@context": "https://schema.org",
+  "@type": "Service",
+  "name": "MCP ERPNext integration",
+  "description": "Production MCP server for ERPNext with 97 tools — procurement, inventory, accounting, HR. Open source, OAuth2-secured, deployable today.",
+  "provider": { "@type": "Organization", "name": "Casys AI", "url": "https://casys.ai" },
+  "serviceType": "AI integration",
+  "areaServed": ["FR", "US", "TW", "JP", "Worldwide"],
+  "category": "AI Agents / ERP Integration",
+  "url": "https://github.com/Casys-AI/mcp-erpnext"
+}];
 ---
 
-<LandingLayout title="MCP ERPNext | Casys AI" description="基於 ERPNext 的具體 MCP 工作流。查看示範，了解工作流，追蹤背後的技術棧。">
+<LandingLayout title="MCP ERPNext | Casys AI" description="基於 ERPNext 的具體 MCP 工作流。查看示範，了解工作流，追蹤背後的技術棧。" jsonLd={jsonLd}>
   <McpProductPage content={content} githubUrl="https://github.com/Casys-AI/mcp-erpnext" localePrefix={localePrefix} />
 </LandingLayout>

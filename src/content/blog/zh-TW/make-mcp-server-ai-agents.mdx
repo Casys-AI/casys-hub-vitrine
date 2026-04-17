@@ -1,0 +1,131 @@
+---
+title: "Make.com AI 智慧體：MCP 伺服器帶來什麼（以及還缺什麼）"
+description: "Make 如何讓每個場景變成 AI 智慧體可呼叫的 MCP 工具。設定、具體範例、MCP Apps 的缺口，以及我們實測後的心得。"
+author: "Erwan Lee Pesle"
+date: 2026-04-17
+tags:
+  - mcp
+  - mcp-server
+  - agents
+  - make
+  - automation
+category: "產品"
+language: zh-TW
+snippet: "Make MCP Server 已進入 Early Access。每個 active 或 on-demand 場景都可變成 AI 智慧體的工具。我們實測過了——這裡是它適合做什麼，以及短板在哪。"
+featured: false
+draft: false
+---
+
+> Make MCP Server 目前處於 *Early Access* 階段。你 Make 帳戶裡每一個 active 或 on-demand 場景，都可以變成 AI 智慧體可呼叫的工具。能力很強，設定還不夠簡單，而且有一塊拼圖仍然缺失：MCP Apps。
+
+## Make MCP Server 做了什麼
+
+Make 把自己的編排器（2,000+ SaaS 整合）接入了 [Model Context Protocol](https://modelcontextprotocol.io)。結果就是：你已經搭好的場景，直接變成 AI 智慧體內可用的工具。一個「新建 HubSpot 商機 → Slack → Google Sheets」場景可以像呼叫普通函式一樣被 Claude 呼叫——智慧體填入參數，Make 執行，結果以 JSON 形式回傳。
+
+對外暴露兩類工具：
+
+- **場景執行工具**：所有方案可用。將你的 `active` 或 `on-demand` 場景作為 MCP 工具執行。
+- **管理工具**：僅限付費方案。允許從智慧體側建立、修改和觸發場景。
+
+[官方頁面](https://developers.make.com) 在撰寫本文時仍將該功能標註為 *Early Access*。
+
+## 場景變成工具
+
+Make 會從場景的輸入輸出自動推斷工具的 schema。由 `Webhook` 或 `On-Demand Trigger` 模組觸發的場景，會將其輸入欄位作為工具參數暴露出來。
+
+具體範例。看這個場景：
+
+```
+[On-Demand] → [HubSpot: Get Deal] → [Slack: Post Message] → [Google Sheets: Add Row]
+```
+
+觸發器輸入為 `deal_id`（string）和 `notify_channel`（string）。在智慧體側，工具呈現為：
+
+```json
+{
+  "name": "hubspot_deal_notify",
+  "description": "Fetch a HubSpot deal, notify Slack, log to Sheets",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "deal_id":        { "type": "string" },
+      "notify_channel": { "type": "string" }
+    },
+    "required": ["deal_id", "notify_channel"]
+  }
+}
+```
+
+智慧體呼叫 `hubspot_deal_notify({ deal_id: "123", notify_channel: "#sales" })`，Make 執行場景，輸出以 JSON 回傳。
+
+## 設定：還不到 30 秒能搞定
+
+要將 MCP 客戶端（Claude Desktop、ChatGPT Apps 或自訂客戶端）接入 Make：
+
+1. 找到你的 **Make zone**（`eu1`、`eu2`、`us1`、`us2`）——登入後 URL 裡就有。
+2. 在 **OAuth**（`https://mcp.make.com`）和**帳戶裡產生的 MCP token**（zone 專屬 URL：`https://<ZONE>.make.com/mcp/u/<TOKEN>/stateless`）之間二選一。
+3. 將 URL 加到客戶端設定裡。以 Claude Desktop 為例：
+
+```json
+{
+  "mcpServers": {
+    "make": {
+      "url": "https://eu2.make.com/mcp/u/<MCP_TOKEN>/stateless"
+    }
+  }
+}
+```
+
+4. 重啟客戶端。你的場景就會出現在工具清單裡。
+
+**我們實測後的心得**：對新手來說，遠不止 30 秒。你需要理解 zone 的概念，在 OAuth 和 token 之間做選擇，還要翻文件才能找到不同傳輸協定（stateless streamable HTTP、SSE、Cloudflare proxy）對應的正確 URL 格式。沒有任何阻塞性問題，但摩擦是真實存在的。實測時還是 Early Access——Make 迭代很快，這些摩擦大概率會消失。
+
+從實質上看，這是 Make 非常漂亮的一步棋。幾次點擊就能把 2,000+ SaaS 整合變成 MCP 工具，一行伺服器端程式碼都不用寫，這種槓桿非常罕見。
+
+## 逾時與非同步執行
+
+Make 場景可能執行很長時間。MCP Server 透過較短的客戶端側逾時加非同步輸出取得來應對這個問題：
+
+- 場景執行：OAuth **25 秒**，MCP token **40 秒**。
+- 管理工具：OAuth **30 秒**，特定傳輸協定下 token 最長 **5 分 20 秒**。
+- 逾時後場景仍繼續執行最長 **40 分鐘**；輸出可非同步取得。
+
+這是對「LLM 不願意等十分鐘工具呼叫」這一問題的務實解答。
+
+## 還缺什麼：MCP Apps
+
+有一點要說清楚：**Make MCP Server 回傳的是 JSON，不是應用程式介面**。
+
+[MCP Apps](/blog/mcp-apps-mobile-ux-patterns) 規範新增了 *UI resources* 的概念——可互動的視圖（清單、表單、表格），直接在 AI 客戶端（claude.ai、ChatGPT Apps）內渲染。不只是結構化資料，而是一個介面。
+
+**我們在這一點上的看法**：Make 落後於 [Windmill](https://www.windmill.dev/docs/core_concepts/apps_editor) 這類工具——後者平台內建了應用程式編輯器（拖拽 + 程式碼），以及 n8n 的表單節點。今天的 Make MCP Server = 資料呼叫。claude.ai 裡不渲染任何 UI。這一塊大概率會來——但就目前而言，如果你想在智慧體側要一個可互動介面，要麼自己建構原生支援 MCP Apps 的伺服器，要麼去找已經有 UI 層的平台。
+
+## Make 是正確選擇的時機
+
+- 你已經在用 Make，且有場景在執行。
+- 2,000+ 原生整合涵蓋了你的外圍服務：HubSpot、Slack、Notion、Google Workspace、Airtable、Gmail 等。
+- 你希望智慧體在一天內就能觸發自動化，而不是一個迭代週期。
+- 40 分鐘非同步模式對你適用——你不需要強同步回應。
+
+## 什麼時候應該自己搭 MCP 伺服器
+
+- 你有不適合用場景形態表達的業務邏輯。
+- 你需要伺服器端 OAuth2，帶有由你的授權伺服器簽發的 JWT RFC 9068（見我們的 [Auth0 / OAuth2 MCP 指南](/blog/mcp-authentication-claude-ai-oauth2)）。
+- 你想要 **MCP Apps**——在智慧體內渲染的可互動 UI，而不只是 JSON。
+- 你的延遲預算很緊（Make 多了一個網路跳點加場景執行時間）。
+- 你需要每次呼叫的可觀測性：追蹤、每工具指標、細粒度除錯。
+
+[生產級 MCP 伺服器指南](/blog/mcp-server-guide) 涵蓋了需要搭建的內容。[@casys/mcp-server](/mcp-server) 框架處理中介軟體、認證和傳輸。
+
+## 我們的判斷
+
+Make MCP Server 和自訂 MCP 伺服器並不競爭——它們針對不同的層級。
+
+- **Make** 負責 SaaS 外圍：快速觸發、輕量自動化、開箱即用 2,000+ 整合、零伺服器端程式碼。
+- **自訂伺服器** 負責業務核心：領域邏輯、伺服器端認證、MCP Apps、細粒度可觀測性、延遲控制。
+
+這和經典 iPaaS（Zapier、Make）與內部後端之間的關係是同一個模式。你不必二選一。你大概率兩者都需要，透過 MCP 連到同一個智慧體。
+
+---
+
+*想建構承載業務核心的 MCP 伺服器？[來看看 Casys 平台 →](/mcp-platform)*

@@ -47,15 +47,15 @@ export const fr: Translations = {
   // LANDING V2 SECTIONS
   // ========================================
   hero: {
-    kicker: "Intégrateur IA agentic",
-    titleLine1: "On branche l'IA",
-    titleLine2: "sur vos métiers",
-    subtitle:
-      "Des agents IA branchés sur vos ERP, CRM et outils internes. Stack observable et open source.",
+    kicker: "Intégrateur MCP pour agents IA",
+    titleLine1: "Des serveurs MCP",
+    titleLine2: "pour vos agents IA",
+    subtitle: "En production : ERPNext, e-invoice, CRM, outils internes. Démos interactives sur GitHub.",
     cta: {
       primary: { text: "Voir nos réalisations", icon: "arrow_forward", url: "#use-cases-preview" },
       secondary: { text: "Réserver un créneau", icon: "calendar_month", url: "https://cal.com/casys.ai" },
     },
+    proofLabel: "Connecteurs standards",
     proofs: [
       { name: "MCP ERPNext", stat: "97 outils", url: "/fr/use-cases/mcp-erpnext", icon: "database" },
       { name: "MCP eInvoice", stat: "36 outils", url: "/fr/use-cases/mcp-einvoice", icon: "receipt_long" },
@@ -89,8 +89,8 @@ export const fr: Translations = {
     note:
       "Conçu pour le mandat facturation électronique 2026. Le même pattern d'adaptateur s'étend à toute plateforme certifiée.",
     cta: {
-      primary: { text: "Voir sur GitHub", icon: "open_in_new", url: "https://github.com/Casys-AI/mcp-einvoice" },
-      secondary: { text: "Nous parler", icon: "mail", url: "#contact" },
+      primary: { text: "Nous parler", icon: "mail", url: "#contact" },
+      secondary: { text: "Voir sur GitHub", icon: "open_in_new", url: "https://github.com/Casys-AI/mcp-einvoice" },
     },
     media: {
       type: "image",
@@ -421,6 +421,10 @@ export const fr: Translations = {
         ],
       },
     ],
+    trajectoryLabels: ["Genèse", "Raffinement", "Aujourd'hui"],
+    sideFooterLabel: "Depuis",
+    sideFooterValue: "2013+",
+    viewReposLabel: "Voir les dépôts",
     contactCta: {
       text: "Nous contacter",
       url: "#contact",
@@ -454,6 +458,12 @@ export const fr: Translations = {
     subtitle: "Les questions qu'on nous pose le plus souvent.",
     categories: ["Plateforme", "Stack", "Consulting", "Général"],
     allLabel: "Tout",
+    closingCta: {
+      prompt: "Votre question n'est pas listée ?",
+      ctaLabel: "Parlons-en",
+      url: "#contact",
+      icon: "mail",
+    },
     faqs: [
       {
         category: "Plateforme",

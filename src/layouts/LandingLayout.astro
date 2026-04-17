@@ -13,9 +13,10 @@ export interface Props {
   title: string;
   description?: string;
   ogImage?: string;
+  jsonLd?: object[];
 }
 
-const { title, description, ogImage } = Astro.props;
+const { title, description, ogImage, jsonLd } = Astro.props;
 const locale = (Astro as any).currentLocale ?? 'en';
 const pathname = Astro.url.pathname;
 const siteUrl = (import.meta.env.PUBLIC_SITE_URL as string | undefined)?.trim();
@@ -137,6 +138,41 @@ const resolvedDescription = description || metaDescriptionFallback;
       "url": rootSiteUrl,
       "inLanguage": ["en", "fr", "zh", "zh-TW"]
     })} />
+    {(() => {
+      // Auto-generate BreadcrumbList for non-homepage, non-blog paths
+      const homepagePaths = ['/', '/fr', '/zh', '/zh-TW'];
+      const isHomepage = homepagePaths.includes(pathname.replace(/\/$/, '') || '/');
+      const isBlog = /^\/(fr\/|zh\/|zh-TW\/)?blog(\/|$)/.test(pathname);
+      if (!isHomepage && !isBlog) {
+        const titleCase = (s: string) => s.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        const segments = pathname.replace(/\/$/, '').split('/').filter(Boolean);
+        // Remove locale prefix if present
+        const locales = ['fr', 'zh', 'zh-TW'];
+        const startIdx = locales.includes(segments[0]) ? 1 : 0;
+        const pageSegments = segments.slice(startIdx);
+        const breadcrumbItems = [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": rootSiteUrl }
+        ];
+        pageSegments.forEach((seg, i) => {
+          const segPath = segments.slice(0, startIdx + i + 1).join('/');
+          breadcrumbItems.push({
+            "@type": "ListItem",
+            "position": i + 2,
+            "name": titleCase(seg),
+            "item": `${rootSiteUrl}/${segPath}`
+          });
+        });
+        return <script type="application/ld+json" set:html={JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          "itemListElement": breadcrumbItems
+        }).replace(/</g, '\\u003c')} />;
+      }
+      return null;
+    })()}
+    {jsonLd && jsonLd.map((schema) => (
+      <script type="application/ld+json" set:html={JSON.stringify(schema).replace(/</g, '\\u003c')} />
+    ))}
     <style is:inline>
       /* ============================================
          LAYOUT ESSENTIALS

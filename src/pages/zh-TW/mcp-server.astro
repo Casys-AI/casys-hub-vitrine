@@ -4,8 +4,21 @@ import McpServerContent from '../../features/mcp-server/McpServerContent.astro';
 
 const pageTitle = '生產級 MCP 伺服器框架 — @casys/mcp-server | Casys AI';
 const description = 'Production-grade MCP server framework with composable middleware, OAuth2 auth, dual transport.';
+const jsonLd = [{
+  "@context": "https://schema.org",
+  "@type": "SoftwareSourceCode",
+  "name": "@casys/mcp-server",
+  "description": "Production MCP server framework with composable middleware, OAuth2 auth, dual transport.",
+  "codeRepository": "https://github.com/Casys-AI/mcp-server",
+  "programmingLanguage": "TypeScript",
+  "runtimePlatform": ["Node.js", "Deno", "Vercel Edge"],
+  "license": "https://spdx.org/licenses/MIT",
+  "author": { "@type": "Organization", "name": "Casys AI", "url": "https://casys.ai" },
+  "applicationCategory": "DeveloperApplication",
+  "keywords": ["MCP", "Model Context Protocol", "AI agents", "TypeScript", "OAuth2"]
+}];
 ---
 
-<LandingLayout title={pageTitle} description={description}>
+<LandingLayout title={pageTitle} description={description} jsonLd={jsonLd}>
   <McpServerContent />
 </LandingLayout>

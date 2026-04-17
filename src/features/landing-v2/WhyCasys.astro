@@ -5,6 +5,7 @@ import { isExternalUrl } from '../../lib/url-utils';
 
 const locale = (Astro as any).currentLocale ?? 'en';
 const content = useTranslations(locale).whyCasys;
+const authority = useTranslations(locale).hero.authority;
 const calLink = getCasysCalLink(locale);
 const leadCard = content.differentiation[0];
 const sideCard = content.differentiation[1];
@@ -34,7 +35,7 @@ const contactCta = content.contactCta;
             <div class="lead-trajectory">
               {leadCard.highlights.map((highlight, index) => (
                 <div class="trajectory-step">
-                  <span class="trajectory-label">{index === 0 ? 'Genesis' : index === 1 ? 'Refinement' : 'Current State'}</span>
+                  <span class="trajectory-label">{content.trajectoryLabels[index]}</span>
                   <p>{highlight}</p>
                 </div>
               ))}
@@ -61,9 +62,18 @@ const contactCta = content.contactCta;
             <p class="card-description">{sideCard.description}</p>
           </div>
 
+          <ul class="continuity-stats">
+            {authority.map((item) => (
+              <li class="continuity-stat">
+                <span class="continuity-stat-label">{item.label}</span>
+                <span class="continuity-stat-detail">{item.detail}</span>
+              </li>
+            ))}
+          </ul>
+
           <div class="side-footer">
-            <span class="side-footer-label">Established</span>
-            <span class="side-footer-value">2013+</span>
+            <span class="side-footer-label">{content.sideFooterLabel}</span>
+            <span class="side-footer-value">{content.sideFooterValue}</span>
           </div>
         </article>
       )}
@@ -94,7 +104,7 @@ const contactCta = content.contactCta;
               target={isExternalUrl(secondaryCta.url) ? '_blank' : undefined}
               rel={isExternalUrl(secondaryCta.url) ? 'noopener noreferrer' : undefined}
             >
-              <span>View repositories</span>
+              <span>{content.viewReposLabel}</span>
               <span class="material-symbols-rounded" aria-hidden="true">north_east</span>
             </a>
           ) : (
@@ -118,19 +128,6 @@ const contactCta = content.contactCta;
         <cite>— Casys</cite>
 
         <div class="signature-actions">
-          {primaryCta && (
-            <button
-              type="button"
-              class="cta-primary"
-              data-cal-namespace="popup"
-              data-cal-link={calLink}
-              data-cal-popup="casys"
-              data-umami-event="whycasys-cta-booking"
-            >
-              <span class="material-symbols-rounded" aria-hidden="true">{primaryCta.icon}</span>
-              <span>{primaryCta.text}</span>
-            </button>
-          )}
           {secondaryCta && (
             <a
               href={secondaryCta.url}
@@ -154,7 +151,7 @@ const contactCta = content.contactCta;
     padding: 88px 0 96px;
     background:
       radial-gradient(circle at 82% 8%, rgba(157, 132, 183, 0.08), transparent 24%),
-      radial-gradient(circle at 8% 0%, rgba(255, 184, 111, 0.1), transparent 26%),
+      radial-gradient(circle at 8% 0%, rgba(131, 70, 143, 0.1), transparent 26%),
       var(--md-sys-color-surface-container-low);
     overflow: hidden;
   }
@@ -217,8 +214,8 @@ const contactCta = content.contactCta;
     grid-column: span 8;
     min-height: 540px;
     background:
-      linear-gradient(180deg, rgba(255, 184, 111, 0.06), transparent 45%),
-      linear-gradient(135deg, rgba(255, 184, 111, 0.05), rgba(157, 132, 183, 0.02) 58%, transparent 74%),
+      linear-gradient(180deg, rgba(131, 70, 143, 0.06), transparent 45%),
+      linear-gradient(135deg, rgba(131, 70, 143, 0.05), rgba(157, 132, 183, 0.02) 58%, transparent 74%),
       var(--md-sys-color-surface-container-low);
   }
 
@@ -274,8 +271,8 @@ const contactCta = content.contactCta;
     justify-content: center;
     font-size: 22px;
     color: var(--md-sys-color-primary);
-    background: rgba(255, 184, 111, 0.08);
-    box-shadow: inset 0 0 0 1px rgba(255, 184, 111, 0.08);
+    background: rgba(131, 70, 143, 0.08);
+    box-shadow: inset 0 0 0 1px rgba(131, 70, 143, 0.08);
   }
 
   h3 {
@@ -313,7 +310,7 @@ const contactCta = content.contactCta;
     position: relative;
     z-index: 2;
     padding-top: 24px;
-    border-top: 1px solid rgba(255, 184, 111, 0.12);
+    border-top: 1px solid rgba(131, 70, 143, 0.12);
   }
 
   .trajectory-step {
@@ -364,15 +361,15 @@ const contactCta = content.contactCta;
 
   .visual-ring-b {
     inset: 28% 16% 24% 28%;
-    border-color: rgba(255, 184, 111, 0.1);
+    border-color: rgba(131, 70, 143, 0.1);
   }
 
   .visual-node {
     width: 14px;
     height: 14px;
     border-radius: 999px;
-    background: rgba(255, 184, 111, 0.9);
-    box-shadow: 0 0 0 10px rgba(255, 184, 111, 0.07);
+    background: var(--md-sys-color-primary);
+    box-shadow: 0 0 0 10px rgba(131, 70, 143, 0.07);
   }
 
   .visual-node-a { top: 22%; right: 38%; }
@@ -381,7 +378,7 @@ const contactCta = content.contactCta;
 
   .visual-link {
     height: 1px;
-    background: linear-gradient(90deg, rgba(255, 184, 111, 0), rgba(255, 184, 111, 0.28), rgba(245, 240, 234, 0));
+    background: linear-gradient(90deg, rgba(131, 70, 143, 0), rgba(131, 70, 143, 0.28), rgba(245, 240, 234, 0));
     transform-origin: left center;
   }
 
@@ -420,6 +417,35 @@ const contactCta = content.contactCta;
     font-family: 'Fraunces', Georgia, serif;
     font-size: 1.6rem;
     color: var(--md-sys-color-on-surface);
+  }
+
+  .continuity-stats {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 14px;
+  }
+
+  .continuity-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .continuity-stat-label {
+    font-family: 'Manrope', sans-serif;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--md-sys-color-primary);
+  }
+
+  .continuity-stat-detail {
+    font-size: 0.92rem;
+    line-height: 1.55;
+    color: var(--md-sys-color-on-surface-variant);
   }
 
   .mini-highlights {
@@ -503,7 +529,7 @@ const contactCta = content.contactCta;
     border-radius: 30px;
     border: 1px solid var(--md-sys-color-outline-variant);
     background:
-      linear-gradient(180deg, rgba(255, 184, 111, 0.03), transparent 36%),
+      linear-gradient(180deg, rgba(131, 70, 143, 0.03), transparent 36%),
       var(--md-sys-color-surface-container-lowest);
     display: flex;
     flex-direction: column;
@@ -726,5 +752,26 @@ const contactCta = content.contactCta;
   html[data-theme='dark'] #why-casys .card-action-secondary:hover {
     border-color: var(--casys-warm-accent);
     background: rgba(255, 184, 111, 0.04);
+  }
+
+  html[data-theme='dark'] #why-casys .continuity-stat-label {
+    color: var(--casys-warm-accent);
+  }
+
+  html[data-theme='dark'] #why-casys .continuity-stat-detail {
+    color: var(--casys-warm-text-secondary);
+  }
+
+  html[data-theme='dark'] #why-casys .visual-node {
+    background: var(--casys-warm-accent);
+    box-shadow: 0 0 0 10px rgba(255, 184, 111, 0.07);
+  }
+
+  html[data-theme='dark'] #why-casys .visual-ring-b {
+    border-color: rgba(255, 184, 111, 0.1);
+  }
+
+  html[data-theme='dark'] #why-casys .visual-link {
+    background: linear-gradient(90deg, rgba(255, 184, 111, 0), rgba(255, 184, 111, 0.28), rgba(245, 240, 234, 0));
   }
 </style>

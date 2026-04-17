@@ -5,6 +5,7 @@ const locale = (Astro as any).currentLocale ?? 'en';
 const t = useTranslations(locale).contact;
 const calLink = getCasysCalLink(locale);
 const calHref = getCasysCalHref(locale);
+const showCalLabel = locale === 'fr' ? 'Afficher le calendrier' : locale === 'zh' ? '显示日历' : locale === 'zh-TW' ? '顯示日曆' : 'Show calendar';
 ---
 
 <section id="contact">
@@ -30,9 +31,9 @@ const calHref = getCasysCalHref(locale);
         <p>{t.bookingSubtitle}</p>
       </div>
 
-      <button type="button" class="booking-toggle" id="booking-toggle-btn">
+      <button type="button" class="booking-toggle" id="booking-toggle-btn" aria-label={t.bookingTitle}>
         <span class="material-symbols-rounded" aria-hidden="true">calendar_month</span>
-        <span>{t.bookingTitle}</span>
+        <span>{showCalLabel}</span>
         <span class="material-symbols-rounded toggle-chevron" aria-hidden="true">expand_more</span>
       </button>
 
@@ -44,9 +45,7 @@ const calHref = getCasysCalHref(locale);
       </div>
     </div>
 
-    <div class="section-divider" aria-hidden="true">
-      <span>{t.formFallback}</span>
-    </div>
+    <div class="section-divider" aria-hidden="true"></div>
 
     <div class="form-intro">
       <h3>{t.formFallback}</h3>

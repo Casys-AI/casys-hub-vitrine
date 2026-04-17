@@ -1,8 +1,22 @@
 ---
 import LandingLayout from '../../layouts/LandingLayout.astro';
 import McpComposePage from '../../features/landing-v2/McpComposePage.astro';
+
+const jsonLd = [{
+  "@context": "https://schema.org",
+  "@type": "SoftwareSourceCode",
+  "name": "@casys/mcp-compose",
+  "description": "Compose MCP UIs into unified dashboards. Lightweight primitive to collect, compose, and synchronize multiple MCP Apps UIs.",
+  "codeRepository": "https://github.com/Casys-AI/mcp-compose",
+  "programmingLanguage": "TypeScript",
+  "runtimePlatform": ["Node.js", "Deno", "Vercel Edge"],
+  "license": "https://spdx.org/licenses/MIT",
+  "author": { "@type": "Organization", "name": "Casys AI", "url": "https://casys.ai" },
+  "applicationCategory": "DeveloperApplication",
+  "keywords": ["MCP", "MCP Apps", "Dashboard", "UI orchestration", "TypeScript"]
+}];
 ---
 
-<LandingLayout title="MCP Compose | Casys AI" description="Composez des UIs MCP en dashboards unifies. Primitive legere et deterministe pour collecter, composer et synchroniser plusieurs UIs MCP Apps.">
+<LandingLayout title="MCP Compose : orchestrer vos MCP Apps en dashboards | Casys" description="Primitive légère pour orchestrer vos MCP Apps en dashboards unifiés — collecter, composer et synchroniser plusieurs UIs MCP." jsonLd={jsonLd}>
   <McpComposePage />
 </LandingLayout>

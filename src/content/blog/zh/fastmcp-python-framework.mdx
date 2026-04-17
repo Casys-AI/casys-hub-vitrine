@@ -1,0 +1,126 @@
+---
+title: "FastMCP：用 Python 构建 MCP 服务器"
+description: "FastMCP 已成为 MCP 服务器的事实标准 Python 框架。Pythonic 装饰器、自动生成 schema、原生 MCP Apps——2026 年的情况如何。"
+author: "Erwan Lee Pesle"
+date: 2026-04-17
+tags:
+  - mcp
+  - mcp-server
+  - agents
+  - typescript
+category: "产品"
+language: zh
+snippet: "FastMCP v3.2，GitHub 24.6k stars，据 Prefect 称跨语言占 ~70% 的 MCP 服务器。Python 框架讲解：装饰器、原语、MCP Apps，什么时候选它。"
+featured: false
+draft: false
+---
+
+> 如果你用 Python 开发并且想要一个 MCP 服务器，简短的答案就是 FastMCP。它从一个副项目成长为事实标准框架——甚至到了它的 v1 在 2024 年被纳入 Anthropic 官方 Python SDK 的程度。这里介绍它做什么、怎么运作，以及什么时候选它。
+
+## FastMCP 30 秒速览
+
+FastMCP 是一个用于构建 [Model Context Protocol](https://modelcontextprotocol.io) 服务器（及客户端）的 Python 框架。它由 [Jeremiah Lowin](https://jlowin.dev) 创建，随后由 [Prefect](https://www.prefect.io)（同名 Python 工作流编排工具背后的公司）接手并维护。Apache 2.0 许可证。撰写本文时 GitHub 24.6k stars，v3.2.4 于 2026 年 4 月 14 日发布，据 Prefect 称每日下载量约 ~1 million 次。
+
+卖点：把原本需要大量 MCP 样板代码的工作，转化为 Pythonic 装饰器，并从类型提示（type hints）自动生成 schema。
+
+## Hello world
+
+最简示例，直接取自[官方文档](https://gofastmcp.com)：
+
+```python
+from fastmcp import FastMCP
+
+mcp = FastMCP("Demo 🚀")
+
+@mcp.tool
+def add(a: int, b: int) -> int:
+    """Add two numbers"""
+    return a + b
+
+if __name__ == "__main__":
+    mcp.run()
+```
+
+就这些。FastMCP 读取类型提示（`a: int`、`b: int`、`-> int`），为工具生成 JSON Schema，默认通过 `stdio` 暴露服务器（或选择 `streamable HTTP` / `SSE`），docstring `"""Add two numbers"""` 则成为协议中该工具的描述。
+
+与直接使用官方 Python SDK 编写相比——后者需要手动声明 schema、管理生命周期、包装执行逻辑——代码行数的节省是实实在在的。
+
+## 原语（Primitives）
+
+FastMCP 通过装饰器暴露三种 MCP 原语：
+
+- `@mcp.tool` — 代理可以调用的函数。类型从类型提示推断。
+- `@mcp.resource(uri)` — 代理可以通过 URI 读取的资源（文件、数据）。
+- `@mcp.prompt` — 在客户端以 *slash command* 形式暴露的提示模板。
+
+自 v2 起，还有第四个维度：**apps** — [MCP Apps](/blog/mcp-apps-mobile-ux-patterns)，可以在 AI 客户端（claude.ai、ChatGPT Apps）的对话中直接渲染交互式 UI。文档的描述是：*"give your tools interactive UIs rendered directly in the conversation"*。这是为数不多较早采用 MCP Apps 的服务器实现之一。
+
+## FastAPI：如何整合？
+
+Python 开发者经常问的问题："我已经有一个 FastAPI 应用，能把我的 endpoint 暴露为 MCP 工具吗？"答案是可以。FastMCP 有专门的 FastAPI 集成，允许将 MCP 服务器挂载在经典 HTTP 路由旁边，共享同一个进程。
+
+实际上：你的 FastAPI 应用服务于人类用户，同一个进程通过 MCP 服务于代理。相同的业务处理器，两种传输方式。对于想要在不重构架构的情况下为 Python 后端添加代理层来说，这可能是最简单的架构。
+
+## FastMCP vs 官方 Python SDK
+
+这里需要精确说明，因为情况有些反直觉：**FastMCP 1.0 于 2024 年被集成进 Anthropic 官方 Python SDK**。也就是说，如果你安装了 `anthropic-mcp-python-sdk`，其中已经包含了部分 FastMCP。
+
+FastMCP 2.0+ 以及现在的 3.x 继续作为独立项目演进，包含比回移到官方 SDK 中更新的特性——尤其是 apps、FastMCP 客户端、Prefect 集成和托管功能。
+
+简而言之：
+- **官方 SDK** = 最精简必要项，Anthropic 官方支持，稳定基础。
+- **FastMCP 独立版** = 最精简必要项 + 现代特性 + 生态系统。
+
+对于新的 Python 项目，FastMCP 独立版是默认选择。对于希望最小化依赖、只需要核心功能的项目，官方 SDK 已经足够。
+
+## FastMCP 在 Python 侧——TypeScript 侧呢？
+
+FastMCP 纯粹是 Python。npm 上也有一个 `fastmcp` 包——那是另一个更小的项目，因名称相似而得名。不要混淆。
+
+在 TypeScript 侧，生态系统是碎片化的：官方 Anthropic SDK、多个社区框架，以及——坦白说——我们自己的 [@casys/mcp-server](/mcp-server)，它在 TS 中瞄准的正是 FastMCP 在 Python 中瞄准的那个"MCP 的 Hono"定位。
+
+为 MCP 服务器选择 Python 还是 TypeScript，通常是由技术栈的其余部分而非 MCP 本身决定的：
+
+- **Python**：如果你的业务逻辑在 Python 中，如果你做数据 / ML / RAG，或者你已经在使用 FastAPI 或 Prefect。
+- **TypeScript**：如果你的后端是 Node，如果你想在前端和 MCP 服务器之间共享类型，或者你部署在边缘运行时（Deno、Cloudflare Workers、Vercel）。
+
+## 生产环境：FastMCP 覆盖什么，不覆盖什么
+
+FastMCP 直接覆盖的内容：
+- 三种原语（tools、resources、prompts）+ MCP Apps。
+- 三种 MCP 传输（stdio、streamable HTTP、SSE）。
+- 从类型提示自动生成 schema。
+- 认证钩子（但 OAuth2 实现 / JWT 验证仍然是应用层的工作）。
+- Prefect Horizon 作为免费托管选项。
+
+仍然是你的问题：
+- **OAuth2 服务器**，配合外部授权服务器（Auth0、Keycloak、你自己的）以及 [JWT RFC 9068 验证](/blog/mcp-authentication-claude-ai-oauth2)。
+- **速率限制**和按用户/工具的配额。
+- **可观测性**：按调用的 trace、指标、结构化日志。
+- **部署**：Docker、systemd、Kubernetes 或 serverless——都可以，没有规定。
+- **服务器端密钥管理**。
+
+这和任何 MCP 框架的上限一样——[Casys TypeScript 侧](/blog/mcp-server-guide)同样有这些限制。MCP 规范定义协议，而非其周围的生产工程。
+
+## FastMCP 是正确选择的时候
+
+- 你的团队用 Python 开发，希望在一天内完成 MCP 服务器。
+- 你已经有一个 FastAPI 后端，想在不做全面重构的情况下添加代理层。
+- 你想要 [MCP Apps](/blog/mcp-apps-mobile-ux-patterns)（代理中的 UI），而不仅仅是 JSON 工具调用。
+- 你在 Prefect 生态系统（Python 工作流）中——集成是原生的。
+
+## 什么时候看看别的选择
+
+- 你的后端是 TypeScript/Node——FastMCP 不适合你；npm 上的 `fastmcp` 是另一个项目。
+- 你需要对中间件和传输进行非常细粒度的控制（自定义认证、复杂路由）——更底层的框架可能更直接。
+- 你部署在边缘运行时（Cloudflare Workers、Deno Deploy）——Python 在那里运行很差或根本无法运行。
+
+## 我们的看法
+
+FastMCP 是今天 90% 开始 MCP 服务器的团队的正确 Python 答案。其余部分——认证、可观测性、部署——仍然需要自己构建，但这对每个 MCP 框架都是如此，无论是 Python 还是 TypeScript 侧。为你的 MCP 服务器选择语言应该跟随技术栈的其余部分，而不是先于它。
+
+如果你在 Python 上从零开始：FastMCP。如果你在 TypeScript 上，[我们构建了自己的](/mcp-server)。无论哪种情况，规范都是相同的——你的客户端（claude.ai、ChatGPT Apps、你的自定义代理）的可移植性得到保障。
+
+---
+
+*在 TypeScript 侧构建并寻找等效方案？[查看 Casys 平台 →](/mcp-platform)*

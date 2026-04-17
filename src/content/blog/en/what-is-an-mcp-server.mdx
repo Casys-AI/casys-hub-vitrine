@@ -1,0 +1,153 @@
+---
+title: "What is an MCP server? Plain-English guide with examples"
+description: "A plain-English explanation of what an MCP server does, the three primitives it exposes (tools, resources, prompts), and how it differs from a regular API. With code."
+author: "Erwan Lee Pesle"
+date: 2026-04-17
+tags:
+  - mcp
+  - mcp-server
+  - agents
+category: "Explainer"
+language: en
+snippet: "An MCP server is a small service that exposes tools, resources, and prompts to AI agents over JSON-RPC. Here is what it actually does, in plain English."
+featured: false
+draft: false
+---
+
+An **MCP server** is a small service that an AI agent can call to discover and execute capabilities — tools it can run, data it can read, and prompt templates it can use. Think of it as a driver or adapter for a specific system: a PostgreSQL MCP server knows how to talk to Postgres, a GitHub MCP server knows how to talk to the GitHub API, and your custom MCP server knows how to talk to whatever internal system you point it at. The [Model Context Protocol](https://modelcontextprotocol.io) — published by Anthropic in November 2024 and donated to the Agentic AI Foundation under the Linux Foundation in December 2025 — is the standard that defines exactly how that conversation happens. Every MCP server speaks the same protocol, so any MCP-compatible client — Claude, Cursor, VS Code Copilot, a custom agent — can connect to any MCP server without custom integration code.
+
+---
+
+## What an MCP server actually does
+
+MCP servers expose three types of primitives over **JSON-RPC 2.0**. Each one serves a different purpose for the AI client connecting to the server.
+
+### Tools
+
+Tools are callable functions. An MCP server declares each tool with a name, a description (which the model reads to decide when to call it), and a JSON Schema for its inputs. When the agent decides to use a tool, it sends a `tools/call` request; the server executes the logic and returns a result.
+
+A concrete example: a billing MCP server might expose a tool called `list_invoices` with parameters `{ customer_id: string, limit: number }`. The model sees the description, decides this is the right tool for "show me the last 5 invoices for customer X", and calls it. The server queries the database and returns structured JSON.
+
+Tools can read or write. The spec places no restriction on side effects — a tool can create records, send emails, or trigger a deployment. The description you write is what guides the model's decision to call it, so accuracy matters.
+
+### Resources
+
+Resources are readable data. Each resource has a URI and a MIME type. A client can call `resources/list` to discover what's available, then `resources/read` to fetch content.
+
+A concrete example: a documentation MCP server might expose `file:///project/README.md` as a text/markdown resource. Before deciding which tool to use, the agent can read the README to understand the project structure. Unlike tools, resources are passive — they expose data the model can pull in as context, not actions it can trigger.
+
+### Prompts
+
+Prompts are reusable message templates. A server can expose named templates that the client retrieves and inserts into a conversation. A concrete example: a code review server might expose a `/summarize` prompt template that takes a diff as input and returns a structured summary format. Prompts are the least-used primitive in current implementations, but they're useful for standardizing how domain-specific workflows are presented to models.
+
+---
+
+## What it looks like in practice
+
+Here is what a tool definition looks like in the MCP wire format — what the server returns when the client calls `tools/list`:
+
+```json
+{
+  "name": "list_invoices",
+  "description": "List invoices for a customer. Returns up to 50 results sorted by date descending.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "customer_id": {
+        "type": "string",
+        "description": "The customer's unique identifier"
+      },
+      "limit": {
+        "type": "number",
+        "minimum": 1,
+        "maximum": 50,
+        "default": 10
+      }
+    },
+    "required": ["customer_id"]
+  }
+}
+```
+
+When the agent calls it, the exchange looks like this:
+
+```json
+// Agent → MCP server: tools/call
+{
+  "jsonrpc": "2.0",
+  "id": 7,
+  "method": "tools/call",
+  "params": {
+    "name": "list_invoices",
+    "arguments": { "customer_id": "cust_8a3f", "limit": 5 }
+  }
+}
+
+// MCP server → Agent: response
+{
+  "jsonrpc": "2.0",
+  "id": 7,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "[{\"id\":\"inv_001\",\"amount\":1200,\"status\":\"paid\"}, ...]"
+      }
+    ]
+  }
+}
+```
+
+The model gets back structured text content and can continue reasoning from there — summarizing the invoices, flagging overdue ones, or calling the next tool in a chain.
+
+---
+
+## MCP server vs API
+
+This comes up constantly: "isn't an MCP server just a REST API?"
+
+Not quite. A REST API is designed for callers who already know what endpoints exist and what parameters to pass. You write code that hardcodes `/api/v1/invoices`, the query parameters, the auth headers. The caller has full prior knowledge.
+
+An MCP server is designed for AI agents that have no prior knowledge. The agent connects, sends `tools/list`, gets back a machine-readable catalog of what's available — names, descriptions, input schemas — and decides from that what to call. There is no hardcoded endpoint. Discovery happens at runtime, every session.
+
+MCP is also a protocol layer on top of a transport (stdio or HTTP), not a replacement for your existing API. Most MCP servers are adapters: the GitHub MCP server calls the GitHub REST API internally; your billing MCP server calls your billing API. MCP is the AI-facing interface. The underlying data access stays exactly as it is. The practical upside: one MCP server, any AI client, no custom integration code per provider.
+
+---
+
+## Who writes MCP servers and why
+
+Anthropic publishes reference servers for common systems — filesystem, git, GitHub, PostgreSQL — in the [official MCP servers repository](https://github.com/modelcontextprotocol/servers). These cover the most common developer needs and serve as implementation references.
+
+The community has built hundreds more. [Smithery](https://smithery.ai) and [Glama](https://glama.ai/mcp/servers) are two registries that catalog available MCP servers, covering databases, cloud providers, productivity tools, developer services, and domain-specific integrations. GitHub's `awesome-mcp-servers` list is a third starting point.
+
+Companies build internal MCP servers to give their agents access to in-house systems: internal APIs, proprietary databases, custom workflows. Casys is one example — we build and maintain MCP servers as part of the platform we use for our own AI agents. The pattern is always the same: wrap the internal system behind an MCP interface, and any agent in the organization can call it.
+
+---
+
+## From MCP server to production
+
+Getting an MCP server to respond to `tools/call` takes an afternoon. Getting it to handle production traffic — OAuth2 authentication, rate limiting per client, observability, graceful shutdown under load — takes considerably longer.
+
+None of that is in the MCP spec. The spec defines the message format and the three primitives. What to do when a client sends 500 requests per minute, how to verify a bearer token, how to emit metrics — that's your problem.
+
+The [production guide](/blog/mcp-server-guide) covers all of it: TypeScript implementation from scratch, auth with JWT and OAuth2 presets, rate limiting, Prometheus metrics, OpenTelemetry traces, Docker and systemd deployment. If you're building a server that needs to survive real usage, start there.
+
+For teams who don't want to wire up each production concern manually, [`@casys/mcp-server`](/mcp-server) is the framework we use and maintain — it handles auth, rate limiting, backpressure, and observability out of the box, on both Deno and Node.js.
+
+---
+
+The MCP server is the building block the whole protocol is built around. Once you understand what it exposes and why, the rest of the ecosystem — clients, gateways, registries — follows naturally. Start with the [production guide](/blog/mcp-server-guide) when you're ready to build.
+
+---
+
+**Related:**
+
+- [What is MCP? The USB-C protocol for AI tools](/blog/why-mcp-protocol) — why MCP exists and the problem it solves
+- [MCP Server in Production: The Complete TypeScript Guide](/blog/mcp-server-guide) — from first tool to deployed service
+- [MCP Gateway: Why Your AI Agents Need One](/blog/mcp-gateway-guide) — when a single server isn't enough
+
+**References:**
+
+- [Model Context Protocol specification](https://modelcontextprotocol.io)
+- [Official MCP servers repository](https://github.com/modelcontextprotocol/servers)
+- [@casys/mcp-server on JSR](https://jsr.io/@casys/mcp-server)

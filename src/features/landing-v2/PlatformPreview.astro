@@ -17,10 +17,14 @@ const cta = locale === 'fr' ? 'Explorer la plateforme'
   : locale === 'zh-TW' ? '探索平台'
   : 'Explore the platform';
 
+const buildLabel = locale === 'fr' ? 'Construire' : locale === 'zh' ? '构建' : locale === 'zh-TW' ? '建構' : 'Build';
+const connectLabel = locale === 'fr' ? 'Connecter' : locale === 'zh' ? '连接' : locale === 'zh-TW' ? '連接' : 'Connect';
+const composeLabel = locale === 'fr' ? 'Composer' : locale === 'zh' ? '编排' : locale === 'zh-TW' ? '編排' : 'Compose';
+
 const packages = [
   {
     step: '01',
-    label: 'Build',
+    label: buildLabel,
     name: '@casys/mcp-server',
     tagline: locale === 'fr' ? 'Le Hono pour MCP.' : 'The Hono for MCP.',
     desc: locale === 'fr'
@@ -32,7 +36,7 @@ const packages = [
   },
   {
     step: '02',
-    label: 'Connect',
+    label: connectLabel,
     name: '@casys/mcp-bridge',
     tagline: locale === 'fr' ? 'MCP vers Telegram Mini Apps.' : 'Turn MCP tools into Telegram Mini Apps.',
     desc: locale === 'fr'
@@ -44,7 +48,7 @@ const packages = [
   },
   {
     step: '03',
-    label: 'Compose',
+    label: composeLabel,
     name: '@casys/mcp-compose',
     tagline: locale === 'fr' ? 'Collecte, compose et synchronise.' : 'Collect, compose, and sync MCP UIs.',
     desc: locale === 'fr'

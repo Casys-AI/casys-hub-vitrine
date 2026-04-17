@@ -6,8 +6,19 @@ import { useTranslations } from '../../../i18n';
 const locale = (Astro as any).currentLocale ?? 'fr';
 const content = useTranslations(locale).mcpEinvoicePage;
 const localePrefix = locale === 'en' ? '' : `/${locale}`;
+const jsonLd = [{
+  "@context": "https://schema.org",
+  "@type": "Service",
+  "name": "MCP E-Invoice (French e-invoicing)",
+  "description": "Production MCP server for French e-invoicing mandate (2026). 27 tools covering invoice lifecycle: issue, search, status tracking, DGFiP reporting. PA-agnostic adapter.",
+  "provider": { "@type": "Organization", "name": "Casys AI", "url": "https://casys.ai" },
+  "serviceType": "AI integration",
+  "areaServed": "FR",
+  "category": "AI Agents / E-invoicing / Compliance",
+  "url": "https://github.com/Casys-AI/mcp-einvoice"
+}];
 ---
 
-<LandingLayout title="MCP E-Invoice | Casys AI" description="Serveur MCP facturation électronique française. 27 outils pour le cycle de vie facture, annuaire, suivi de statut et e-reporting DGFiP." ogImage="/og/use-case/mcp-einvoice-fr.png">
+<LandingLayout title="MCP E-Invoice | Casys AI" description="Serveur MCP facturation électronique française. 27 outils pour le cycle de vie facture, annuaire, suivi de statut et e-reporting DGFiP." ogImage="/og/use-case/mcp-einvoice-fr.png" jsonLd={jsonLd}>
   <McpProductPage content={content} githubUrl="https://github.com/Casys-AI/mcp-einvoice" localePrefix={localePrefix} />
 </LandingLayout>

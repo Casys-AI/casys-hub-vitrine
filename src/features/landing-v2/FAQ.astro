@@ -56,6 +56,16 @@ const faqJsonLd = {
         </details>
       ))}
     </div>
+
+    {content.closingCta && (
+      <div class="faq-closing">
+        <p class="faq-closing-prompt">{content.closingCta.prompt}</p>
+        <a href={content.closingCta.url} class="faq-closing-cta">
+          <span class="material-symbols-rounded" aria-hidden="true">{content.closingCta.icon}</span>
+          <span>{content.closingCta.ctaLabel}</span>
+        </a>
+      </div>
+    )}
   </div>
 </section>
 
@@ -243,6 +253,45 @@ const faqJsonLd = {
     max-width: 680px;
   }
 
+  /* FAQ closing CTA */
+  .faq-closing {
+    margin-top: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    text-align: center;
+  }
+
+  .faq-closing-prompt {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .faq-closing-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 28px;
+    border-radius: 999px;
+    background: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-primary);
+    text-decoration: none;
+    font-size: 0.93rem;
+    font-weight: 600;
+    transition: transform 180ms ease, filter 180ms ease;
+  }
+
+  .faq-closing-cta:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.08);
+  }
+
+  .faq-closing-cta .material-symbols-rounded {
+    font-size: 20px;
+  }
+
   /* Mobile */
   @media (max-width: 768px) {
     section {
@@ -355,6 +404,15 @@ const faqJsonLd = {
 
   html[data-theme="dark"] #faq .faq-answer {
     color: var(--casys-warm-text-secondary);
+  }
+
+  html[data-theme="dark"] #faq .faq-closing-prompt {
+    color: var(--casys-warm-text-muted);
+  }
+
+  html[data-theme="dark"] #faq .faq-closing-cta {
+    background: var(--casys-warm-accent);
+    color: #1a1815;
   }
 </style>
 

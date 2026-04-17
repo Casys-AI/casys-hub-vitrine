@@ -248,3 +248,13 @@ iframe:
   label: iframe
   permalink: /iframe
   description: iframe embedding, WebView constraints, sandbox boundaries
+
+make:
+  label: Make
+  permalink: /make
+  description: Make (ex-Integromat) — low-code automation platform with MCP support
+
+automation:
+  label: Automation
+  permalink: /automation
+  description: Automation workflows — iPaaS, scenario orchestration, agent triggers

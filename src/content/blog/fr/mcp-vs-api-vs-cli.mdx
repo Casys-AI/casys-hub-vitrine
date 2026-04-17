@@ -1,0 +1,94 @@
+---
+title: "MCP vs API vs CLI : non, MCP n'est pas mort"
+description: "Une partie des devs répète que MCP serait inutile face au CLI. Analyse factuelle : ce que MCP, API et CLI font vraiment, et pourquoi les trois coexistent."
+author: "Erwan Lee Pesle"
+date: 2026-04-17
+tags:
+  - mcp
+  - mcp-server
+  - agents
+category: "Analyse"
+language: fr
+snippet: "« Pourquoi un protocole quand un shell suffit ? » Ce que ratent les devs qui disent que MCP est mort. Comparaison factuelle entre MCP, API et CLI pour les agents IA."
+featured: false
+draft: false
+---
+
+> « Pourquoi un protocole quand un `--help` suffit ? » Depuis quelques mois, une partie des devs répète que MCP serait inutile face au CLI. L'argument est séduisant en démo, bancal en prod. Voici ce que MCP, API et CLI font vraiment — trois couches, pas des concurrents.
+
+## Le débat en une phrase
+
+La ligne typique : « pas besoin de MCP, le modèle a juste à lire la CLI avec `--help` et à l'appeler via `bash`. » Elle est portée par des comptes qui surfent sur les démos "computer use" d'Anthropic et les agents shell-driven. Elle marche sur une démo. Elle casse dès que vous mettez des agents en production pour d'autres que vous.
+
+Voici pourquoi.
+
+## Trois définitions rapides
+
+**API** — une interface HTTP exposée par un service. Entrée/sortie typées (JSON), souvent documentée par OpenAPI. Pensée pour être appelée par du code, pas par un modèle.
+
+**CLI** — un programme en ligne de commande. Entrée par flags et arguments, sortie sur `stdout` (texte, parfois JSON). Pensée pour un humain dans un shell. La doc c'est `--help` ou le man.
+
+**MCP** — le [Model Context Protocol](https://modelcontextprotocol.io), un standard ouvert publié par Anthropic en novembre 2024. Un serveur MCP expose trois primitives — tools, resources, prompts — avec des schémas JSON typés, de l'auth OAuth2, et (via [MCP Apps](/blog/mcp-apps-mobile-ux-patterns)) des UIs interactives rendues dans le client.
+
+Ces trois couches ne s'adressent pas au même problème.
+
+## Comparatif honnête
+
+| Critère | API | CLI | MCP |
+|---|---|---|---|
+| **Schéma I/O** | OpenAPI (si publiée) | `--help` en prose | JSON Schema natif |
+| **Sortie** | JSON typé | `stdout` texte | JSON typé + validé |
+| **Auth** | Bearer, API key, OAuth2 | Creds en env / `~/.config` | OAuth2 natif, RFC 9068, tokens scopés |
+| **Coût contexte par tool** | 100-300 tokens (parse OpenAPI) | 200 tokens à 5k+ (lecture `--help` ou man) | 50-200 tokens (tool definition) |
+| **Découvrabilité** | `GET /openapi.json` si exposée | `ls /usr/bin`, deviner | `tools/list` avec schémas |
+| **UI agent-native** | Non | Non | Oui (MCP Apps, via UI resources) |
+| **Sandboxing** | Niveau réseau | Shell = accès OS | Par tool, fine-grained |
+| **Observabilité** | Logs serveur, à instrumenter | Invisible sans wrapper | Hooks protocolaires par call |
+| **Modèles plus petits** | Fragile (parsing réponse) | Cassant (parse `stdout`, ANSI, tableaux) | Robuste (JSON validé) |
+
+## Ce que les « MCP is dead » ratent
+
+**1. Le coût en contexte est asymétrique.** Un agent qui découvre un outil via CLI doit, au minimum, lire `--help`. Pour un outil inconnu, c'est parfois le man page entier (5k+ tokens). Sur une session avec 10 outils différents, on brûle 20-50k tokens juste pour apprendre la syntaxe. MCP te donne 10 tool definitions en ~1,5k tokens, schémas validés, déjà typés pour l'appel.
+
+**2. Parser du `stdout`, c'est fragile.** Les petits modèles — Haiku, Gemini Flash, open source sub-70B — galèrent sur les sorties texte avec ANSI escapes, tableaux ASCII, erreurs en prose. MCP leur sert du JSON validé. La différence de taux de succès est massive quand on descend en taille de modèle. C'est précisément quand tu veux économiser des coûts d'inférence que la CLI te coûte le plus.
+
+**3. MCP Apps n'ont pas d'équivalent CLI.** Une UI resource MCP expose des affordances structurées — liste sélectionnable, formulaire typé, visualisation. Le modèle ne *lit* pas une UI, il déclenche des intents sur des composants. CLI ne peut pas faire ça sans parser du `stdout` et reconstruire mentalement la structure. [On l'a vu côté mobile](/blog/mcp-apps-mobile-ux-patterns) : certains patterns ne sont atteignables qu'avec des UI resources.
+
+**4. Auth multi-utilisateur, c'est un autre monde.** CLI suppose des creds en env ou `~/.config/`. Pour un agent qui sert plusieurs users, ça veut dire copier des secrets partout, sans scoping, sans rotation. MCP a OAuth2 natif, des tokens scopés par user, du RFC 9068. C'est la différence entre « outil dev » et « outil service ».
+
+**5. Sandboxing.** Donner un shell à un agent, c'est lui donner accès OS. MCP permet des permissions par tool : cet agent peut appeler `list_invoices` mais pas `delete_invoice`. Pour un agent autonome en entreprise, cette granularité n'est pas optionnelle.
+
+## Quand CLI gagne honnêtement
+
+Il y a des cas où la CLI est le bon choix :
+
+- **R&D agent one-shot.** Tu explores, t'as pas envie d'écrire un wrapper MCP pour chaque outil.
+- **Outils shell-natifs.** `find | xargs | grep`, manipulation fichiers, pipes. C'est ce que le shell fait bien, nativement.
+- **Outils sans serveur MCP disponible.** Access immédiat, zéro infra côté serveur.
+- **Tâches internes d'un agent dev.** Claude Code lui-même utilise un shell — c'est cohérent pour ce use case.
+
+CLI comme *fill-in* ou accès shell, oui. CLI comme *substitut* à MCP pour des agents production servant plusieurs users, non.
+
+## Et les API dans tout ça ?
+
+Une API c'est la couche de transport sous MCP. Un serveur MCP sérieux *est souvent* backed par une API — MCP est l'adaptateur entre l'API et l'agent. Tu n'as pas à choisir : ton service a une API REST que tes humains utilisent + un serveur MCP que tes agents utilisent, backed par la même logique métier.
+
+Le seul anti-pattern : forcer le modèle à appeler ton API brute avec `curl` et à parser la réponse. Ça marche sur une démo. En prod, t'auras payé en contexte et en erreurs de parsing ce que MCP t'aurait donné gratuitement.
+
+## Notre lecture
+
+MCP n'est pas « en concurrence » avec CLI. Ce sont des couches qui s'adressent à des problèmes différents :
+
+- **CLI** — accès shell pour exploration, R&D, ops, fill-in quand rien d'autre n'existe.
+- **API** — transport HTTP brut, orienté code humain, base du backend.
+- **MCP** — protocole structuré pour agents en prod : typage, auth, UI, découvrabilité, observabilité.
+
+Les gens qui répètent « MCP is dead » regardent une couche (le fill-in shell) et ignorent les autres (auth multi-user, MCP Apps, context efficiency, observabilité). Ils confondent « ça marche en démo » avec « ça tient en production ».
+
+Si tu construis un agent qui sert plusieurs users, qui doit exposer des UIs dans claude.ai ou ChatGPT Apps, qui doit être observable, qui doit être auditable, tu veux MCP. Pas à la place de la CLI, en plus d'elle quand elle a sa place.
+
+Et si tu te demandes concrètement comment construire un serveur MCP qui tient en prod, [le guide est ici](/blog/mcp-server-guide).
+
+---
+
+*Envie de construire des serveurs MCP qui tiennent en production ? [Regardez la plateforme Casys →](/mcp-platform)*

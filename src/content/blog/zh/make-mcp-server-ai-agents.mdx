@@ -1,0 +1,131 @@
+---
+title: "Make.com AI 智能体：MCP 服务器带来什么（以及它还缺什么）"
+description: "Make 如何让每个场景变成 AI 智能体可调用的 MCP 工具。配置、具体示例、MCP Apps 的空缺，以及我们测试后的感受。"
+author: "Erwan Lee Pesle"
+date: 2026-04-17
+tags:
+  - mcp
+  - mcp-server
+  - agents
+  - make
+  - automation
+category: "产品"
+language: zh
+snippet: "Make MCP Server 已进入 Early Access。每个 active 或 on-demand 场景都可以变成 AI 智能体的工具。我们测试过了——这里是它适合做什么，以及短板在哪。"
+featured: false
+draft: false
+---
+
+> Make MCP Server 目前处于 *Early Access* 阶段。你 Make 账户里每一个 active 或 on-demand 场景，都可以变成 AI 智能体可调用的工具。能力很强，配置还不够简单，而且有一块拼图仍然缺失：MCP Apps。
+
+## Make MCP Server 做了什么
+
+Make 把自己的编排器（2,000+ SaaS 集成）接入了 [Model Context Protocol](https://modelcontextprotocol.io)。结果就是：你已经搭好的场景，直接变成 AI 智能体内可用的工具。一个"新建 HubSpot 商机 → Slack → Google Sheets"场景可以像调用普通函数一样被 Claude 调用——智能体填入参数，Make 执行，结果以 JSON 形式返回。
+
+对外暴露两类工具：
+
+- **场景运行工具**：所有套餐可用。将你的 `active` 或 `on-demand` 场景作为 MCP 工具运行。
+- **管理工具**：仅限付费套餐。允许从智能体侧创建、修改和触发场景。
+
+[官方页面](https://developers.make.com) 在撰写本文时仍将该功能标注为 *Early Access*。
+
+## 场景变成工具
+
+Make 会从场景的输入输出自动推断工具的 schema。由 `Webhook` 或 `On-Demand Trigger` 模块触发的场景，会将其输入字段作为工具参数暴露出来。
+
+具体示例。看这个场景：
+
+```
+[On-Demand] → [HubSpot: Get Deal] → [Slack: Post Message] → [Google Sheets: Add Row]
+```
+
+触发器输入为 `deal_id`（string）和 `notify_channel`（string）。在智能体侧，工具呈现为：
+
+```json
+{
+  "name": "hubspot_deal_notify",
+  "description": "Fetch a HubSpot deal, notify Slack, log to Sheets",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "deal_id":        { "type": "string" },
+      "notify_channel": { "type": "string" }
+    },
+    "required": ["deal_id", "notify_channel"]
+  }
+}
+```
+
+智能体调用 `hubspot_deal_notify({ deal_id: "123", notify_channel: "#sales" })`，Make 运行场景，输出以 JSON 返回。
+
+## 配置：还不到 30 秒能搞定
+
+要将 MCP 客户端（Claude Desktop、ChatGPT Apps 或自定义客户端）接入 Make：
+
+1. 找到你的 **Make zone**（`eu1`、`eu2`、`us1`、`us2`）——登录后 URL 里就有。
+2. 在 **OAuth**（`https://mcp.make.com`）和**账户里生成的 MCP token**（zone 专属 URL：`https://<ZONE>.make.com/mcp/u/<TOKEN>/stateless`）之间二选一。
+3. 将 URL 加到客户端配置里。以 Claude Desktop 为例：
+
+```json
+{
+  "mcpServers": {
+    "make": {
+      "url": "https://eu2.make.com/mcp/u/<MCP_TOKEN>/stateless"
+    }
+  }
+}
+```
+
+4. 重启客户端。你的场景就会出现在工具列表里。
+
+**我们测试后的感受**：对新手来说，远不止 30 秒。你需要理解 zone 的概念，在 OAuth 和 token 之间做选择，还要翻文档才能找到不同传输协议（stateless streamable HTTP、SSE、Cloudflare proxy）对应的正确 URL 格式。没有任何阻塞性问题，但摩擦是真实存在的。测试时还是 Early Access——Make 迭代很快，这些摩擦大概率会消失。
+
+从实质上看，这是 Make 非常漂亮的一步棋。几次点击就能把 2,000+ SaaS 集成变成 MCP 工具，一行服务端代码都不用写，这种杠杆非常罕见。
+
+## 超时与异步执行
+
+Make 场景可能运行很长时间。MCP Server 通过较短的客户端侧超时加异步输出获取来应对这个问题：
+
+- 场景运行：OAuth **25 秒**，MCP token **40 秒**。
+- 管理工具：OAuth **30 秒**，特定传输协议下 token 最长 **5 分 20 秒**。
+- 超时后场景仍继续运行最长 **40 分钟**；输出可异步获取。
+
+这是对"LLM 不愿意等十分钟工具调用"这一问题的务实解答。
+
+## 还缺什么：MCP Apps
+
+有一点要说清楚：**Make MCP Server 返回的是 JSON，不是应用界面**。
+
+[MCP Apps](/blog/mcp-apps-mobile-ux-patterns) 规范新增了 *UI resources* 的概念——可交互的视图（列表、表单、表格），直接在 AI 客户端（claude.ai、ChatGPT Apps）内渲染。不只是结构化数据，而是一个界面。
+
+**我们在这一点上的看法**：Make 落后于 [Windmill](https://www.windmill.dev/docs/core_concepts/apps_editor) 这类工具——后者平台内置了应用编辑器（拖拽 + 代码），以及 n8n 的表单节点。今天的 Make MCP Server = 数据调用。claude.ai 里不渲染任何 UI。这一块大概率会来——但就目前而言，如果你想在智能体侧要一个可交互界面，要么自己构建原生支持 MCP Apps 的服务器，要么去找已经有 UI 层的平台。
+
+## Make 是正确选择的时机
+
+- 你已经在用 Make，且有场景在运行。
+- 2,000+ 原生集成覆盖了你的外围服务：HubSpot、Slack、Notion、Google Workspace、Airtable、Gmail 等。
+- 你希望智能体在一天内就能触发自动化，而不是一个迭代周期。
+- 40 分钟异步模式对你适用——你不需要强同步响应。
+
+## 什么时候应该自己搭 MCP 服务器
+
+- 你有不适合用场景形态表达的业务逻辑。
+- 你需要服务端 OAuth2，带有由你的授权服务器签发的 JWT RFC 9068（见我们的 [Auth0 / OAuth2 MCP 指南](/blog/mcp-authentication-claude-ai-oauth2)）。
+- 你想要 **MCP Apps**——在智能体内渲染的可交互 UI，而不只是 JSON。
+- 你的延迟预算很紧（Make 多了一个网络跳点加场景执行时间）。
+- 你需要每次调用的可观测性：追踪、每工具指标、细粒度调试。
+
+[生产级 MCP 服务器指南](/blog/mcp-server-guide) 涵盖了需要搭建的内容。[@casys/mcp-server](/mcp-server) 框架处理中间件、认证和传输。
+
+## 我们的判断
+
+Make MCP Server 和自定义 MCP 服务器并不竞争——它们针对不同的层级。
+
+- **Make** 负责 SaaS 外围：快速触发、轻量自动化、开箱即用 2,000+ 集成、零服务端代码。
+- **自定义服务器** 负责业务核心：领域逻辑、服务端认证、MCP Apps、细粒度可观测性、延迟控制。
+
+这和经典 iPaaS（Zapier、Make）与内部后端之间的关系是同一个模式。你不必二选一。你大概率两者都需要，通过 MCP 连到同一个智能体。
+
+---
+
+*想构建承载业务核心的 MCP 服务器？[来看看 Casys 平台 →](/mcp-platform)*

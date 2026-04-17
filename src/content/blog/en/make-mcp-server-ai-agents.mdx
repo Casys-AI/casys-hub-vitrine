@@ -1,0 +1,131 @@
+---
+title: "Make.com AI agents: what the MCP server unlocks (and what it doesn't)"
+description: "How Make turns every scenario into an MCP tool your AI agent can call. Setup, concrete example, the MCP Apps gap, and our take after testing."
+author: "Erwan Lee Pesle"
+date: 2026-04-17
+tags:
+  - mcp
+  - mcp-server
+  - agents
+  - make
+  - automation
+category: "Product"
+language: en
+snippet: "Make's MCP Server launched in Early Access. Every active or on-demand scenario becomes an AI-agent-callable tool. We tested it — here's what it's good for, and where it falls short."
+featured: false
+draft: false
+---
+
+> Make MCP Server is in *Early Access*. Every active or on-demand scenario in your Make account becomes a tool your AI agent can call. It's powerful, the setup isn't trivial yet, and one piece of the puzzle is still missing: MCP Apps.
+
+## What Make MCP Server does
+
+Make connected its orchestrator (2,000+ SaaS integrations) to the [Model Context Protocol](https://modelcontextprotocol.io). The result: scenarios you've already built become tools available inside your AI agent. A "New HubSpot deal → Slack → Google Sheets" scenario can be called by Claude like any other function — the agent fills in the parameters, Make executes, and the result comes back as JSON.
+
+Two categories of tools are exposed:
+
+- **Scenario-run tools**: available on all plans. They run your `active` or `on-demand` scenarios as MCP tools.
+- **Management tools**: reserved for paid plans. They let you create, modify, and trigger scenarios from the agent.
+
+The [official page](https://developers.make.com) still marks the feature as *Early Access* at the time of writing.
+
+## A scenario becomes a tool
+
+Make automatically infers the tool schema from the scenario's inputs and outputs. A scenario triggered by a `Webhook` or `On-Demand Trigger` module exposes its input fields as tool parameters.
+
+Concrete example. Take this scenario:
+
+```
+[On-Demand] → [HubSpot: Get Deal] → [Slack: Post Message] → [Google Sheets: Add Row]
+```
+
+With trigger inputs `deal_id` (string) and `notify_channel` (string). On the agent side, the tool appears as:
+
+```json
+{
+  "name": "hubspot_deal_notify",
+  "description": "Fetch a HubSpot deal, notify Slack, log to Sheets",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "deal_id":        { "type": "string" },
+      "notify_channel": { "type": "string" }
+    },
+    "required": ["deal_id", "notify_channel"]
+  }
+}
+```
+
+The agent calls `hubspot_deal_notify({ deal_id: "123", notify_channel: "#sales" })`, Make runs the scenario, the output comes back as JSON.
+
+## Setup: not yet 30 seconds
+
+To connect an MCP client (Claude Desktop, ChatGPT Apps, or a custom client) to Make:
+
+1. Find your **Make zone** (`eu1`, `eu2`, `us1`, `us2`) — it's in the URL when you're logged in.
+2. Choose between **OAuth** (`https://mcp.make.com`) or an **MCP token** generated in your profile (zone-specific URL: `https://<ZONE>.make.com/mcp/u/<TOKEN>/stateless`).
+3. Add the URL to the client config. For Claude Desktop:
+
+```json
+{
+  "mcpServers": {
+    "make": {
+      "url": "https://eu2.make.com/mcp/u/<MCP_TOKEN>/stateless"
+    }
+  }
+}
+```
+
+4. Restart the client. Your scenarios appear in the tool list.
+
+**Our take after testing**: it's not 30 seconds for a newcomer. You need to understand zones, decide between OAuth and token, and dig through the docs to find the right URL pattern depending on the transport (stateless streamable HTTP, SSE, Cloudflare proxy). Nothing is blocking, but the friction is real. This was Early Access at the time of testing — Make moves fast, and that friction will probably disappear.
+
+On substance, it's an excellent move from Make. Exposing 2,000+ SaaS integrations as MCP tools in a few clicks, without writing a single line of server code, is a rare lever.
+
+## Timeouts and async execution
+
+Make scenarios can run for a long time. The MCP Server handles this with short client-side timeouts and asynchronous output retrieval:
+
+- Scenario-run: **25 s** with OAuth, **40 s** with MCP token.
+- Management: **30 s** OAuth, **up to 5 minutes 20** with token on certain transports.
+- A scenario keeps running for up to **40 minutes** after the timeout; outputs are retrievable asynchronously.
+
+This is a pragmatic answer to the problem of LLMs that won't wait ten minutes on a tool call.
+
+## What's still missing: MCP Apps
+
+Worth being clear about: **Make MCP Server returns JSON, not apps**.
+
+The [MCP Apps](/blog/mcp-apps-mobile-ux-patterns) spec adds the notion of *UI resources* — interactive views (lists, forms, tables) rendered directly in the AI client (claude.ai, ChatGPT Apps). Not just structured data: an interface.
+
+**Our take on this front**: Make is behind tools like [Windmill](https://www.windmill.dev/docs/core_concepts/apps_editor), which already has an app editor built into the platform (drag-and-drop + code), or n8n and its form nodes. Today, Make MCP Server = data calls. No UI rendered in claude.ai. It'll probably come — but for now, if you want an interactive interface on the agent side, you either need to build your own server with native MCP Apps, or look at platforms that already have the UI layer.
+
+## When Make is the right choice
+
+- You're already on Make and have scenarios running.
+- The 2,000+ native integrations cover your periphery: HubSpot, Slack, Notion, Google Workspace, Airtable, Gmail, and so on.
+- You want your agents triggering automations within a day, not a sprint.
+- The 40-minute async pattern works for you — you don't need tight synchronous responses.
+
+## When to build your own MCP server
+
+- You have business logic that doesn't fit a scenario shape.
+- You need server-side OAuth2, with JWT RFC 9068 signed by your Authorization Server (see our [Auth0 / OAuth2 guide for MCP](/blog/mcp-authentication-claude-ai-oauth2)).
+- You want **MCP Apps** — interactive UIs rendered in the agent, not just JSON.
+- Your latency budget is tight (Make adds a network hop + scenario execution time).
+- You need per-call observability: tracing, per-tool metrics, fine-grained debugging.
+
+The [production MCP server guide](/blog/mcp-server-guide) covers what to put in place. The [@casys/mcp-server](/mcp-server) framework handles middleware, auth, and transport.
+
+## Our read
+
+Make MCP Server and a custom MCP server are not competing — they address different layers.
+
+- **Make** for the SaaS periphery: fast triggers, lightweight automations, 2,000+ integrations out of the box, zero server code.
+- **Custom server** for the business core: domain logic, server-side auth, MCP Apps, fine observability, latency control.
+
+This is the same pattern as between a classic iPaaS (Zapier, Make) and an internal backend. You don't have to choose. You probably need both, wired to the same agent via MCP.
+
+---
+
+*Want to build the MCP server that carries your business core? [Take a look at the Casys platform →](/mcp-platform)*

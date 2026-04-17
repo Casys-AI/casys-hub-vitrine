@@ -45,15 +45,15 @@ export const en = {
   // LANDING V2 SECTIONS
   // ========================================
   hero: {
-    kicker: "Agentic AI Integrator",
-    titleLine1: "We wire AI",
-    titleLine2: "into your business",
-    subtitle:
-      "AI agents wired into your ERP, CRM, and internal tools. Observable, open-source stack.",
+    kicker: "MCP integrator for AI agents",
+    titleLine1: "MCP servers",
+    titleLine2: "for your AI agents",
+    subtitle: "In production: ERPNext, e-invoicing, CRM, internal tools. Interactive demos on GitHub.",
     cta: {
       primary: { text: "See our work", icon: "arrow_forward", url: "#use-cases-preview" },
       secondary: { text: "Talk to us", icon: "mail", url: "#contact" },
     },
+    proofLabel: "Standard connectors",
     proofs: [
       { name: "MCP ERPNext", stat: "97 tools", url: "/use-cases/mcp-erpnext", icon: "database" },
       { name: "MCP eInvoice", stat: "36 tools", url: "/use-cases/mcp-einvoice", icon: "receipt_long" },
@@ -87,8 +87,8 @@ export const en = {
     note:
       "Built for the 2026 French e-invoicing mandate. The same adapter pattern extends to any certified platform.",
     cta: {
-      primary: { text: "View on GitHub", icon: "open_in_new", url: "https://github.com/Casys-AI/mcp-einvoice" },
-      secondary: { text: "Talk to us", icon: "mail", url: "#contact" },
+      primary: { text: "Talk to us", icon: "mail", url: "#contact" },
+      secondary: { text: "View on GitHub", icon: "open_in_new", url: "https://github.com/Casys-AI/mcp-einvoice" },
     },
     media: {
       type: "image",
@@ -418,6 +418,10 @@ export const en = {
         ],
       },
     ],
+    trajectoryLabels: ["Genesis", "Refinement", "Current state"],
+    sideFooterLabel: "Since",
+    sideFooterValue: "2013+",
+    viewReposLabel: "View repositories",
     contactCta: {
       text: "Contact us",
       url: "#contact",
@@ -451,6 +455,12 @@ export const en = {
     subtitle: "Common questions about Casys, the stack, and consulting.",
     categories: ["Platform", "Stack", "Consulting", "General"],
     allLabel: "All",
+    closingCta: {
+      prompt: "Your question isn't listed?",
+      ctaLabel: "Talk to us",
+      url: "#contact",
+      icon: "mail",
+    },
     faqs: [
       {
         category: "Platform",

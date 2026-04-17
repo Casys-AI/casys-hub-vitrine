@@ -1,0 +1,153 @@
+---
+title: "什麼是 MCP 伺服器？附範例的入門指南"
+description: "通俗解說 MCP 伺服器的作用、它暴露的三大原語（工具、資源、提示），以及它與普通 API 的差異。附程式碼範例。"
+author: "Erwan Lee Pesle"
+date: 2026-04-17
+tags:
+  - mcp
+  - mcp-server
+  - agents
+category: "Explainer"
+language: zh-TW
+snippet: "MCP 伺服器是一個小型服務，透過 JSON-RPC 向 AI 智慧體暴露工具、資源和提示。以下是它的實際作用，通俗易懂。"
+featured: false
+draft: false
+---
+
+**MCP 伺服器**是一個小型服務，AI 智慧體可以呼叫它來發現並執行各種能力——可以執行的工具、可以讀取的資料，以及可以使用的提示模板。可以把它理解為某個具體系統的驅動程式或轉接器：PostgreSQL MCP 伺服器知道如何與 Postgres 通訊，GitHub MCP 伺服器知道如何與 GitHub API 通訊，而你自訂的 MCP 伺服器則知道如何與你指向的任何內部系統通訊。[Model Context Protocol](https://modelcontextprotocol.io) — 由 Anthropic 於 2024 年 11 月發布，並於 2025 年 12 月捐贈給 Linux 基金會旗下的 Agentic AI Foundation — 是精確定義這種通訊方式的標準。每個 MCP 伺服器都遵循同一個協議，因此任何相容 MCP 的客戶端——Claude、Cursor、VS Code Copilot、自訂智慧體——都可以連接到任何 MCP 伺服器，無需撰寫自訂整合程式碼。
+
+---
+
+## MCP 伺服器究竟做什麼
+
+MCP 伺服器透過 **JSON-RPC 2.0** 暴露三類原語。每類原語對連接伺服器的 AI 客戶端有不同的用途。
+
+### 工具（tools）
+
+工具是可呼叫的函式。MCP 伺服器為每個工具宣告名稱、描述（模型讀取描述來決定何時呼叫）以及輸入的 JSON Schema。當智慧體決定使用某個工具時，它發送一個 `tools/call` 請求；伺服器執行邏輯並回傳結果。
+
+具體範例：一個帳單 MCP 伺服器可能暴露名為 `list_invoices` 的工具，參數為 `{ customer_id: string, limit: number }`。模型讀取描述後，判斷這是處理「顯示客戶 X 最近 5 張發票」的正確工具，並發起呼叫。伺服器查詢資料庫並回傳結構化 JSON。
+
+工具可以讀取或寫入。規範對副作用沒有限制——工具可以建立記錄、發送電子郵件或觸發部署。你撰寫的描述決定了模型是否會呼叫它，因此準確性至關重要。
+
+### 資源（resources）
+
+資源是可讀資料。每個資源有一個 URI 和 MIME 類型。客戶端可以呼叫 `resources/list` 來發現可用資源，然後呼叫 `resources/read` 來取得內容。
+
+具體範例：一個文件 MCP 伺服器可能將 `file:///project/README.md` 暴露為 text/markdown 資源。在決定使用哪個工具之前，智慧體可以讀取 README 來了解專案結構。與工具不同，資源是被動的——它們暴露的是模型可以作為上下文拉取的資料，而不是可以觸發的操作。
+
+### 提示（prompts）
+
+提示是可複用的訊息模板。伺服器可以暴露命名模板，客戶端取得後插入對話中。具體範例：一個程式碼審查伺服器可能暴露一個 `/summarize` 提示模板，接受 diff 作為輸入並回傳結構化摘要格式。提示是目前實作中使用最少的原語，但對於標準化領域特定工作流程向模型的呈現方式很有價值。
+
+---
+
+## 實際效果範例
+
+以下是工具定義在 MCP 線格式中的樣子——即伺服器在客戶端呼叫 `tools/list` 時回傳的內容：
+
+```json
+{
+  "name": "list_invoices",
+  "description": "List invoices for a customer. Returns up to 50 results sorted by date descending.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "customer_id": {
+        "type": "string",
+        "description": "The customer's unique identifier"
+      },
+      "limit": {
+        "type": "number",
+        "minimum": 1,
+        "maximum": 50,
+        "default": 10
+      }
+    },
+    "required": ["customer_id"]
+  }
+}
+```
+
+當智慧體呼叫它時，交換過程如下：
+
+```json
+// Agent → MCP server: tools/call
+{
+  "jsonrpc": "2.0",
+  "id": 7,
+  "method": "tools/call",
+  "params": {
+    "name": "list_invoices",
+    "arguments": { "customer_id": "cust_8a3f", "limit": 5 }
+  }
+}
+
+// MCP server → Agent: response
+{
+  "jsonrpc": "2.0",
+  "id": 7,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "[{\"id\":\"inv_001\",\"amount\":1200,\"status\":\"paid\"}, ...]"
+      }
+    ]
+  }
+}
+```
+
+模型拿到結構化文字內容後可以繼續推理——對發票進行彙總、標記逾期發票，或呼叫鏈中的下一個工具。
+
+---
+
+## MCP 伺服器 vs API
+
+這個問題經常被提起：「MCP 伺服器不就是 REST API 嗎？」
+
+並不完全是。REST API 是為已經知道哪些端點存在以及需要傳遞哪些參數的呼叫方設計的。你撰寫的程式碼硬編碼了 `/api/v1/invoices`、查詢參數、認證標頭。呼叫方具備完整的先驗知識。
+
+MCP 伺服器是為沒有任何先驗知識的 AI 智慧體設計的。智慧體連接後，發送 `tools/list`，獲得一個機器可讀的目錄——名稱、描述、輸入 schema——然後從中決定呼叫什麼。沒有硬編碼的端點。發現過程在執行時、每個會話中動態發生。
+
+MCP 也是位於傳輸層（stdio 或 HTTP）之上的協議層，而不是對現有 API 的替代。大多數 MCP 伺服器都是轉接器：GitHub MCP 伺服器在內部呼叫 GitHub REST API；你的帳單 MCP 伺服器呼叫你的帳單 API。MCP 是面向 AI 的介面。底層資料存取保持原樣不變。實際好處：一個 MCP 伺服器，任意 AI 客戶端，每個提供商無需自訂整合程式碼。
+
+---
+
+## 誰在撰寫 MCP 伺服器以及為什麼
+
+Anthropic 在[官方 MCP 伺服器儲存庫](https://github.com/modelcontextprotocol/servers)中發布了常見系統的參考伺服器——檔案系統、git、GitHub、PostgreSQL。這些涵蓋了最常見的開發者需求，並作為實作參考。
+
+社群已經建構了數百個更多的伺服器。[Smithery](https://smithery.ai) 和 [Glama](https://glama.ai/mcp/servers) 是兩個目錄，收錄了可用的 MCP 伺服器，涵蓋資料庫、雲端服務商、效率工具、開發者服務和特定領域整合。GitHub 上的 `awesome-mcp-servers` 清單是第三個起點。
+
+企業建構內部 MCP 伺服器，讓智慧體存取內部系統：內部 API、專有資料庫、自訂工作流程。Casys 就是一個例子——我們建構並維護 MCP 伺服器，作為我們自己 AI 智慧體平台的組成部分。模式始終如一：將內部系統包裝在 MCP 介面之後，組織內的任何智慧體都可以呼叫它。
+
+---
+
+## 從 MCP 伺服器到生產環境
+
+讓 MCP 伺服器響應 `tools/call` 只需半天時間。讓它處理生產流量——OAuth2 認證、按客戶端限速、可觀測性、負載下的優雅關閉——則需要相當長的時間。
+
+這些都不在 MCP 規範中。規範定義了訊息格式和三種原語。當客戶端每分鐘發送 500 個請求時如何處理、如何驗證 bearer token、如何輸出指標——這些是你自己的問題。
+
+[生產指南](/blog/mcp-server-guide)涵蓋了所有這些內容：從零開始的 TypeScript 實作、使用 JWT 和 OAuth2 預設的認證、限速、Prometheus 指標、OpenTelemetry 追蹤、Docker 和 systemd 部署。如果你正在建構一個需要應對真實使用的伺服器，就從那裡開始。
+
+對於不想手動接入每個生產關注點的團隊，[`@casys/mcp-server`](/mcp-server) 是我們使用和維護的框架——在 Deno 和 Node.js 上，它開箱即處理認證、限速、背壓和可觀測性。
+
+---
+
+MCP 伺服器是整個協議圍繞其建構的基本構件。一旦你理解了它暴露什麼以及為什麼，整個生態系統——客戶端、閘道器、登錄檔——就自然而然地清晰了。準備好建構時，從[生產指南](/blog/mcp-server-guide)開始。
+
+---
+
+**相關文章：**
+
+- [什麼是 MCP？AI 工具的 USB-C 協議](/blog/why-mcp-protocol) — MCP 為何存在以及它解決的問題
+- [MCP 伺服器生產環境：完整 TypeScript 指南](/blog/mcp-server-guide) — 從第一個工具到部署上線
+- [MCP 閘道器：為什麼你的 AI 智慧體需要它](/blog/mcp-gateway-guide) — 當單一伺服器不夠用時
+
+**參考資料：**
+
+- [Model Context Protocol 規範](https://modelcontextprotocol.io)
+- [官方 MCP 伺服器儲存庫](https://github.com/modelcontextprotocol/servers)
+- [@casys/mcp-server on JSR](https://jsr.io/@casys/mcp-server)

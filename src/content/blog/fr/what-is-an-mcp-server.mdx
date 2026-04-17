@@ -1,0 +1,153 @@
+---
+title: "Qu'est-ce qu'un serveur MCP ? Guide avec exemples concrets"
+description: "Qu'est-ce qu'un serveur MCP ? Explication claire des trois primitives (tools, resources, prompts), différences avec une API classique, et exemples de code."
+author: "Erwan Lee Pesle"
+date: 2026-04-17
+tags:
+  - mcp
+  - mcp-server
+  - agents
+category: "Explainer"
+language: fr
+snippet: "Un serveur MCP est un petit service qui expose des outils, des ressources et des prompts à un agent IA en JSON-RPC. Voici ce qu'il fait concrètement."
+featured: false
+draft: false
+---
+
+Un **serveur MCP** est un petit service qu'un agent IA peut appeler pour découvrir et exécuter des capacités — des outils qu'il peut invoquer, des données qu'il peut lire, et des templates de prompts qu'il peut utiliser. Pensez-y comme à un pilote ou un adaptateur pour un système spécifique : un serveur MCP PostgreSQL sait parler à Postgres, un serveur MCP GitHub sait parler à l'API GitHub, et votre serveur MCP interne sait parler au système métier que vous lui pointez. Le [Model Context Protocol](https://modelcontextprotocol.io) — publié par Anthropic en novembre 2024, puis cédé à l'Agentic AI Foundation sous la Linux Foundation en décembre 2025 — est le standard qui définit exactement comment cette conversation se déroule. Tout serveur MCP parle le même protocole : n'importe quel client compatible — Claude, Cursor, VS Code Copilot, un agent maison — peut se connecter à n'importe quel serveur MCP sans code d'intégration spécifique.
+
+---
+
+## Ce que fait concrètement un serveur MCP
+
+Les serveurs MCP exposent trois types de primitives via **JSON-RPC 2.0**. Chacune sert un objectif différent pour le client IA qui se connecte.
+
+### Les tools (outils)
+
+Les tools sont des fonctions appelables. Un serveur MCP déclare chaque outil avec un nom, une description (que le modèle lit pour décider quand l'invoquer) et un JSON Schema pour ses paramètres. Quand l'agent décide d'utiliser un outil, il envoie une requête `tools/call` ; le serveur exécute la logique et renvoie un résultat.
+
+Exemple concret : un serveur MCP de facturation pourrait exposer un outil `list_invoices` avec les paramètres `{ customer_id: string, limit: number }`. Le modèle lit la description, juge que c'est le bon outil pour "montre-moi les 5 dernières factures du client X", et l'appelle. Le serveur interroge la base de données et renvoie du JSON structuré.
+
+Les tools peuvent lire ou écrire. Le spec MCP n'impose aucune restriction sur les effets de bord — un outil peut créer des enregistrements, envoyer des emails ou déclencher un déploiement. La description que vous rédigez guide la décision du modèle de l'invoquer, donc la précision compte.
+
+### Les resources (ressources)
+
+Les resources sont des données lisibles. Chaque ressource a une URI et un type MIME. Un client peut appeler `resources/list` pour découvrir ce qui est disponible, puis `resources/read` pour en lire le contenu.
+
+Exemple concret : un serveur MCP de documentation pourrait exposer `file:///project/README.md` comme ressource text/markdown. Avant de décider quel outil utiliser, l'agent peut lire le README pour comprendre la structure du projet. Contrairement aux tools, les resources sont passives — elles exposent des données que le modèle peut intégrer comme contexte, pas des actions à déclencher.
+
+### Les prompts
+
+Les prompts sont des templates de messages réutilisables. Un serveur peut exposer des templates nommés que le client récupère et insère dans une conversation. Exemple concret : un serveur de revue de code pourrait exposer un template `/summarize` qui prend un diff en entrée et renvoie un format de résumé structuré. Les prompts sont la primitive la moins utilisée dans les implémentations actuelles, mais utiles pour standardiser la façon dont les workflows métier sont présentés aux modèles.
+
+---
+
+## À quoi ça ressemble en pratique
+
+Voici à quoi ressemble une définition d'outil dans le format wire MCP — ce que le serveur renvoie quand le client appelle `tools/list` :
+
+```json
+{
+  "name": "list_invoices",
+  "description": "Liste les factures d'un client. Renvoie jusqu'à 50 résultats triés par date décroissante.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "customer_id": {
+        "type": "string",
+        "description": "L'identifiant unique du client"
+      },
+      "limit": {
+        "type": "number",
+        "minimum": 1,
+        "maximum": 50,
+        "default": 10
+      }
+    },
+    "required": ["customer_id"]
+  }
+}
+```
+
+Quand l'agent l'appelle, l'échange ressemble à ceci :
+
+```json
+// Agent → serveur MCP : tools/call
+{
+  "jsonrpc": "2.0",
+  "id": 7,
+  "method": "tools/call",
+  "params": {
+    "name": "list_invoices",
+    "arguments": { "customer_id": "cust_8a3f", "limit": 5 }
+  }
+}
+
+// Serveur MCP → Agent : réponse
+{
+  "jsonrpc": "2.0",
+  "id": 7,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "[{\"id\":\"inv_001\",\"amount\":1200,\"status\":\"paid\"}, ...]"
+      }
+    ]
+  }
+}
+```
+
+Le modèle récupère du contenu texte structuré et peut continuer à raisonner à partir de là — résumer les factures, signaler les retards, ou appeler l'outil suivant dans une chaîne.
+
+---
+
+## Serveur MCP vs API
+
+La question revient souvent : "un serveur MCP, c'est pas juste une API REST ?"
+
+Pas exactement. Une API REST est conçue pour des appelants qui savent déjà quels endpoints existent et quels paramètres passer. Vous écrivez du code qui connaît `/api/v1/invoices` en dur, les query params, les headers d'auth. L'appelant a une connaissance préalable complète.
+
+Un serveur MCP est conçu pour des agents IA qui n'ont aucune connaissance préalable. L'agent se connecte, envoie `tools/list`, reçoit en retour un catalogue lisible par machine — noms, descriptions, schémas d'entrée — et décide à partir de là quoi appeler. Pas d'endpoint codé en dur. La découverte se fait à l'exécution, à chaque session.
+
+MCP est aussi une couche de protocole par-dessus un transport (stdio ou HTTP), pas un remplacement de votre API existante. La plupart des serveurs MCP sont des adaptateurs : le serveur MCP GitHub appelle l'API REST GitHub en interne ; votre serveur MCP de facturation appelle votre API de facturation. MCP est l'interface côté agent. L'accès aux données sous-jacentes reste exactement comme il est. L'avantage concret : un serveur MCP, n'importe quel client IA, sans code d'intégration spécifique à chaque fournisseur.
+
+---
+
+## Qui écrit des serveurs MCP et pourquoi
+
+Anthropic publie des serveurs de référence pour les systèmes courants — filesystem, git, GitHub, PostgreSQL — dans le [dépôt officiel MCP servers](https://github.com/modelcontextprotocol/servers). Ces serveurs couvrent les besoins développeurs les plus fréquents et servent de références d'implémentation.
+
+La communauté en a construit des centaines d'autres. [Smithery](https://smithery.ai) et [Glama](https://glama.ai/mcp/servers) sont deux registres qui cataloguent les serveurs MCP disponibles, couvrant bases de données, cloud providers, outils de productivité, services développeurs et intégrations métier. La liste `awesome-mcp-servers` sur GitHub est un troisième point de départ.
+
+Les entreprises construisent des serveurs MCP internes pour donner à leurs agents accès à leurs systèmes maison : APIs internes, bases de données propriétaires, workflows personnalisés. Casys en est un exemple — nous construisons et maintenons des serveurs MCP dans le cadre de la plateforme que nous utilisons pour nos propres agents IA. Le schéma est toujours le même : envelopper le système interne derrière une interface MCP, et n'importe quel agent de l'organisation peut l'appeler.
+
+---
+
+## Du serveur MCP à la production
+
+Faire répondre un serveur MCP à `tools/call` prend un après-midi. Le faire tenir sous du trafic réel — authentification OAuth2, rate limiting par client, observabilité, arrêt propre sous charge — prend bien plus longtemps.
+
+Rien de tout ça n'est dans le spec MCP. Le spec définit le format des messages et les trois primitives. Ce qu'il faut faire quand un client envoie 500 requêtes par minute, comment vérifier un bearer token, comment émettre des métriques — c'est votre problème.
+
+Le [guide de production](/blog/mcp-server-guide) couvre tout ça : implémentation TypeScript de zéro, auth avec JWT et presets OAuth2, rate limiting, métriques Prometheus, traces OpenTelemetry, déploiement Docker et systemd. Si vous construisez un serveur qui doit survivre à un usage réel, commencez là.
+
+Pour les équipes qui ne veulent pas câbler chaque préoccupation de production manuellement, [`@casys/mcp-server`](/mcp-server) est le framework que nous utilisons et maintenons — il gère l'auth, le rate limiting, la backpressure et l'observabilité nativement, sur Deno comme sur Node.js.
+
+---
+
+Le serveur MCP est la brique de base sur laquelle repose tout le protocole. Une fois que vous comprenez ce qu'il expose et pourquoi, le reste de l'écosystème — clients, gateways, registres — suit naturellement. Passez au [guide de production](/blog/mcp-server-guide) quand vous êtes prêt à construire.
+
+---
+
+**À lire aussi :**
+
+- [Qu'est-ce que MCP ? Le protocole USB-C des outils IA](/blog/why-mcp-protocol) — pourquoi MCP existe et le problème qu'il résout
+- [Serveur MCP en Production : Le Guide Pratique](/blog/mcp-server-guide) — du premier outil au service déployé
+- [MCP Gateway : Pourquoi vos agents en ont besoin](/blog/mcp-gateway-guide) — quand un seul serveur ne suffit plus
+
+**Références :**
+
+- [Spécification Model Context Protocol](https://modelcontextprotocol.io)
+- [Dépôt officiel des serveurs MCP](https://github.com/modelcontextprotocol/servers)
+- [@casys/mcp-server sur JSR](https://jsr.io/@casys/mcp-server)

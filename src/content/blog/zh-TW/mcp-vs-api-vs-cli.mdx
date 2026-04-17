@@ -1,0 +1,94 @@
+---
+title: "MCP vs API vs CLI：不，MCP 沒有死"
+description: "一部分開發者在重複說 MCP 沒用，用 CLI 就夠了。事實分析：MCP、API、CLI 各自做什麼，為什麼三者共存。"
+author: "Erwan Lee Pesle"
+date: 2026-04-17
+tags:
+  - mcp
+  - mcp-server
+  - agents
+category: "分析"
+language: zh-TW
+snippet: '"有 shell 為什麼還要協議？" 這是說 MCP 已死的人漏掉的東西。AI 智慧體下 MCP、API、CLI 的事實對比。'
+featured: false
+draft: false
+---
+
+> "有 `--help` 為什麼還要協議？" 幾個月來，一部分開發者不斷重複說 MCP 不如 CLI 有用。這個論點在展示中很有說服力，放到生產環境就站不住腳。以下是 MCP、API、CLI 實際做什麼——三個層次，而非競爭對手。
+
+## 爭論濃縮成一句話
+
+典型的說法是："不需要 MCP，讓模型用 `--help` 讀 CLI，然後透過 `bash` 呼叫它就行了。" 這個觀點借助 Anthropic 的 "computer use" 展示和 shell 驅動智慧體的熱潮而流行起來。在展示裡可以跑通。一旦你把智慧體部署到生產環境、服務不只你自己一個人時，就會崩掉。
+
+原因如下。
+
+## 三個快速定義
+
+**API** — 服務暴露的 HTTP 介面。型別化輸入/輸出（JSON），通常透過 OpenAPI 文件化。設計用於被程式碼呼叫，而不是被模型呼叫。
+
+**CLI** — 命令列程式。透過旗標和參數輸入，輸出到 `stdout`（文字，有時是 JSON）。為在 shell 中操作的人類設計。文件是 `--help` 或 man page。
+
+**MCP** — [Model Context Protocol](https://modelcontextprotocol.io)，Anthropic 於 2024 年 11 月發布的開放標準。MCP 伺服器暴露三種原語——工具、資源、提示——配有型別化 JSON Schema、OAuth2 認證，以及（透過 [MCP Apps](/blog/mcp-apps-mobile-ux-patterns)）在客戶端內渲染的互動式 UI。
+
+這三個層次解決的不是同一個問題。
+
+## 誠實的對比
+
+| 標準 | API | CLI | MCP |
+|---|---|---|---|
+| **I/O Schema** | OpenAPI（如果發布的話） | `--help` 散文說明 | 原生 JSON Schema |
+| **輸出** | 型別化 JSON | `stdout` 文字 | 型別化 + 驗證過的 JSON |
+| **認證** | Bearer、API key、OAuth2 | 憑證放 env / `~/.config` | 原生 OAuth2、RFC 9068、作用域 token |
+| **每工具脈絡消耗** | 100–300 tokens（解析 OpenAPI） | 200 tokens 到 5k+（讀 `--help` 或 man） | 50–200 tokens（工具定義） |
+| **可發現性** | `GET /openapi.json`（如果暴露） | `ls /usr/bin`，靠猜 | `tools/list` 含 Schema |
+| **智慧體原生 UI** | 無 | 無 | 有（MCP Apps，透過 UI 資源） |
+| **沙箱隔離** | 網路層級 | Shell = OS 存取權限 | 每工具細粒度控制 |
+| **可觀測性** | 伺服器日誌，需要額外埋點 | 沒有包裝層就不可見 | 每次呼叫的協議級鉤子 |
+| **小模型相容** | 脆弱（回應解析困難） | 易碎（解析 `stdout`、ANSI、表格） | 健壯（驗證過的 JSON） |
+
+## "MCP 已死"派漏掉的東西
+
+**1. 脈絡消耗是不對稱的。** 智慧體透過 CLI 發現工具時，至少要讀 `--help`。對於陌生工具，可能要讀完整個 man page（5k+ tokens）。一次會話用到 10 個不同工具，光學語法就消耗 20–50k tokens。MCP 用約 1.5k tokens 給你 10 個工具定義，帶驗證過的 Schema，已經是型別化的呼叫格式。
+
+**2. 解析 `stdout` 很容易出問題。** 小模型——Haiku、Gemini Flash、開源 sub-70B——在處理包含 ANSI escapes、ASCII 表格、散文格式錯誤訊息的文字輸出時很吃力。MCP 給它們提供驗證過的 JSON。隨著模型規模縮小，成功率的差異非常顯著。偏偏你嘗試降低推理成本的時候，CLI 的代價最高。
+
+**3. MCP Apps 沒有 CLI 等價物。** MCP UI 資源暴露結構化的操作介面——可選清單、型別化表單、視覺化元件。模型不是*讀取* UI，而是在元件上觸發意圖。CLI 做不到這些，除非解析 `stdout` 並在腦中重建結構。[我們在行動端也看到了這一點](/blog/mcp-apps-mobile-ux-patterns)：有些互動模式只有透過 UI 資源才能實現。
+
+**4. 多用戶認證是另一個維度。** CLI 假設憑證放在 env 或 `~/.config/` 裡。對於服務多個用戶的智慧體，這意味著到處複製密鑰——沒有作用域，沒有輪換。MCP 有原生 OAuth2、每用戶作用域 token、RFC 9068。這就是"開發工具"和"服務工具"的差距。
+
+**5. 沙箱隔離。** 給智慧體 shell 存取權限等於給了它 OS 存取權限。MCP 支援每工具權限控制：這個智慧體可以呼叫 `list_invoices`，但不能呼叫 `delete_invoice`。對於自主的企業級智慧體，這種細粒度控制不是可選項。
+
+## CLI 確實勝出的場景
+
+確實有 CLI 是正確選擇的情況：
+
+- **一次性研發智慧體。** 你在探索，沒有興趣為每個工具寫 MCP 包裝。
+- **Shell 原生工具鏈。** `find | xargs | grep`、檔案操作、管道。這是 shell 天生擅長的事情。
+- **沒有 MCP 伺服器的工具。** 立即存取，零伺服器端基礎設施。
+- **開發智慧體的內部任務。** Claude Code 本身用 shell——這對這個使用場景是合理的。
+
+CLI 作為*補充*或 shell 存取，可以。CLI 作為*替代* MCP 用於服務多用戶的生產智慧體，不行。
+
+## API 放在哪裡？
+
+API 是 MCP 底層的傳輸層。一個嚴肅的 MCP 伺服器背後通常有一個 API——MCP 是你的 API 和智慧體之間的適配器。你不必二選一：你的服務有人類用的 REST API，也有智慧體用的 MCP 伺服器，兩者背後是同一套業務邏輯。
+
+唯一的反模式：強迫模型用 `curl` 直接呼叫你的原始 API 並解析回應。在展示裡可以跑通。在生產中，你會用脈絡消耗和解析錯誤付出代價，而這些 MCP 本可以免費給你。
+
+## 我們的看法
+
+MCP 不是在"和"CLI"競爭"。它們是解決不同問題的層次：
+
+- **CLI** — shell 存取，用於探索、研發、維運，以及其他方案不存在時的補充。
+- **API** — 原始 HTTP 傳輸，面向人類程式碼，是後端的骨幹。
+- **MCP** — 生產智慧體的結構化協議：型別化、認證、UI、可發現性、可觀測性。
+
+重複"MCP 已死"的人是在看一個層次（shell 補充），而忽略了其他層次（多用戶認證、MCP Apps、脈絡效率、可觀測性）。他們把"在展示裡跑通"和"在生產中撐得住"混為一談。
+
+如果你在建構服務多個用戶的智慧體、需要在 claude.ai 或 ChatGPT Apps 內暴露 UI、需要可觀測性、需要可稽核——你需要 MCP。不是取代 CLI，而是在 CLI 合適的地方之外，另加 MCP。
+
+如果你想了解如何具體建構在生產中撐得住的 MCP 伺服器，[指南在這裡](/blog/mcp-server-guide)。
+
+---
+
+*想建構生產級 MCP 伺服器？[查看 Casys 平台 →](/mcp-platform)*

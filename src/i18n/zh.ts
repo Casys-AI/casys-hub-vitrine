@@ -47,14 +47,15 @@ export const zh: Translations = {
   // LANDING V2 SECTIONS
   // ========================================
   hero: {
-    kicker: "AI 智能体集成商",
-    titleLine1: "将 AI 接入",
-    titleLine2: "您的业务系统",
-    subtitle: "AI 智能体接入您的 ERP、CRM 和内部工具。可观测的开源技术栈。",
+    kicker: "面向 AI 智能体的 MCP 集成商",
+    titleLine1: "MCP 服务器",
+    titleLine2: "为您的 AI 智能体",
+    subtitle: "已在生产环境运行：ERPNext、电子发票、CRM、内部工具。GitHub 上有交互式演示。",
     cta: {
       primary: { text: "查看我们的工作", icon: "arrow_forward", url: "#use-cases-preview" },
       secondary: { text: "预约咨询", icon: "calendar_month", url: "https://cal.com/casys.ai" },
     },
+    proofLabel: "标准连接器",
     proofs: [
       { name: "MCP ERPNext", stat: "97 工具", url: "/zh/use-cases/mcp-erpnext", icon: "database" },
       { name: "MCP eInvoice", stat: "36 工具", url: "/zh/use-cases/mcp-einvoice", icon: "receipt_long" },
@@ -87,8 +88,8 @@ export const zh: Translations = {
     ],
     note: "专为 2026 年法国电子发票授权构建。同样的适配器模式可扩展到任何认证平台。",
     cta: {
-      primary: { text: "在 GitHub 上查看", icon: "open_in_new", url: "https://github.com/Casys-AI/mcp-einvoice" },
-      secondary: { text: "联系我们", icon: "mail", url: "#contact" },
+      primary: { text: "联系我们", icon: "mail", url: "#contact" },
+      secondary: { text: "在 GitHub 上查看", icon: "open_in_new", url: "https://github.com/Casys-AI/mcp-einvoice" },
     },
     media: {
       type: "image",
@@ -369,6 +370,10 @@ export const zh: Translations = {
         ],
       },
     ],
+    trajectoryLabels: ["起源", "精炼", "现状"],
+    sideFooterLabel: "创建于",
+    sideFooterValue: "2013+",
+    viewReposLabel: "查看代码仓库",
     contactCta: {
       text: "联系我们",
       url: "#contact",
@@ -402,6 +407,12 @@ export const zh: Translations = {
     subtitle: "关于 Casys、技术栈和合作方式的常见问题。",
     categories: ["平台", "技术栈", "咨询", "通用"],
     allLabel: "全部",
+    closingCta: {
+      prompt: "没找到您的问题？",
+      ctaLabel: "联系我们",
+      url: "#contact",
+      icon: "mail",
+    },
     faqs: [
       {
         category: "平台",

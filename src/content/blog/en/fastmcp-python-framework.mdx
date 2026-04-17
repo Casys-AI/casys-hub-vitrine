@@ -1,0 +1,126 @@
+---
+title: "FastMCP: building MCP servers in Python"
+description: "FastMCP has become the de facto Python framework for MCP servers. Pythonic decorators, auto-generated schemas, native MCP Apps — here's what it does in 2026."
+author: "Erwan Lee Pesle"
+date: 2026-04-17
+tags:
+  - mcp
+  - mcp-server
+  - agents
+  - typescript
+category: "Product"
+language: en
+snippet: "FastMCP v3.2, 24.6k GitHub stars, reportedly ~70% of MCP servers across all languages per Prefect. Here's the Python framework explained: decorators, primitives, MCP Apps, and when to pick it."
+featured: false
+draft: false
+---
+
+> If you write Python and want an MCP server, the short answer is FastMCP. It went from side-project to de facto framework — to the point where its v1 was incorporated into Anthropic's official Python SDK in 2024. Here's what it does, how it works, and when to pick it.
+
+## FastMCP in 30 seconds
+
+FastMCP is a Python framework for building [Model Context Protocol](https://modelcontextprotocol.io) servers (and clients). It was created by [Jeremiah Lowin](https://jlowin.dev), then adopted and maintained by [Prefect](https://www.prefect.io) (the company behind the Python workflow orchestrator of the same name). Apache 2.0 license. 24.6k GitHub stars at the time of writing, v3.2.4 released April 14 2026, ~1 million downloads per day according to Prefect.
+
+The pitch: turn what would otherwise be MCP plumbing into Pythonic decorators, with automatic schema generation from type hints.
+
+## Hello world
+
+The bare minimum, taken directly from the [official docs](https://gofastmcp.com):
+
+```python
+from fastmcp import FastMCP
+
+mcp = FastMCP("Demo 🚀")
+
+@mcp.tool
+def add(a: int, b: int) -> int:
+    """Add two numbers"""
+    return a + b
+
+if __name__ == "__main__":
+    mcp.run()
+```
+
+That's it. FastMCP reads the type hints (`a: int`, `b: int`, `-> int`), generates the JSON Schema for the tool, exposes the server over `stdio` by default (or `streamable HTTP` / `SSE` as alternatives), and the `"""Add two numbers"""` docstring becomes the tool's description in the protocol.
+
+Compared to writing directly with the official Python SDK — where you have to manually declare the schema, manage the lifecycle, and wrap execution — the line-count savings are real.
+
+## The primitives
+
+FastMCP exposes the three MCP primitives via decorators:
+
+- `@mcp.tool` — a function the agent can call. Types inferred from type hints.
+- `@mcp.resource(uri)` — a resource (file, data) the agent can read by URI.
+- `@mcp.prompt` — a prompt template exposed as a *slash command* in the client.
+
+And since v2, a fourth dimension: **apps** — [MCP Apps](/blog/mcp-apps-mobile-ux-patterns) that render an interactive UI directly inside the AI client (claude.ai, ChatGPT Apps). The docs put it as: *"give your tools interactive UIs rendered directly in the conversation"*. It's one of the few server implementations that adopted MCP Apps early.
+
+## FastAPI: how does it fit in?
+
+A recurring question from Python developers: "I already have a FastAPI app, can I expose my endpoints as MCP tools?" The answer is yes. FastMCP has a specific FastAPI integration that lets you mount the MCP server alongside classic HTTP routes, sharing the same process.
+
+In practice: your FastAPI app serves humans, the same process serves agents via MCP. Same business handlers, two transports. It's probably the simplest architecture for a Python backend that wants to add an agent layer without a full re-architecture.
+
+## FastMCP vs the official Python SDK
+
+This needs some precision because it's counterintuitive: **FastMCP 1.0 was integrated into Anthropic's official Python SDK in 2024**. That means if you install `anthropic-mcp-python-sdk`, you already have part of FastMCP inside.
+
+FastMCP 2.0+ and now 3.x continue as a standalone project, with features more recent than those back-ported into the official SDK — notably the apps, the FastMCP client, Prefect integrations, and hosting.
+
+In short:
+- **Official SDK** = the strict minimum, Anthropic-supported, stable base.
+- **FastMCP standalone** = the strict minimum + modern features + the ecosystem.
+
+For a new Python project, FastMCP standalone is the default. For a project that wants to minimize dependencies and only needs the core, the official SDK is enough.
+
+## FastMCP on the Python side — and the TypeScript side?
+
+FastMCP is purely Python. There is also a `fastmcp` package on npm — that's a separate, smaller project that shares the name by similarity. Don't confuse the two.
+
+On the TypeScript side, the ecosystem is fragmented: the official Anthropic SDK, several community frameworks, and — full disclosure — our own [@casys/mcp-server](/mcp-server), which targets the same "Hono for MCP" niche in TS that FastMCP targets in Python.
+
+Choosing between Python and TypeScript for an MCP server is usually a decision driven by the rest of your stack rather than MCP itself:
+
+- **Python**: if your business logic is in Python, if you do data / ML / RAG, or if you already use FastAPI or Prefect.
+- **TypeScript**: if your backend is Node, if you want to share types between your frontend and MCP server, or if you deploy on edge runtimes (Deno, Cloudflare Workers, Vercel).
+
+## Production: what FastMCP covers, and what it doesn't
+
+What FastMCP covers directly:
+- The three primitives (tools, resources, prompts) + MCP Apps.
+- The three MCP transports (stdio, streamable HTTP, SSE).
+- Automatic schema generation from type hints.
+- Hooks for authentication (but OAuth2 implementation / JWT validation remains your app's job).
+- Prefect Horizon as a free managed hosting option.
+
+What remains your problem:
+- **OAuth2 server** with an external Authorization Server (Auth0, Keycloak, yours) and [JWT RFC 9068 verification](/blog/mcp-authentication-claude-ai-oauth2).
+- **Rate limiting** and per-user/per-tool quotas.
+- **Observability**: per-call traces, metrics, structured logs.
+- **Deployment**: Docker, systemd, Kubernetes, or serverless — all possible, none prescribed.
+- **Secret management** on the server side.
+
+This is the same ceiling as any MCP framework — [Casys on the TypeScript side](/blog/mcp-server-guide) has the same limits. The MCP spec defines the protocol, not the production engineering around it.
+
+## When FastMCP is the right choice
+
+- Your team writes Python and wants an MCP server in less than a day.
+- You already have a FastAPI backend and want to add an agent surface without a full refactor.
+- You want [MCP Apps](/blog/mcp-apps-mobile-ux-patterns) (UI inside the agent) and not just JSON tool calls.
+- You're in the Prefect ecosystem (Python workflows) — the integration is native.
+
+## When to look elsewhere
+
+- Your backend is TypeScript/Node — FastMCP isn't for you; the `fastmcp` npm package is a different project.
+- You need very fine-grained control over middleware and transports (custom auth, complex routing) — a lower-level framework may be more direct.
+- You deploy on edge runtimes (Cloudflare Workers, Deno Deploy) — Python runs poorly there or not at all.
+
+## Our take
+
+FastMCP is the right Python answer for 90% of teams starting an MCP server today. The rest — auth, observability, deployment — still needs to be built, but that's true of every MCP framework, on the Python side as much as TypeScript. The language choice for your MCP server should follow the rest of your stack, not precede it.
+
+If you're on Python and starting from scratch: FastMCP. If you're on TypeScript, [we built ours](/mcp-server). Either way, the spec is the same — the portability of your clients (claude.ai, ChatGPT Apps, your custom agent) is preserved.
+
+---
+
+*Building on the TypeScript side and looking for the equivalent? [Check out the Casys platform →](/mcp-platform)*

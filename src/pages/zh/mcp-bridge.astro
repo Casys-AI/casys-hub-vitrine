@@ -4,8 +4,21 @@ import McpBridgeContent from '../../features/mcp-bridge/McpBridgeContent.astro';
 
 const pageTitle = 'MCP Apps 桥接 Telegram & LINE — @casys/mcp-bridge | Casys AI';
 const description = 'Bridge MCP Apps to Telegram Mini Apps and LINE LIFF. Turn your MCP tools into messaging apps.';
+const jsonLd = [{
+  "@context": "https://schema.org",
+  "@type": "SoftwareSourceCode",
+  "name": "@casys/mcp-bridge",
+  "description": "MCP to Telegram Mini Apps bridge. Deploy MCP tools as cross-platform messaging apps.",
+  "codeRepository": "https://github.com/Casys-AI/casys-pml/tree/main/lib/mcp-apps-bridge",
+  "programmingLanguage": "TypeScript",
+  "runtimePlatform": ["Node.js", "Deno"],
+  "license": "https://spdx.org/licenses/MIT",
+  "author": { "@type": "Organization", "name": "Casys AI", "url": "https://casys.ai" },
+  "applicationCategory": "DeveloperApplication",
+  "keywords": ["MCP", "MCP Apps", "Telegram", "Bridge", "TypeScript"]
+}];
 ---
 
-<LandingLayout title={pageTitle} description={description}>
+<LandingLayout title={pageTitle} description={description} jsonLd={jsonLd}>
   <McpBridgeContent />
 </LandingLayout>
