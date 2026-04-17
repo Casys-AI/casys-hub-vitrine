@@ -56,7 +56,7 @@ export const en = {
     proofLabel: "Standard connectors",
     proofs: [
       { name: "MCP ERPNext", stat: "97 tools", url: "/use-cases/mcp-erpnext", icon: "database" },
-      { name: "MCP eInvoice", stat: "36 tools", url: "/use-cases/mcp-einvoice", icon: "receipt_long" },
+      { name: "MCP eInvoice", stat: "27 tools", url: "/use-cases/mcp-einvoice", icon: "receipt_long" },
     ],
     authority: [
       { label: "15+ years", detail: "KM → Graphs → AI Agents" },
@@ -402,7 +402,7 @@ export const en = {
         description: "We ship production systems that solve business problems",
         highlights: [
           "Published on npm and JSR",
-          "Battle-tested in production environments",
+          "Running in production workflows since 2024",
           "We use our own tools",
         ],
       },
@@ -537,7 +537,7 @@ export const en = {
       { icon: "menu_book", title: "Documentation", description: "Setup, configuration, tool reference.", url: "https://github.com/Casys-AI/mcp-erpnext#readme" },
     ],
     quote: {
-      text: "The future of enterprise software isn't in new dashboards, but in the seamless wiring of existing intelligence into established systems of record.",
+      text: "The future of enterprise software isn't in new dashboards, but in the direct wiring of existing intelligence into established systems of record.",
       attribution: "— Casys Engineering",
     },
     video: {
@@ -905,7 +905,7 @@ const html = renderComposite(descriptor);`,
     heroTitle1: "Ship MCP Servers",
     heroTitle2: "That Scale",
     heroSubtitle:
-      "Stop reinventing auth, rate limiting, and middleware for every MCP server. One framework, composable by default, production-ready from day one.",
+      "Stop reinventing auth, rate limiting, and middleware for every MCP server. One framework, composable by default, with OAuth2, middleware pipeline, and dual transport.",
     statFeatures: "Built-in features",
     statTests: "Tests passing",
     statRelease: "Latest",
@@ -1363,7 +1363,7 @@ const html = renderComposite(descriptor);`,
         icon: "hub",
         title: "Knowledge Graphs",
         description:
-          "Schema design, query optimization, and graph-native architectures. Neo4j Professional Developer certified. From ontology modeling to production-grade graph pipelines.",
+          "Schema design, query optimization, and graph-native architectures. Neo4j Professional Developer certified. From ontology modeling to graph pipelines deployed in production.",
       },
       {
         icon: "database",
@@ -1381,7 +1381,7 @@ const html = renderComposite(descriptor);`,
         icon: "cable",
         title: "MCP Infrastructure",
         description:
-          "Server architecture, connector design, and protocol-level optimization. 500+ open-source tools shipped. We build MCP layers that are observable, testable, and production-ready.",
+          "Server architecture, connector design, and protocol-level optimization. 500+ open-source tools shipped. We build MCP layers that are observable, testable, and deployed in real workflows.",
       },
     ],
     philosophyTitle: "How We Work",
@@ -1454,7 +1454,7 @@ const html = renderComposite(descriptor);`,
       {
         icon: "swap_horiz",
         name: "Protocol Translation",
-        desc: "JSON-RPC 2.0 over WebSocket, seamless.",
+        desc: "JSON-RPC 2.0 over WebSocket, bidirectional.",
       },
       {
         icon: "smart_toy",

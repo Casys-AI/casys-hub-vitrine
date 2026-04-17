@@ -58,7 +58,7 @@ export const fr: Translations = {
     proofLabel: "Connecteurs standards",
     proofs: [
       { name: "MCP ERPNext", stat: "97 outils", url: "/fr/use-cases/mcp-erpnext", icon: "database" },
-      { name: "MCP eInvoice", stat: "36 outils", url: "/fr/use-cases/mcp-einvoice", icon: "receipt_long" },
+      { name: "MCP eInvoice", stat: "27 outils", url: "/fr/use-cases/mcp-einvoice", icon: "receipt_long" },
     ],
     authority: [
       { label: "15+ ans", detail: "KM → Graphes → Agents IA" },
@@ -300,7 +300,7 @@ export const fr: Translations = {
           {
             id: "mcp-einvoice",
             name: "@casys/mcp-einvoice",
-            tagline: "Serveur MCP de facturation electronique",
+            tagline: "Serveur MCP de facturation électronique",
             status: "v0.1.0",
             tech: "Deno",
             links: {
@@ -578,12 +578,12 @@ export const fr: Translations = {
     ctaSecondary: { text: "Nous parler" },
   },
   mcpEinvoicePage: {
-    eyebrow: "Facturation electronique",
-    title: "La facturation electronique francaise, branchee sur votre stack agent",
+    eyebrow: "Facturation électronique",
+    title: "La facturation électronique française, branchée sur votre stack agent",
     subtitle:
       "27 outils MCP pour le cycle de vie facture, l'annuaire, le suivi de statut et le e-reporting DGFiP.",
     intro:
-      "MCP E-Invoice connecte vos agents IA a l'ecosysteme de facturation electronique francais via un pattern d'adaptateur agnostique PA. Actuellement integre avec Iopole, extensible a toute plateforme agreee.",
+      "MCP E-Invoice connecte vos agents IA à l'écosystème de facturation électronique français via un pattern d'adaptateur agnostique PA. Actuellement intégré avec Iopole, extensible à toute plateforme agréée.",
     stats: [
       { value: "27", label: "Outils MCP" },
       { value: "3", label: "Formats facture" },
@@ -600,33 +600,33 @@ export const fr: Translations = {
       caption: "MCP E-Invoice dans Claude — liste de factures avec filtres de statut.",
     },
     quote: {
-      text: "La facturation electronique ne devrait pas etre un systeme separe. Ce devrait etre une capacite invisible que vos agents possedent deja.",
+      text: "La facturation électronique ne devrait pas être un système séparé. Ce devrait être une capacité invisible que vos agents possèdent déjà.",
       attribution: "— Casys Engineering",
     },
     proofs: [
       {
         title: "Cycle de vie complet",
         description:
-          "Emettre, chercher, telecharger, suivre les statuts et gerer les pieces jointes — le tout via des outils MCP.",
+          "Émettre, chercher, télécharger, suivre les statuts et gérer les pièces jointes — le tout via des outils MCP.",
       },
       {
         title: "Architecture PA-agnostique",
         description:
-          "Changez de plateforme agreee (Iopole, etc.) sans modifier le code de vos agents.",
+          "Changez de plateforme agréée (Iopole, etc.) sans modifier le code de vos agents.",
       },
       {
         title: "MCP Apps interactives",
         description:
-          "4 viewers integres : detail facture, liste de documents, timeline de statuts et fiche annuaire.",
+          "4 viewers intégrés : détail facture, liste de documents, timeline de statuts et fiche annuaire.",
       },
     ],
     whatItShowsTitle: "Ce qu'il couvre",
     whatItShows: [
-      "Emission et recherche de factures avec syntaxe Lucene",
-      "Consultation de l'annuaire PPF (France) et verification Peppol (international)",
+      "Émission et recherche de factures avec syntaxe Lucene",
+      "Consultation de l'annuaire PPF (France) et vérification Peppol (international)",
       "Gestion du cycle de vie des statuts (APPROVED, REFUSED, DISPUTED, PAYMENT_SENT...)",
       "E-reporting DGFiP pour les transactions B2C et internationales",
-      "Generation de factures CII, UBL et Factur-X",
+      "Génération de factures CII, UBL et Factur-X",
     ],
     stackTitle: "Construit sur la stack Casys",
     stackItems: [
@@ -721,39 +721,39 @@ const html = renderComposite(descriptor);`,
   },
   mcpComposePage: {
     eyebrow: "MCP COMPOSE",
-    title: "Composez des UIs MCP en dashboards unifies",
+    title: "Composez des UIs MCP en dashboards unifiés",
     subtitle:
-      "Vos serveurs MCP ont deja des UIs. mcp-compose les fait communiquer entre elles.",
+      "Vos serveurs MCP ont déjà des UIs. mcp-compose les fait communiquer entre elles.",
     description:
-      "Une primitive legere et deterministe pour collecter, composer et synchroniser plusieurs UIs MCP Apps en dashboards composites. Fonctions pures, zero dependances, erreurs machine-readable.",
-    ctaPrimary: { text: "Demarrer", href: "#quickstart" },
+      "Une primitive légère et déterministe pour collecter, composer et synchroniser plusieurs UIs MCP Apps en dashboards composites. Fonctions pures, zéro dépendances, erreurs machine-readable.",
+    ctaPrimary: { text: "Démarrer", href: "#quickstart" },
     ctaSecondary: {
       text: "Voir sur JSR",
       href: "https://jsr.io/@casys/mcp-compose",
     },
-    featuresTitle: "Fonctionnalites",
+    featuresTitle: "Fonctionnalités",
     featuresSubtitle:
-      "Pipeline en trois etapes : collecter les ressources UI, composer avec des regles de sync, rendre en HTML autonome.",
+      "Pipeline en trois étapes : collecter les ressources UI, composer avec des règles de sync, rendre en HTML autonome.",
     features: [
       {
         icon: "input",
         name: "Collector",
-        desc: "Extrait _meta.ui des resultats d'outils MCP automatiquement",
+        desc: "Extrait _meta.ui des résultats d'outils MCP automatiquement",
       },
       {
         icon: "dashboard_customize",
         name: "Composer",
-        desc: "Construit un descripteur composite avec layout et regles de sync",
+        desc: "Construit un descripteur composite avec layout et règles de sync",
       },
       {
         icon: "code",
         name: "Renderer",
-        desc: "Genere du HTML autonome avec event bus integre",
+        desc: "Génère du HTML autonome avec event bus intégré",
       },
       {
         icon: "sync_alt",
-        name: "Sync declarative",
-        desc: "Routage d'evenements cross-UI via { from, event, to, action }",
+        name: "Sync déclarative",
+        desc: "Routage d'événements cross-UI via { from, event, to, action }",
       },
       {
         icon: "grid_view",
@@ -762,18 +762,18 @@ const html = renderComposite(descriptor);`,
       },
       {
         icon: "share",
-        name: "Contexte partage",
-        desc: "Propage les valeurs (workflowId, userId) a travers toutes les UIs",
+        name: "Contexte partagé",
+        desc: "Propage les valeurs (workflowId, userId) à travers toutes les UIs",
       },
       {
         icon: "verified",
         name: "Validation explicite",
-        desc: "validateSyncRules() detecte les regles invalides avant le rendu — buildCompositeUi() ignore silencieusement les references inconnues",
+        desc: "validateSyncRules() détecte les règles invalides avant le rendu — buildCompositeUi() ignore silencieusement les références inconnues",
       },
       {
         icon: "package_2",
-        name: "Zero dependance",
-        desc: "Fonctions pures, sorties deterministes, Deno standard library uniquement",
+        name: "Zéro dépendance",
+        desc: "Fonctions pures, sorties déterministes, Deno standard library uniquement",
       },
     ],
     architectureTitle: "Pipeline",
@@ -782,13 +782,13 @@ const html = renderComposite(descriptor);`,
         step: "1",
         title: "Collect",
         description:
-          "L'agent appelle N outils → le Collector extrait les URIs _meta.ui de chaque resultat",
+          "L'agent appelle N outils → le Collector extrait les URIs _meta.ui de chaque résultat",
       },
       {
         step: "2",
         title: "Compose",
         description:
-          "Definir le layout (split/tabs/grid) + les regles de sync → le Composer valide et construit le descripteur",
+          "Définir le layout (split/tabs/grid) + les règles de sync → le Composer valide et construit le descripteur",
       },
       {
         step: "3",
@@ -797,15 +797,15 @@ const html = renderComposite(descriptor);`,
           "Le Renderer produit du HTML autonome avec un event bus JSON-RPC pour la sync cross-UI",
       },
     ],
-    quickstartTitle: "Demarrage rapide",
+    quickstartTitle: "Démarrage rapide",
     quickstartCode: `import { createCollector, buildCompositeUi, renderComposite } from "@casys/mcp-compose";
 
-// 1. Collecter les ressources UI des resultats d'outils
+// 1. Collecter les ressources UI des résultats d'outils
 const collector = createCollector();
 collector.collect("invoice-viewer", invoiceResult);  // has _meta.ui
 collector.collect("status-timeline", statusResult);  // has _meta.ui
 
-// 2. Composer avec layout + regles de sync
+// 2. Composer avec layout + règles de sync
 const resources = collector.getResources();
 const descriptor = buildCompositeUi(resources, {
   layout: "split",
@@ -905,7 +905,7 @@ const html = renderComposite(descriptor);`,
     heroTitle1: "Livrez des Serveurs MCP",
     heroTitle2: "Qui Passent a l'Echelle",
     heroSubtitle:
-      "Arretez de reinventer l'auth, le rate limiting et les middlewares pour chaque serveur MCP. Un framework, composable par defaut, production-ready des le premier jour.",
+      "Arretez de reinventer l'auth, le rate limiting et les middlewares pour chaque serveur MCP. Un framework, composable par defaut, avec OAuth2, pipeline middleware et double transport.",
     statFeatures: "Features incluses",
     statTests: "Tests au vert",
     statRelease: "Derniere",

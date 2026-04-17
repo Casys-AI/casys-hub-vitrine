@@ -3,9 +3,6 @@ import LandingLayout from '../../layouts/LandingLayout.astro';
 import catalogData from '../../data/mcp-std-catalog.json';
 
 const locale = (Astro as any).currentLocale ?? 'en';
-const pageTitle = locale === 'fr'
-  ? 'Catalogue — @casys/mcp-std'
-  : 'Catalog — @casys/mcp-std';
 
 // ── Tool categories ─────────────────────────────────────────
 const TOOL_CATEGORIES: Record<string, { label: string; icon: string; prefixes: string[] }> = {
@@ -66,9 +63,12 @@ const otherTools = (toolsByCategory.get('other') || []).sort((a: any, b: any) =>
 
 const totalTools = tools.length;
 const toolsWithUi = tools.filter((t: any) => t.hasUi).length;
+const pageTitle = locale === 'fr'
+  ? `Catalogue MCP — ${totalTools} outils dans @casys/mcp-std | Casys`
+  : `MCP tools catalog — ${totalTools} tools in @casys/mcp-std | Casys`;
 ---
 
-<LandingLayout title={pageTitle} description={`Browse ${totalTools} MCP tools.`}>
+<LandingLayout title={pageTitle} description={locale === 'fr' ? `Catalogue de ${totalTools} outils MCP standards — fichiers, HTTP, crypto, git, Docker, base de données et plus. Publiés sur JSR par Casys AI.` : `Browse ${totalTools} standard MCP tools — file, HTTP, crypto, git, Docker, database, and more. Published on JSR by Casys AI.`}>
   <div class="catalog-page">
     <header class="catalog-header">
       <div class="container">
