@@ -17,43 +17,45 @@ describe('resolvePublicUrl', () => {
     });
   });
 
-  it('rewrites public product pages to their subdomains', () => {
+  // Historical subsite subdomains (mcp-server.casys.ai, mcp-std.casys.ai, etc.)
+  // are retired — product pages now canonicalize to casys.ai/<path>.
+  it('canonicalizes retired product subsite paths to the root domain', () => {
     expect(resolvePublicUrl('/mcp-server')).toEqual({
-      canonicalUrl: 'https://mcp-server.casys.ai/',
-      origin: 'https://mcp-server.casys.ai',
-      publicPath: '/',
+      canonicalUrl: 'https://casys.ai/mcp-server',
+      origin: 'https://casys.ai',
+      publicPath: '/mcp-server',
     });
 
     expect(resolvePublicUrl('/fr/mcp-server')).toEqual({
-      canonicalUrl: 'https://mcp-server.casys.ai/fr/',
-      origin: 'https://mcp-server.casys.ai',
-      publicPath: '/fr/',
+      canonicalUrl: 'https://casys.ai/fr/mcp-server',
+      origin: 'https://casys.ai',
+      publicPath: '/fr/mcp-server',
     });
 
     expect(resolvePublicUrl('/zh/mcp-std/catalog')).toEqual({
-      canonicalUrl: 'https://mcp-std.casys.ai/zh/catalog',
-      origin: 'https://mcp-std.casys.ai',
-      publicPath: '/zh/catalog',
+      canonicalUrl: 'https://casys.ai/zh/mcp-std/catalog',
+      origin: 'https://casys.ai',
+      publicPath: '/zh/mcp-std/catalog',
     });
 
     expect(resolvePublicUrl('/mcp-bridge')).toEqual({
-      canonicalUrl: 'https://mcp-bridge.casys.ai/',
-      origin: 'https://mcp-bridge.casys.ai',
-      publicPath: '/',
+      canonicalUrl: 'https://casys.ai/mcp-bridge',
+      origin: 'https://casys.ai',
+      publicPath: '/mcp-bridge',
     });
 
     expect(resolvePublicUrl('/fr/pml/catalog')).toEqual({
-      canonicalUrl: 'https://pml.casys.ai/fr/catalog',
-      origin: 'https://pml.casys.ai',
-      publicPath: '/fr/catalog',
+      canonicalUrl: 'https://casys.ai/fr/pml/catalog',
+      origin: 'https://casys.ai',
+      publicPath: '/fr/pml/catalog',
     });
   });
 
-  it('rewrites engine subsite to its public subdomain', () => {
+  it('canonicalizes the engine subsite on the root domain', () => {
     expect(resolvePublicUrl('/engine')).toEqual({
-      canonicalUrl: 'https://engine.casys.ai/',
-      origin: 'https://engine.casys.ai',
-      publicPath: '/',
+      canonicalUrl: 'https://casys.ai/engine',
+      origin: 'https://casys.ai',
+      publicPath: '/engine',
     });
   });
 
@@ -67,9 +69,9 @@ describe('resolvePublicUrl', () => {
 });
 
 describe('buildPublicUrl', () => {
-  it('builds hreflang alternates on the matching public subdomain for product pages', () => {
-    expect(buildPublicUrl('/fr/mcp-bridge', 'en')).toBe('https://mcp-bridge.casys.ai/');
-    expect(buildPublicUrl('/fr/mcp-bridge', 'zh-TW')).toBe('https://mcp-bridge.casys.ai/zh-TW/');
+  it('builds hreflang alternates on the root domain for all pages', () => {
+    expect(buildPublicUrl('/fr/mcp-bridge', 'en')).toBe('https://casys.ai/mcp-bridge');
+    expect(buildPublicUrl('/fr/mcp-bridge', 'zh-TW')).toBe('https://casys.ai/zh-TW/mcp-bridge');
   });
 
   it('builds root alternates for regular pages', () => {

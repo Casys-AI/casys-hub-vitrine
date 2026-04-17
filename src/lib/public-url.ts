@@ -10,13 +10,11 @@ const LOCALE_PREFIXES: Record<Locale, string> = {
   'zh-TW': '/zh-TW',
 };
 
-const SUBSITE_ORIGINS = [
-  { prefix: '/mcp-server', origin: 'https://mcp-server.casys.ai' },
-  { prefix: '/mcp-std', origin: 'https://mcp-std.casys.ai' },
-  { prefix: '/mcp-bridge', origin: 'https://mcp-bridge.casys.ai' },
-  { prefix: '/pml', origin: 'https://pml.casys.ai' },
-  { prefix: '/engine', origin: 'https://engine.casys.ai' },
-] as const;
+// Subsite subdomains (mcp-server.casys.ai, pml.casys.ai, etc.) are retired.
+// All product pages now canonicalize to casys.ai. Keep the array empty rather
+// than deleting the logic — middleware.ts / vercel.json still reference legacy
+// hostnames, and keeping resolveOriginAndPath's shape stable avoids churn.
+const SUBSITE_ORIGINS: ReadonlyArray<{ prefix: string; origin: string }> = [];
 
 type LocaleSplit = {
   locale: Locale;
