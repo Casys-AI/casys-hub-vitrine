@@ -7,7 +7,12 @@ import UseCaseWedges from './UseCaseWedges.astro';
 const locale = (Astro as any).currentLocale ?? 'en';
 const t = useTranslations(locale).hero;
 const calLink = getCasysCalLink(locale);
+const localePrefix = locale === 'en' ? '' : `/${locale}`;
 
+const withLocale = (url: string) =>
+  url.startsWith('/') && !url.startsWith('//') ? `${localePrefix}${url}` : url;
+
+const primaryUrl = withLocale(t.cta.primary.url);
 const secondaryUrl = t.cta.secondary.url ?? '';
 const secondaryIsCal = secondaryUrl.startsWith('https://cal.com');
 ---
@@ -27,7 +32,7 @@ const secondaryIsCal = secondaryUrl.startsWith('https://cal.com');
     <p class="hero-subtitle">{t.subtitle}</p>
 
     <div class="hero-actions">
-      <a href={t.cta.primary.url} class="cta-primary" data-umami-event="hero-cta-primary">
+      <a href={primaryUrl} class="cta-primary" data-umami-event="hero-cta-primary">
         {t.cta.primary.icon && (
           <span class="material-symbols-rounded" aria-hidden="true">{t.cta.primary.icon}</span>
         )}

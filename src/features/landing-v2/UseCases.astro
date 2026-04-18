@@ -12,20 +12,23 @@ const t = useTranslations(locale).useCases;
 const localePath = locale === 'en' ? '' : `/${locale}`;
 const ogSuffix = locale === 'en' ? '' : `-${locale}`;
 
-const featured = useCases.find(uc => uc.id === 'mcp-einvoice')!;
-const secondaryCases = useCases.filter(uc => uc.id !== 'mcp-einvoice');
-
-const statsData = [
-  { value: '27', label: locale === 'fr' ? 'Outils' : 'Tools' },
-  { value: '3',  label: 'Formats' },
-  { value: 'PA', label: locale === 'fr' ? 'Agnostique' : 'Agnostic' },
-];
+const featuredEinvoice = useCases.find(uc => uc.id === 'mcp-einvoice')!;
+const featuredErpnext = useCases.find(uc => uc.id === 'mcp-erpnext')!;
+const secondaryCases = useCases.filter(
+  uc => uc.id !== 'mcp-einvoice' && uc.id !== 'mcp-erpnext'
+);
 
 const readLabel =
   locale === 'fr' ? 'Lire le cas' :
   locale === 'zh' ? '阅读案例' :
   locale === 'zh-TW' ? '閱讀案例' :
   'Read case study';
+
+const erpnextVideoCaption =
+  locale === 'fr' ? 'Un agent IA crée une facture ERPNext en direct'
+  : locale === 'zh' ? 'AI 智能体实时创建 ERPNext 发票'
+  : locale === 'zh-TW' ? 'AI 智慧體即時建立 ERPNext 發票'
+  : 'An AI agent creates an ERPNext invoice, live';
 ---
 
 <section id="use-cases">
@@ -44,47 +47,68 @@ const readLabel =
     </div>
   </div>
 
-  <!-- 2. Featured Case — MCP E-Invoice -->
+  <!-- 2. Featured Case — MCP E-Invoice (visual left) -->
   <div class="uc-featured">
     <div class="container">
-      <div class="featured-card">
-        <!-- Left: screenshot -->
+      <a href={`${localePath}/use-cases/mcp-einvoice`} class="featured-card">
         <div class="featured-visual">
           <img
             src="/images/use-cases/mcp-einvoice-demo-light.png"
-            alt={featured.title[locale] || featured.title.en}
+            alt={featuredEinvoice.title[locale] || featuredEinvoice.title.en}
             loading="lazy"
             class="featured-img featured-img-light"
           />
           <img
             src="/images/use-cases/mcp-einvoice-demo-dark.png"
-            alt={featured.title[locale] || featured.title.en}
+            alt={featuredEinvoice.title[locale] || featuredEinvoice.title.en}
             loading="lazy"
             class="featured-img featured-img-dark"
           />
         </div>
 
-        <!-- Right: content -->
         <div class="featured-content">
-          <span class="rail-tag">{featured.tag}</span>
-          <h2 class="featured-title">{featured.title[locale] || featured.title.en}</h2>
-          <p class="featured-punchline">{featured.punchline[locale] || featured.punchline.en}</p>
+          <span class="rail-tag">{featuredEinvoice.tag}</span>
+          <h2 class="featured-title">{featuredEinvoice.title[locale] || featuredEinvoice.title.en}</h2>
+          <p class="featured-punchline">{featuredEinvoice.punchline[locale] || featuredEinvoice.punchline.en}</p>
 
-          <div class="featured-stats">
-            {statsData.map(stat => (
-              <div class="stat-item">
-                <span class="stat-value">{stat.value}</span>
-                <span class="stat-label">{stat.label}</span>
-              </div>
-            ))}
-          </div>
-
-          <a href={`${localePath}/use-cases/mcp-einvoice`} class="read-link featured-link">
+          <span class="read-link featured-link">
             {readLabel}
             <span class="arrow" aria-hidden="true">→</span>
-          </a>
+          </span>
         </div>
-      </div>
+      </a>
+    </div>
+  </div>
+
+  <!-- 3. Featured Case — MCP ERPNext (visual right, video) -->
+  <div class="uc-featured uc-featured-alt">
+    <div class="container">
+      <a href={`${localePath}/use-cases/mcp-erpnext`} class="featured-card featured-card-reverse">
+        <div class="featured-content">
+          <span class="rail-tag">{featuredErpnext.tag}</span>
+          <h2 class="featured-title">{featuredErpnext.title[locale] || featuredErpnext.title.en}</h2>
+          <p class="featured-punchline">{featuredErpnext.punchline[locale] || featuredErpnext.punchline.en}</p>
+
+          <span class="read-link featured-link">
+            {readLabel}
+            <span class="arrow" aria-hidden="true">→</span>
+          </span>
+        </div>
+
+        <div class="featured-visual featured-visual-video">
+          <video
+            muted
+            loop
+            playsinline
+            autoplay
+            preload="metadata"
+            aria-label={erpnextVideoCaption}
+            class="featured-video"
+          >
+            <source src="/videos/mcp-erpnext-demo.mp4" type="video/mp4" />
+          </video>
+        </div>
+      </a>
     </div>
   </div>
 
@@ -211,15 +235,49 @@ const readLabel =
     background: var(--md-sys-color-surface-container-low);
   }
 
+  /* Alternate background for the second featured block so they don't blend */
+  .uc-featured-alt {
+    background: var(--md-sys-color-surface);
+    padding-top: 0;
+  }
+
   .featured-card {
     display: flex;
     flex-direction: row;
     border-radius: var(--card-radius);
     background: var(--md-sys-color-surface);
     overflow: hidden;
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
     box-shadow:
       0 1px 3px rgba(0, 0, 0, 0.04),
       0 8px 32px rgba(0, 0, 0, 0.06);
+    transition:
+      transform var(--transition),
+      box-shadow var(--transition);
+  }
+
+  .featured-card:hover {
+    transform: translateY(-3px);
+    box-shadow:
+      0 4px 12px rgba(0, 0, 0, 0.06),
+      0 16px 48px rgba(0, 0, 0, 0.09);
+  }
+
+  .featured-card:hover .arrow {
+    transform: translateX(4px);
+  }
+
+  .featured-card:focus-visible {
+    outline: 3px solid var(--md-sys-color-primary);
+    outline-offset: 4px;
+  }
+
+  /* Second featured — content left, visual right */
+  .featured-card-reverse {
+    flex-direction: row-reverse;
+    background: var(--md-sys-color-surface-container-low);
   }
 
   /* Visual — 60% */
@@ -240,6 +298,19 @@ const readLabel =
 
   .featured-img-dark {
     display: none;
+  }
+
+  /* Video variant — dark backdrop, same frame rules */
+  .featured-visual-video {
+    background: #0d0d0d;
+  }
+
+  .featured-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: left center;
+    display: block;
   }
 
   /* Content — 40% */
@@ -284,35 +355,6 @@ const readLabel =
     line-height: 1.65;
   }
 
-  /* Mini stats */
-  .featured-stats {
-    display: flex;
-    gap: 24px;
-    margin-bottom: 32px;
-  }
-
-  .stat-item {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-  }
-
-  .stat-value {
-    font-family: 'Fraunces', Georgia, serif;
-    font-size: 1.6rem;
-    font-weight: 700;
-    color: var(--md-sys-color-primary);
-    line-height: 1;
-  }
-
-  .stat-label {
-    font-size: 0.72rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--md-sys-color-on-surface-variant);
-  }
-
   /* ---- READ LINK ---- */
   .read-link {
     display: inline-flex;
@@ -347,7 +389,7 @@ const readLabel =
 
   .secondary-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 24px;
   }
 
@@ -562,8 +604,20 @@ const readLabel =
       0 8px 32px rgba(0, 0, 0, 0.35);
   }
 
+  :global(html[data-theme="dark"]) .featured-card-reverse {
+    background: var(--casys-warm-surface);
+  }
+
+  :global(html[data-theme="dark"]) .uc-featured-alt {
+    background: var(--casys-warm-background);
+  }
+
   :global(html[data-theme="dark"]) .featured-visual {
     background: var(--casys-warm-surface);
+  }
+
+  :global(html[data-theme="dark"]) .featured-visual-video {
+    background: #0d0d0d;
   }
 
   :global(html[data-theme="dark"]) .featured-img-light {
@@ -584,14 +638,6 @@ const readLabel =
   }
 
   :global(html[data-theme="dark"]) .featured-punchline {
-    color: var(--casys-warm-text-secondary);
-  }
-
-  :global(html[data-theme="dark"]) .stat-value {
-    color: var(--casys-warm-accent);
-  }
-
-  :global(html[data-theme="dark"]) .stat-label {
     color: var(--casys-warm-text-secondary);
   }
 
@@ -688,6 +734,13 @@ const readLabel =
    * RESPONSIVE
    * ================================================================ */
 
+  /* Tablet — secondary grid drops to 2 columns to stay readable */
+  @media (max-width: 960px) {
+    .secondary-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
   @media (max-width: 768px) {
     section {
       --section-gap: 56px;
@@ -701,8 +754,9 @@ const readLabel =
       margin-bottom: 16px;
     }
 
-    /* Featured stacks vertically */
-    .featured-card {
+    /* Featured stacks vertically — visual always on top, even when reversed */
+    .featured-card,
+    .featured-card-reverse {
       flex-direction: column;
     }
 
@@ -716,13 +770,13 @@ const readLabel =
       padding: 32px 28px;
     }
 
-    .featured-stats {
-      gap: 16px;
-    }
-
     /* Grid single column */
     .secondary-grid {
       grid-template-columns: 1fr;
+    }
+
+    .uc-featured-alt {
+      padding-top: var(--section-gap);
     }
 
     .sec-card {

@@ -30,6 +30,12 @@ const einvoiceCta =
   : locale === 'zh-TW' ? '查看案例 →'
   : 'View use case →';
 
+const einvoiceImageCaption =
+  locale === 'fr' ? 'La plateforme MCP e-invoicing en action'
+  : locale === 'zh' ? '实际运行的 MCP 电子发票平台'
+  : locale === 'zh-TW' ? '實際運行的 MCP 電子發票平台'
+  : 'The live MCP e-invoicing platform';
+
 // ── ERPNext copy ────────────────────────────────────────────────────────────
 const erpnextLabel =
   locale === 'fr' ? 'PACKAGE OPEN SOURCE'
@@ -75,28 +81,25 @@ const erpnextCta =
       <p class="wedge-body">{einvoiceBody}</p>
 
       <div class="wedge-media">
-        <div class="list-mockup" aria-hidden="true">
-          <div class="mockup-row">
-            <span class="mockup-dot dot-green"></span>
-            <span class="mockup-bar bar-long"></span>
-            <span class="mockup-badge">APPROVED</span>
-          </div>
-          <div class="mockup-row">
-            <span class="mockup-dot dot-orange"></span>
-            <span class="mockup-bar bar-med"></span>
-            <span class="mockup-badge">PENDING</span>
-          </div>
-          <div class="mockup-row">
-            <span class="mockup-dot dot-blue"></span>
-            <span class="mockup-bar bar-short"></span>
-            <span class="mockup-badge">SENT</span>
-          </div>
-          <div class="mockup-row">
-            <span class="mockup-dot dot-red"></span>
-            <span class="mockup-bar bar-med-long"></span>
-            <span class="mockup-badge">REFUSED</span>
-          </div>
+        <div class="image-frame" aria-hidden="true">
+          <img
+            src="/images/use-cases/mcp-einvoice-demo-light.png"
+            alt=""
+            loading="lazy"
+            width="800"
+            height="480"
+            class="wedge-img wedge-img-light"
+          />
+          <img
+            src="/images/use-cases/mcp-einvoice-demo-dark.png"
+            alt=""
+            loading="lazy"
+            width="800"
+            height="480"
+            class="wedge-img wedge-img-dark"
+          />
         </div>
+        <p class="media-caption">{einvoiceImageCaption}</p>
       </div>
 
       <span class="wedge-link">{einvoiceCta}</span>
@@ -220,63 +223,9 @@ const erpnextCta =
     min-height: 180px;
   }
 
-  .list-mockup {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 12px;
-    height: 100%;
-    padding: 20px;
-    background: var(--md-sys-color-surface-container-low);
-    border-radius: 14px;
-  }
-
-  .mockup-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    height: 28px;
-  }
-
-  .mockup-dot {
-    flex-shrink: 0;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    opacity: 0.85;
-  }
-
-  .dot-green  { background: #4caf50; }
-  .dot-orange { background: #ff9800; }
-  .dot-blue   { background: #2196f3; }
-  .dot-red    { background: #f44336; }
-
-  .mockup-bar {
-    flex: 1;
-    height: 8px;
-    border-radius: 4px;
-    background: var(--md-sys-color-outline-variant);
-    opacity: 0.55;
-  }
-
-  .bar-long     { max-width: 62%; }
-  .bar-med      { max-width: 44%; }
-  .bar-short    { max-width: 30%; }
-  .bar-med-long { max-width: 52%; }
-
-  .mockup-badge {
-    flex-shrink: 0;
-    font-family: 'Inter', sans-serif;
-    font-size: 0.58rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--md-sys-color-on-surface-variant);
-    opacity: 0.7;
-    white-space: nowrap;
-  }
-
-  .video-frame {
+  /* Shared frame — used by both video and image wedges */
+  .video-frame,
+  .image-frame {
     overflow: hidden;
     border-radius: 14px;
     background: #0d0d0d;
@@ -285,7 +234,8 @@ const erpnextCta =
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
   }
 
-  .video-frame video {
+  .video-frame video,
+  .image-frame .wedge-img {
     display: block;
     width: 100%;
     height: 100%;
@@ -293,6 +243,10 @@ const erpnextCta =
     object-fit: cover;
   }
 
+  /* Dual-theme images — light visible by default, dark hidden */
+  .wedge-img-dark { display: none; }
+
+  .media-caption,
   .video-caption {
     margin: 0;
     font-family: 'Inter', sans-serif;
@@ -360,19 +314,14 @@ const erpnextCta =
     color: var(--casys-warm-text-primary);
   }
   html[data-theme='dark'] #hero .wedge-body,
-  html[data-theme='dark'] #hero .video-caption {
-    color: var(--casys-warm-text-secondary);
-  }
-  html[data-theme='dark'] #hero .list-mockup {
-    background: rgba(255, 255, 255, 0.03);
-  }
-  html[data-theme='dark'] #hero .mockup-bar {
-    background: rgba(255, 184, 111, 0.16);
-  }
-  html[data-theme='dark'] #hero .mockup-badge {
+  html[data-theme='dark'] #hero .video-caption,
+  html[data-theme='dark'] #hero .media-caption {
     color: var(--casys-warm-text-secondary);
   }
   html[data-theme='dark'] #hero .wedge-link {
     color: var(--casys-warm-accent);
   }
+  /* Swap image by theme */
+  html[data-theme='dark'] #hero .wedge-img-light { display: none; }
+  html[data-theme='dark'] #hero .wedge-img-dark  { display: block; }
 </style>

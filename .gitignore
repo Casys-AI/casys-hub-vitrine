@@ -24,3 +24,6 @@ pnpm-debug.log*
 .idea/
 .vercel
 .remember
+
+# Stitch design workspace (local design iterations, not shipped)
+.stitch/

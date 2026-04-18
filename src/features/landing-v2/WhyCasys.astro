@@ -1,780 +1,385 @@
 ---
 import { useTranslations } from '../../i18n';
-import { getCasysCalLink } from '../../lib/cal';
 import { isExternalUrl } from '../../lib/url-utils';
 
 const locale = (Astro as any).currentLocale ?? 'en';
 const content = useTranslations(locale).whyCasys;
-const authority = useTranslations(locale).hero.authority;
-const calLink = getCasysCalLink(locale);
-const leadCard = content.differentiation[0];
-const sideCard = content.differentiation[1];
-const lowerCards = content.differentiation.slice(2);
-const primaryCta = content.bottomLine?.cta?.primary;
-const secondaryCta = content.bottomLine?.cta?.secondary;
-const contactCta = content.contactCta;
+const localePrefix = locale === 'en' ? '' : `/${locale}`;
+
+const founderQuote = locale === 'fr'
+  ? "Des chatbots mIRC aux agents MCP. Le problème n'a pas changé : contexte en entrée, action en sortie."
+  : locale === 'zh'
+  ? "从 mIRC 聊天机器人到 MCP 智能体。问题没变过：输入是上下文，输出是行动。"
+  : locale === 'zh-TW'
+  ? "從 mIRC 聊天機器人到 MCP 智能體。問題沒變過：輸入是上下文，輸出是行動。"
+  : "From mIRC chatbots to MCP agents. The problem hasn't changed: context in, action out.";
+
+const founderRole = locale === 'fr' ? 'Fondateur, Casys'
+  : locale === 'zh' ? 'Casys 创办人'
+  : locale === 'zh-TW' ? 'Casys 創辦人'
+  : 'Founder, Casys';
+
+const aboutLinkLabel = locale === 'fr' ? 'Notre histoire'
+  : locale === 'zh' ? '我们的故事'
+  : locale === 'zh-TW' ? '我們的故事'
+  : 'Our story';
+
+const aboutHref = `${localePrefix}/about`;
+
+const hrefById: Record<string, string> = {
+  continuity: aboutHref,
+  opensource: content.viewReposUrl,
+  practical: `${localePrefix}/use-cases`,
+  accessible: content.contactCta.url,
+};
 ---
 
-<section id="why-casys">
-  <div class="gradient-blob" aria-hidden="true"></div>
+<section id="why-casys" class="reveal">
   <div class="container">
-    <header class="section-intro">
-      <p class="section-kicker">{content.subtitle}</p>
+    <header class="section-header">
+      <span class="section-kicker">{content.subtitle}</span>
       <h2>{content.title}</h2>
     </header>
 
-    <div class="bento-grid">
-      {leadCard && (
-        <article class="feature-card feature-card-lead">
-          <div class="feature-shell">
-            <div class="lead-copy">
-              <span class="material-symbols-rounded card-icon" aria-hidden="true">{leadCard.icon}</span>
-              <h3>{leadCard.title}</h3>
-              <p class="card-description card-description-large">{leadCard.description}</p>
-            </div>
-
-            <div class="lead-trajectory">
-              {leadCard.highlights.map((highlight, index) => (
-                <div class="trajectory-step">
-                  <span class="trajectory-label">{content.trajectoryLabels[index]}</span>
-                  <p>{highlight}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div class="lead-visual" aria-hidden="true">
-            <div class="visual-ring visual-ring-a"></div>
-            <div class="visual-ring visual-ring-b"></div>
-            <div class="visual-node visual-node-a"></div>
-            <div class="visual-node visual-node-b"></div>
-            <div class="visual-node visual-node-c"></div>
-            <div class="visual-link visual-link-a"></div>
-            <div class="visual-link visual-link-b"></div>
-          </div>
-        </article>
-      )}
-
-      {sideCard && (
-        <article class="feature-card feature-card-side">
-          <div class="card-copy">
-            <span class="material-symbols-rounded card-icon" aria-hidden="true">{sideCard.icon}</span>
-            <h3>{sideCard.title}</h3>
-            <p class="card-description">{sideCard.description}</p>
-          </div>
-
-          <ul class="continuity-stats">
-            {authority.map((item) => (
-              <li class="continuity-stat">
-                <span class="continuity-stat-label">{item.label}</span>
-                <span class="continuity-stat-detail">{item.detail}</span>
-              </li>
-            ))}
-          </ul>
-
-          <div class="side-footer">
-            <span class="side-footer-label">{content.sideFooterLabel}</span>
-            <span class="side-footer-value">{content.sideFooterValue}</span>
-          </div>
-        </article>
-      )}
-
-      {lowerCards.map((item, index) => (
-        <article class={`feature-card feature-card-small feature-card-small-${index + 1}`}>
-          <div class="card-copy">
-            <span class="material-symbols-rounded card-icon" aria-hidden="true">{item.icon}</span>
-            <h3>{item.title}</h3>
-            <p class="card-description">{item.description}</p>
-          </div>
-
-          {item.id === 'practical' ? (
-            <div class="tag-row">
-              {item.highlights.map((highlight) => (
-                <span class="tag-chip">{highlight}</span>
-              ))}
-            </div>
-          ) : item.id === 'accessible' && contactCta ? (
-            <a href={contactCta.url} class="card-action card-action-primary" data-umami-event="whycasys-cta-contact">
-              <span>{contactCta.text}</span>
-              <span class="material-symbols-rounded" aria-hidden="true">{contactCta.icon}</span>
-            </a>
-          ) : item.id === 'opensource' && secondaryCta ? (
-            <a
-              href={secondaryCta.url}
-              class="card-action card-action-secondary"
-              target={isExternalUrl(secondaryCta.url) ? '_blank' : undefined}
-              rel={isExternalUrl(secondaryCta.url) ? 'noopener noreferrer' : undefined}
-            >
-              <span>{content.viewReposLabel}</span>
-              <span class="material-symbols-rounded" aria-hidden="true">north_east</span>
-            </a>
-          ) : (
-            <ul class="mini-highlights">
-              {item.highlights.map((highlight) => (
-                <li>
-                  <span class="material-symbols-rounded" aria-hidden="true">subdirectory_arrow_right</span>
-                  <span>{highlight}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </article>
-      ))}
+    <div class="manifesto">
+      {content.differentiation.map((item) => {
+        const href = hrefById[item.id] ?? '#';
+        const external = isExternalUrl(href);
+        return (
+          <a
+            href={href}
+            class="statement-row"
+            target={external ? '_blank' : undefined}
+            rel={external ? 'noopener noreferrer' : undefined}
+          >
+            <span class="statement-label">— {item.label}</span>
+            <h3 class="statement-title">{item.title}</h3>
+            <p class="statement-desc">{item.description}</p>
+          </a>
+        );
+      })}
     </div>
 
-    {content.bottomLine && (
-      <div class="signature-band">
-        <span class="material-symbols-rounded quote-mark" aria-hidden="true">format_quote</span>
-        <blockquote>{content.bottomLine.text}</blockquote>
-        <cite>— Casys</cite>
-
-        <div class="signature-actions">
-          {secondaryCta && (
-            <a
-              href={secondaryCta.url}
-              class="cta-secondary"
-              target={isExternalUrl(secondaryCta.url) ? '_blank' : undefined}
-              rel={isExternalUrl(secondaryCta.url) ? 'noopener noreferrer' : undefined}
-            >
-              <span class="material-symbols-rounded" aria-hidden="true">{secondaryCta.icon}</span>
-              <span>{secondaryCta.text}</span>
-            </a>
-          )}
-        </div>
+    <aside class="founder-band">
+      <img
+        class="founder-photo"
+        src="/images/founder-erwan.webp"
+        alt="Erwan Lee Pesle"
+        width="112"
+        height="112"
+        loading="lazy"
+      />
+      <div class="founder-body">
+        <blockquote class="founder-quote">{founderQuote}</blockquote>
+        <footer class="founder-attribution">
+          <cite>Erwan Lee Pesle</cite>
+          <span class="founder-role">{founderRole}</span>
+        </footer>
       </div>
-    )}
+      <a href={aboutHref} class="founder-link">
+        <span>{aboutLinkLabel}</span>
+        <span class="material-symbols-rounded" aria-hidden="true">arrow_outward</span>
+      </a>
+    </aside>
   </div>
 </section>
 
 <style>
+  /* ------------------------------------------------------------------
+     Section — editorial manifesto. Pure typography, hairline dividers,
+     no card containers. Shares only the section primitives (tokens) with
+     the rest of the landing via --section-* / --flow-line-bg.
+     ------------------------------------------------------------------ */
   #why-casys {
-    position: relative;
-    padding: 88px 0 96px;
+    padding: var(--section-padding-y) 0;
     background: var(--md-sys-color-surface);
     overflow: hidden;
   }
 
   .container {
-    max-width: 1280px;
+    max-width: var(--section-container-max);
     margin: 0 auto;
-    padding: 0 clamp(20px, 4vw, 48px);
-    position: relative;
-    z-index: 2;
+    padding: 0 var(--section-container-pad-x);
   }
 
-  /* Single gradient blob — same style as Hero's .gradient-blob */
-  #why-casys .gradient-blob {
-    position: absolute;
-    top: 30%;
-    left: 30%;
-    width: min(520px, 40vw);
-    height: min(340px, 28vh);
-    background:
-      radial-gradient(circle at 50% 50%, rgba(131, 70, 143, 0.3) 0%, rgba(131, 70, 143, 0.15) 30%, rgba(131, 70, 143, 0.04) 50%, transparent 72%);
-    filter: blur(60px);
-    opacity: 0.75;
-    z-index: 0;
-    pointer-events: none;
-  }
-
-  .section-intro {
-    max-width: 760px;
-    margin-bottom: 42px;
+  .section-header {
+    margin-bottom: clamp(64px, 10vw, 128px);
+    padding-left: 8%;
   }
 
   .section-kicker {
-    margin: 0 0 14px;
+    display: block;
     font-family: 'Manrope', sans-serif;
-    font-size: 0.75rem;
+    font-size: var(--section-kicker-size);
     font-weight: 700;
-    letter-spacing: 0.28em;
     text-transform: uppercase;
+    letter-spacing: var(--section-kicker-spacing);
     color: var(--md-sys-color-primary);
+    margin-bottom: 14px;
   }
 
   h2 {
-    margin: 0;
     font-family: 'Fraunces', Georgia, serif;
-    font-size: clamp(2.5rem, 5vw, 4.5rem);
+    font-size: clamp(3rem, 7vw, 5.5rem);
     font-weight: 500;
-    line-height: 0.98;
+    font-style: italic;
     letter-spacing: -0.03em;
     color: var(--md-sys-color-on-surface);
+    margin: 0;
+    line-height: 0.98;
   }
 
-  .bento-grid {
+  /* ------------------------------------------------------------------
+     Manifesto — vertical list of 4 statements separated by hairlines.
+     ------------------------------------------------------------------ */
+  .manifesto {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .statement-row {
+    position: relative;
     display: grid;
-    grid-template-columns: repeat(12, minmax(0, 1fr));
-    gap: 24px;
-    align-items: stretch;
-  }
-
-  .feature-card {
-    position: relative;
-    z-index: 1;
-    border-radius: 30px;
-    overflow: hidden;
-    background: var(--atmos-card-bg);
-    backdrop-filter: blur(var(--atmos-card-blur));
-    -webkit-backdrop-filter: blur(var(--atmos-card-blur));
-    min-height: 340px;
-    transition: background 300ms ease;
-  }
-
-  .feature-card:hover {
-    background: var(--atmos-card-bg-hover);
-  }
-
-  .feature-card-lead {
-    grid-column: span 8;
-    min-height: 540px;
-  }
-
-  .feature-card-side {
-    grid-column: span 4;
-    min-height: 540px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    background: var(--md-sys-color-surface-container);
-  }
-
-  .feature-card-small {
-    grid-column: span 4;
-    min-height: 380px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-  }
-
-  .feature-shell,
-  .feature-card-side,
-  .feature-card-small {
-    padding: clamp(28px, 3vw, 42px);
-  }
-
-  .feature-shell {
-    position: relative;
-    z-index: 2;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    min-height: 100%;
-    gap: 36px;
-  }
-
-  .lead-copy,
-  .card-copy {
-    position: relative;
-    z-index: 2;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    max-width: 720px;
-  }
-
-  .card-icon {
-    width: 46px;
-    height: 46px;
-    border-radius: 999px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 22px;
-    color: var(--md-sys-color-primary);
-    background: rgba(131, 70, 143, 0.08);
-    box-shadow: inset 0 0 0 1px rgba(131, 70, 143, 0.08);
-  }
-
-  h3 {
-    margin: 0;
-    font-family: 'Fraunces', Georgia, serif;
-    font-size: clamp(1.65rem, 2.4vw, 3rem);
-    font-weight: 500;
-    line-height: 1.03;
-    letter-spacing: -0.025em;
-    color: var(--md-sys-color-on-surface);
-  }
-
-  .feature-card-side h3,
-  .feature-card-small h3 {
-    font-size: clamp(1.35rem, 1.9vw, 2rem);
-  }
-
-  .card-description {
-    margin: 0;
-    max-width: 42rem;
-    font-size: 1rem;
-    line-height: 1.72;
-    color: var(--md-sys-color-on-surface-variant);
-  }
-
-  .card-description-large {
-    font-size: 1.08rem;
-    max-width: 34rem;
-  }
-
-  .lead-trajectory {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 16px;
-    position: relative;
-    z-index: 2;
-    padding-top: 24px;
-    border-top: 1px solid rgba(131, 70, 143, 0.12);
-  }
-
-  .trajectory-step {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .trajectory-label {
-    font-family: 'Manrope', sans-serif;
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    color: var(--md-sys-color-primary);
-  }
-
-  .trajectory-step p {
-    margin: 0;
-    font-size: 0.95rem;
-    line-height: 1.6;
-    color: var(--md-sys-color-on-surface);
-  }
-
-  .lead-visual {
-    position: absolute;
-    inset: auto -8% -10% auto;
-    width: 52%;
-    height: 88%;
-    pointer-events: none;
-    opacity: 0.78;
-  }
-
-  .visual-ring,
-  .visual-node,
-  .visual-link {
-    position: absolute;
-  }
-
-  .visual-ring {
-    border-radius: 999px;
-    border: 1px solid rgba(245, 240, 234, 0.08);
-  }
-
-  .visual-ring-a {
-    inset: 12% 6% 14% 18%;
-  }
-
-  .visual-ring-b {
-    inset: 28% 16% 24% 28%;
-    border-color: rgba(131, 70, 143, 0.1);
-  }
-
-  .visual-node {
-    width: 14px;
-    height: 14px;
-    border-radius: 999px;
-    background: var(--md-sys-color-primary);
-    box-shadow: 0 0 0 10px rgba(131, 70, 143, 0.07);
-  }
-
-  .visual-node-a { top: 22%; right: 38%; }
-  .visual-node-b { top: 52%; right: 20%; }
-  .visual-node-c { top: 68%; right: 48%; }
-
-  .visual-link {
-    height: 1px;
-    background: linear-gradient(90deg, rgba(131, 70, 143, 0), rgba(131, 70, 143, 0.28), rgba(245, 240, 234, 0));
-    transform-origin: left center;
-  }
-
-  .visual-link-a {
-    top: 28%;
-    right: 26%;
-    width: 34%;
-    transform: rotate(26deg);
-  }
-
-  .visual-link-b {
-    top: 58%;
-    right: 28%;
-    width: 26%;
-    transform: rotate(-28deg);
-  }
-
-  .side-footer {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    padding-top: 20px;
+    grid-template-columns: 160px 1fr 300px;
+    align-items: baseline;
+    gap: 32px;
+    padding: clamp(48px, 6vw, 72px) clamp(16px, 2vw, 24px);
+    margin: 0 clamp(-16px, -2vw, -24px);
     border-top: 1px solid var(--md-sys-color-outline-variant);
+    color: inherit;
+    text-decoration: none;
+    transition: background-color 500ms ease, border-color 500ms ease;
   }
 
-  .side-footer-label {
-    font-family: 'Manrope', sans-serif;
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.24em;
-    text-transform: uppercase;
-    color: var(--md-sys-color-primary);
+  .statement-row:last-child {
+    border-bottom: 1px solid var(--md-sys-color-outline-variant);
   }
 
-  .side-footer-value {
-    font-family: 'Fraunces', Georgia, serif;
-    font-size: 1.6rem;
-    color: var(--md-sys-color-on-surface);
+  .statement-row:hover {
+    background-color: var(--md-sys-color-surface-container-low);
+    border-top-color: var(--md-sys-color-primary);
   }
 
-  .continuity-stats {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: 14px;
+  .statement-row:hover + .statement-row,
+  .statement-row:last-child:hover {
+    border-top-color: var(--md-sys-color-primary);
   }
 
-  .continuity-stat {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .continuity-stat-label {
+  .statement-label {
     font-family: 'Manrope', sans-serif;
     font-size: 0.68rem;
     font-weight: 700;
-    letter-spacing: 0.22em;
     text-transform: uppercase;
+    letter-spacing: 0.22em;
     color: var(--md-sys-color-primary);
+    align-self: start;
+    padding-top: 0.4rem;
   }
 
-  .continuity-stat-detail {
-    font-size: 0.92rem;
-    line-height: 1.55;
-    color: var(--md-sys-color-on-surface-variant);
-  }
-
-  .mini-highlights {
-    list-style: none;
-    margin: 18px 0 0;
-    padding: 0;
-    display: grid;
-    gap: 12px;
-  }
-
-  .mini-highlights li {
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-    font-size: 0.95rem;
-    line-height: 1.56;
-    color: var(--md-sys-color-on-surface-variant);
-  }
-
-  .mini-highlights .material-symbols-rounded {
-    margin-top: 1px;
-    flex-shrink: 0;
-    font-size: 17px;
-    color: var(--md-sys-color-primary);
-  }
-
-  .tag-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 20px;
-  }
-
-  .tag-chip {
-    display: inline-flex;
-    align-items: center;
-    min-height: 34px;
-    padding: 0 12px;
-    border-radius: 999px;
-    border: 1px solid var(--md-sys-color-outline-variant);
-    background: var(--md-sys-color-surface-container-lowest);
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--md-sys-color-on-surface-variant);
-  }
-
-  .card-action {
-    display: inline-flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    width: fit-content;
-    min-height: 48px;
-    margin-top: 22px;
-    padding: 0 16px;
-    border-radius: 999px;
-    text-decoration: none;
-    font-size: 0.88rem;
-    font-weight: 700;
-    transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
-  }
-
-  .card-action:hover {
-    transform: translateY(-1px);
-  }
-
-  .card-action-primary {
-    background: var(--md-sys-color-primary);
-    color: var(--md-sys-color-on-primary);
-  }
-
-  .card-action-secondary {
-    border: 1px solid var(--md-sys-color-outline-variant);
+  .statement-title {
+    margin: 0;
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: clamp(1.9rem, 4.2vw, 3.5rem);
+    font-style: italic;
+    font-weight: 500;
+    line-height: 1.08;
+    letter-spacing: -0.025em;
     color: var(--md-sys-color-on-surface);
-    background: transparent;
-  }
-
-  .signature-band {
-    margin-top: 28px;
-    padding: clamp(34px, 4vw, 58px);
-    border-radius: 30px;
-    border: 1px solid var(--md-sys-color-outline-variant);
-    background:
-      linear-gradient(180deg, rgba(131, 70, 143, 0.03), transparent 36%),
-      var(--md-sys-color-surface-container-lowest);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
     text-align: center;
   }
 
-  .quote-mark {
-    font-size: 3rem;
-    color: var(--md-sys-color-primary);
-    opacity: 0.34;
+  .statement-desc {
+    margin: 0;
+    font-size: 0.85rem;
+    line-height: 1.65;
+    color: var(--md-sys-color-on-surface-variant);
+    text-align: right;
+    font-weight: 300;
+    transition: color 300ms ease;
   }
 
-  blockquote {
-    margin: 0;
-    max-width: 900px;
-    font-family: 'Fraunces', Georgia, serif;
-    font-size: clamp(1.55rem, 3vw, 2.8rem);
-    line-height: 1.18;
-    font-style: italic;
-    letter-spacing: -0.02em;
+  .statement-row:hover .statement-desc {
     color: var(--md-sys-color-on-surface);
   }
 
-  cite {
-    font-style: normal;
-    font-family: 'Manrope', sans-serif;
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    color: var(--md-sys-color-primary);
+  /* ------------------------------------------------------------------
+     Founder band — soft footer, aligned with manifesto margin.
+     ------------------------------------------------------------------ */
+  .founder-band {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: clamp(20px, 3vw, 40px);
+    align-items: center;
+    margin-top: clamp(72px, 10vw, 128px);
+    padding-top: clamp(40px, 5vw, 64px);
+    border-top: 1px solid var(--md-sys-color-outline-variant);
   }
 
-  .signature-actions {
+  .founder-photo {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    object-fit: cover;
+    object-position: 50% 28%;
+    box-shadow: inset 0 0 0 1px var(--md-sys-color-outline-variant);
+  }
+
+  .founder-body {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 580px;
+  }
+
+  .founder-quote {
+    margin: 0;
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: clamp(1.05rem, 1.4vw, 1.25rem);
+    font-style: italic;
+    line-height: 1.4;
+    letter-spacing: -0.01em;
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .founder-attribution {
     display: flex;
     flex-wrap: wrap;
-    justify-content: center;
-    gap: 14px;
+    align-items: baseline;
+    gap: 10px;
+    font-family: 'Manrope', sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--md-sys-color-on-surface-variant);
   }
 
-  .cta-primary,
-  .cta-secondary {
+  .founder-attribution cite {
+    font-style: normal;
+    font-weight: 700;
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .founder-role {
+    font-weight: 500;
+  }
+
+  .founder-link {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    min-height: 48px;
-    padding: 0 18px;
-    border-radius: 999px;
-    font-family: 'Manrope', sans-serif;
-    font-size: 0.95rem;
-    font-weight: 600;
     text-decoration: none;
-    cursor: pointer;
-    transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+    color: var(--md-sys-color-primary);
+    font-family: 'Manrope', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    transition: opacity 180ms ease;
+    white-space: nowrap;
   }
 
-  .cta-primary {
-    background: var(--md-sys-color-primary);
-    color: var(--md-sys-color-on-primary);
+  .founder-link .material-symbols-rounded {
+    font-size: 16px;
+    transition: transform 300ms ease;
   }
 
-  .cta-secondary {
-    color: var(--md-sys-color-on-surface);
-    border: 1px solid var(--md-sys-color-outline-variant);
-    background: transparent;
+  .founder-link:hover .material-symbols-rounded {
+    transform: translate(3px, -3px);
   }
 
-  .cta-primary:hover,
-  .cta-secondary:hover {
-    transform: translateY(-1px);
-  }
+  /* ------------------------------------------------------------------
+     Responsive — collapse 3-column grid to single column under 900px.
+     ------------------------------------------------------------------ */
+  @media (max-width: 900px) {
+    .section-header { padding-left: 0; }
 
-  @media (max-width: 960px) {
-    .feature-card-lead,
-    .feature-card-side,
-    .feature-card-small {
-      grid-column: 1 / -1;
-      min-height: auto;
-    }
-
-    .lead-trajectory {
+    .statement-row {
       grid-template-columns: 1fr;
+      gap: 14px;
+      padding: 40px clamp(12px, 2vw, 16px);
     }
 
-    .lead-visual {
-      width: 50%;
-      height: 46%;
-      inset: auto -2% -4% auto;
+    .statement-label {
+      padding-top: 0;
     }
+
+    .statement-title {
+      text-align: left;
+    }
+
+    .statement-desc {
+      text-align: left;
+    }
+
+    .founder-band {
+      grid-template-columns: auto 1fr;
+      grid-template-areas:
+        "photo body"
+        "link  link";
+      gap: 18px 20px;
+    }
+
+    .founder-photo { grid-area: photo; width: 80px; height: 80px; }
+    .founder-body  { grid-area: body; }
+    .founder-link  { grid-area: link; justify-self: end; margin-top: 4px; }
   }
 
-  @media (max-width: 640px) {
-    #why-casys {
-      padding: 72px 0 80px;
+  @media (max-width: 480px) {
+    .founder-band {
+      grid-template-columns: 1fr;
+      grid-template-areas:
+        "photo"
+        "body"
+        "link";
+      justify-items: start;
     }
-
-    .bento-grid {
-      gap: 18px;
-    }
-
-    .feature-shell,
-    .feature-card-side,
-    .feature-card-small,
-    .signature-band {
-      padding: 24px;
-    }
-
-    .section-kicker,
-    .trajectory-label,
-    .side-footer-label,
-    cite {
-      letter-spacing: 0.2em;
-    }
-
-    .card-description,
-    .card-description-large,
-    .mini-highlights li,
-    .trajectory-step p {
-      font-size: 0.92rem;
-    }
-
-    .lead-visual {
-      display: none;
-    }
-
-    .signature-actions {
-      width: 100%;
-      flex-direction: column;
-    }
-
-    .cta-primary,
-    .cta-secondary,
-    .card-action {
-      width: 100%;
-      justify-content: center;
-    }
+    .founder-link { justify-self: start; }
   }
 </style>
 
 <style is:global>
-  html[data-theme='dark'] #why-casys {
+  /* Dark-mode overrides for the manifesto. Typography, accents and hairline
+     colors shift to the warm palette; everything else is already handled by
+     the MD3 tokens (surface, on-surface, etc.) via data-theme="dark". */
+  html[data-theme="dark"] #why-casys {
     background: var(--casys-warm-background);
   }
-  html[data-theme='dark'] #why-casys .gradient-blob {
-    background:
-      radial-gradient(circle at 50% 50%, rgba(255, 184, 111, 0.28) 0%, rgba(255, 184, 111, 0.14) 30%, rgba(255, 184, 111, 0.04) 50%, transparent 72%);
-    opacity: 0.7;
-  }
 
-  /* .feature-card background/border handled via --atmos-card-* tokens in styles.css */
-
-  html[data-theme='dark'] #why-casys h2,
-  html[data-theme='dark'] #why-casys h3,
-  html[data-theme='dark'] #why-casys blockquote,
-  html[data-theme='dark'] #why-casys .trajectory-step p,
-  html[data-theme='dark'] #why-casys .side-footer-value {
+  html[data-theme="dark"] #why-casys h2,
+  html[data-theme="dark"] #why-casys .statement-title,
+  html[data-theme="dark"] #why-casys .founder-quote,
+  html[data-theme="dark"] #why-casys .founder-attribution cite {
     color: var(--casys-warm-text-primary);
   }
 
-  html[data-theme='dark'] #why-casys .section-kicker,
-  html[data-theme='dark'] #why-casys .trajectory-label,
-  html[data-theme='dark'] #why-casys .side-footer-label,
-  html[data-theme='dark'] #why-casys .card-icon,
-  html[data-theme='dark'] #why-casys .mini-highlights .material-symbols-rounded,
-  html[data-theme='dark'] #why-casys .quote-mark,
-  html[data-theme='dark'] #why-casys cite {
-    color: var(--casys-warm-accent);
-  }
-
-  html[data-theme='dark'] #why-casys .card-icon {
-    background: rgba(255, 184, 111, 0.08);
-    box-shadow: inset 0 0 0 1px rgba(255, 184, 111, 0.08);
-  }
-
-  html[data-theme='dark'] #why-casys .card-description,
-  html[data-theme='dark'] #why-casys .mini-highlights li,
-  html[data-theme='dark'] #why-casys .tag-chip,
-  html[data-theme='dark'] #why-casys .cta-secondary,
-  html[data-theme='dark'] #why-casys .card-action-secondary {
+  html[data-theme="dark"] #why-casys .statement-desc,
+  html[data-theme="dark"] #why-casys .founder-attribution,
+  html[data-theme="dark"] #why-casys .founder-role {
     color: var(--casys-warm-text-secondary);
   }
 
-  html[data-theme='dark'] #why-casys .side-footer,
-  html[data-theme='dark'] #why-casys .lead-trajectory,
-  html[data-theme='dark'] #why-casys .tag-chip,
-  html[data-theme='dark'] #why-casys .cta-secondary,
-  html[data-theme='dark'] #why-casys .card-action-secondary,
-  html[data-theme='dark'] #why-casys .signature-band {
-    border-color: rgba(255, 184, 111, 0.12);
-  }
-
-  html[data-theme='dark'] #why-casys .tag-chip {
-    background: #100f0d;
-  }
-
-  html[data-theme='dark'] #why-casys .signature-band {
-    background:
-      linear-gradient(180deg, rgba(255, 184, 111, 0.04), transparent 36%),
-      #100f0d;
-  }
-
-  html[data-theme='dark'] #why-casys .cta-primary,
-  html[data-theme='dark'] #why-casys .card-action-primary {
-    background: var(--casys-warm-accent);
-    color: var(--casys-warm-background);
-  }
-
-  html[data-theme='dark'] #why-casys .feature-card:hover,
-  html[data-theme='dark'] #why-casys .cta-secondary:hover,
-  html[data-theme='dark'] #why-casys .card-action-secondary:hover {
-    border-color: var(--casys-warm-accent);
-    background: rgba(255, 184, 111, 0.04);
-  }
-
-  html[data-theme='dark'] #why-casys .continuity-stat-label {
+  html[data-theme="dark"] #why-casys .section-kicker,
+  html[data-theme="dark"] #why-casys .statement-label,
+  html[data-theme="dark"] #why-casys .founder-link {
     color: var(--casys-warm-accent);
   }
 
-  html[data-theme='dark'] #why-casys .continuity-stat-detail {
-    color: var(--casys-warm-text-secondary);
+  html[data-theme="dark"] #why-casys .statement-row,
+  html[data-theme="dark"] #why-casys .statement-row:last-child,
+  html[data-theme="dark"] #why-casys .founder-band {
+    border-color: rgba(255, 184, 111, 0.14);
   }
 
-  html[data-theme='dark'] #why-casys .visual-node {
-    background: var(--casys-warm-accent);
-    box-shadow: 0 0 0 10px rgba(255, 184, 111, 0.07);
+  html[data-theme="dark"] #why-casys .statement-row:hover {
+    background-color: rgba(255, 184, 111, 0.04);
+    border-top-color: var(--casys-warm-accent);
   }
 
-  html[data-theme='dark'] #why-casys .visual-ring-b {
-    border-color: rgba(255, 184, 111, 0.1);
+  html[data-theme="dark"] #why-casys .statement-row:hover .statement-desc {
+    color: var(--casys-warm-text-primary);
   }
 
-  html[data-theme='dark'] #why-casys .visual-link {
-    background: linear-gradient(90deg, rgba(255, 184, 111, 0), rgba(255, 184, 111, 0.28), rgba(245, 240, 234, 0));
+  html[data-theme="dark"] #why-casys .founder-photo {
+    box-shadow: inset 0 0 0 1px rgba(255, 184, 111, 0.24);
   }
 </style>

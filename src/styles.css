@@ -30,9 +30,9 @@ body {
 }
 
 /* ==========================================================================
-   Atmos Card — translucent cards for Hero wedges + WhyCasys feature cards.
+   Atmos Card — translucent cards for Hero wedges.
    Default: subtle translucent overlay (blobs peek through). Hover: more solid,
-   card comes forward. PlatformPreview keeps its own hardcoded styles.
+   card comes forward.
    ========================================================================== */
 :root {
   --atmos-card-bg:          rgba(255, 255, 255, 0.5);
@@ -42,6 +42,44 @@ body {
 html[data-theme="dark"] {
   --atmos-card-bg:          rgba(255, 255, 255, 0.035);
   --atmos-card-bg-hover:    rgba(255, 255, 255, 0.07);
+}
+
+/* ==========================================================================
+   Landing sections — shared primitives.
+   Consumed by PlatformPreview, WhyCasys and any future landing-v2 section.
+   Dark-mode overrides redefine the same tokens at :root level, so sections
+   don't need per-component html[data-theme="dark"] blocks.
+   ========================================================================== */
+:root {
+  --section-padding-y:       clamp(72px, 8vw, 96px);
+  --section-container-max:   1100px;
+  --section-container-pad-x: clamp(20px, 4vw, 24px);
+  --section-kicker-size:     0.68rem;
+  --section-kicker-spacing:  0.25em;
+
+  --landing-card-radius:     14px;
+  --landing-card-padding:    clamp(24px, 3vw, 32px);
+  --landing-card-gap:        24px;
+  --landing-card-bg:         var(--md-sys-color-surface-container-lowest);
+  --landing-card-bg-hover:   var(--md-sys-color-surface-container);
+
+  --watermark-color:         var(--md-sys-color-primary);
+  --watermark-opacity:       0.04;
+
+  --flow-line-bg: linear-gradient(to right,
+    transparent,
+    var(--md-sys-color-outline-variant),
+    transparent);
+}
+
+html[data-theme="dark"] {
+  --landing-card-bg:         #1d1b1a;
+  --landing-card-bg-hover:   #211f1e;
+  --watermark-color:         var(--casys-warm-accent);
+  --flow-line-bg: linear-gradient(to right,
+    transparent,
+    rgba(255, 184, 111, 0.15),
+    transparent);
 }
 
 /* Material 3 Typography Scale */

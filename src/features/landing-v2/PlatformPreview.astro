@@ -99,15 +99,15 @@ const packages = [
 
 <style>
   #platform-preview {
-    padding: 88px 0 96px;
+    padding: var(--section-padding-y) 0;
     background: var(--md-sys-color-surface);
     overflow: hidden;
   }
 
   .container {
-    max-width: 1100px;
+    max-width: var(--section-container-max);
     margin: 0 auto;
-    padding: 0 24px;
+    padding: 0 var(--section-container-pad-x);
   }
 
   /* Header — editorial offset */
@@ -118,10 +118,10 @@ const packages = [
 
   .section-kicker {
     display: block;
-    font-size: 0.68rem;
+    font-size: var(--section-kicker-size);
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.25em;
+    letter-spacing: var(--section-kicker-spacing);
     color: var(--md-sys-color-on-surface-variant);
     margin-bottom: 14px;
   }
@@ -141,7 +141,7 @@ const packages = [
   .stack-flow {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 24px;
+    gap: var(--landing-card-gap);
     position: relative;
     margin-bottom: 56px;
   }
@@ -152,7 +152,7 @@ const packages = [
     left: 0;
     right: 0;
     height: 1px;
-    background: linear-gradient(to right, transparent, var(--md-sys-color-outline-variant), transparent);
+    background: var(--flow-line-bg);
     z-index: 0;
     pointer-events: none;
   }
@@ -164,16 +164,16 @@ const packages = [
     display: flex;
     flex-direction: column;
     gap: 14px;
-    padding: 32px 28px;
-    border-radius: 14px;
-    background: var(--md-sys-color-surface-container-lowest);
+    padding: var(--landing-card-padding);
+    border-radius: var(--landing-card-radius);
+    background: var(--landing-card-bg);
     text-decoration: none;
     color: inherit;
     transition: background 0.3s ease;
   }
 
   .stack-card:hover {
-    background: var(--md-sys-color-surface-container);
+    background: var(--landing-card-bg-hover);
   }
 
   /* Asymmetric vertical offsets */
@@ -190,8 +190,8 @@ const packages = [
     font-size: 8rem;
     font-style: italic;
     font-weight: 800;
-    color: var(--md-sys-color-primary);
-    opacity: 0.04;
+    color: var(--watermark-color);
+    opacity: var(--watermark-opacity);
     line-height: 1;
     pointer-events: none;
     user-select: none;
@@ -302,6 +302,9 @@ const packages = [
 </style>
 
 <style is:global>
+  /* Section-level dark-mode overrides. Card bg, flow-line and watermark
+     color are already handled via --landing-card-*/--flow-line-bg/
+     --watermark-color tokens in styles.css. */
   html[data-theme="dark"] #platform-preview {
     background: var(--casys-warm-background);
   }
@@ -310,45 +313,18 @@ const packages = [
     color: var(--casys-warm-text-muted);
   }
 
-  html[data-theme="dark"] #platform-preview h2 {
+  html[data-theme="dark"] #platform-preview h2,
+  html[data-theme="dark"] #platform-preview .card-tagline {
     color: var(--casys-warm-text-primary);
-  }
-
-  html[data-theme="dark"] #platform-preview .flow-line {
-    background: linear-gradient(to right, transparent, rgba(255, 184, 111, 0.15), transparent);
-  }
-
-  html[data-theme="dark"] #platform-preview .stack-card {
-    background: #1d1b1a;
-  }
-
-  html[data-theme="dark"] #platform-preview .stack-card:hover {
-    background: #211f1e;
-  }
-
-  html[data-theme="dark"] #platform-preview .card-1:hover {
-    background: #2b2a28;
-  }
-
-  html[data-theme="dark"] #platform-preview .card-watermark {
-    color: #FFB86F;
-    opacity: 0.04;
-  }
-
-  html[data-theme="dark"] #platform-preview .card-icon {
-    color: var(--casys-warm-accent);
   }
 
   html[data-theme="dark"] #platform-preview .card-label {
     color: var(--casys-warm-text-secondary);
   }
 
+  html[data-theme="dark"] #platform-preview .card-icon,
   html[data-theme="dark"] #platform-preview .card-name {
     color: var(--casys-warm-accent);
-  }
-
-  html[data-theme="dark"] #platform-preview .card-tagline {
-    color: var(--casys-warm-text-primary);
   }
 
   html[data-theme="dark"] #platform-preview .card-desc {
