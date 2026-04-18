@@ -53,7 +53,7 @@ export const fr: Translations = {
     subtitle: "En production : ERPNext, e-invoice, CRM, outils internes. Démos interactives sur GitHub.",
     cta: {
       primary: { text: "Voir nos réalisations", icon: "arrow_forward", url: "#use-cases-preview" },
-      secondary: { text: "Réserver un créneau", icon: "calendar_month", url: "https://cal.com/casys.ai" },
+      secondary: { text: "Nous parler", icon: "mail", url: "#contact" },
     },
     proofLabel: "Connecteurs standards",
     proofs: [
@@ -578,10 +578,10 @@ export const fr: Translations = {
     ctaSecondary: { text: "Nous parler" },
   },
   mcpEinvoicePage: {
-    eyebrow: "Facturation électronique",
-    title: "La facturation électronique française, branchée sur votre stack agent",
+    eyebrow: "Produit MCP live",
+    title: "MCP E-Invoice pour agents IA",
     subtitle:
-      "27 outils MCP pour le cycle de vie facture, l'annuaire, le suivi de statut et le e-reporting DGFiP.",
+      "Testez un workflow de facturation électronique live en 2 minutes (marché français aujourd'hui, compatible Peppol pour l'UE). Puis explorez la stack MCP derrière.",
     intro:
       "MCP E-Invoice connecte vos agents IA à l'écosystème de facturation électronique français via un pattern d'adaptateur agnostique PA. Actuellement intégré avec Iopole, extensible à toute plateforme agréée.",
     stats: [
@@ -635,8 +635,8 @@ export const fr: Translations = {
       "OAuth2 client_credentials avec auto-refresh",
       "4 viewers MCP Apps avec actions drill-down",
     ],
-    ctaPrimary: { text: "Voir sur GitHub" },
-    ctaSecondary: { text: "Nous parler" },
+    ctaPrimary: { text: "Tester la plateforme", icon: "open_in_new", url: "https://einvoice-platform.fr" },
+    ctaSecondary: { text: "Voir sur GitHub", icon: "code", url: "https://github.com/Casys-AI/mcp-einvoice" },
   },
   // ========================================
   // MCP PLATFORM (unified page)

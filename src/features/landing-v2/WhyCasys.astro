@@ -16,6 +16,7 @@ const contactCta = content.contactCta;
 ---
 
 <section id="why-casys">
+  <div class="gradient-blob" aria-hidden="true"></div>
   <div class="container">
     <header class="section-intro">
       <p class="section-kicker">{content.subtitle}</p>
@@ -149,10 +150,7 @@ const contactCta = content.contactCta;
   #why-casys {
     position: relative;
     padding: 88px 0 96px;
-    background:
-      radial-gradient(circle at 82% 8%, rgba(157, 132, 183, 0.08), transparent 24%),
-      radial-gradient(circle at 8% 0%, rgba(131, 70, 143, 0.1), transparent 26%),
-      var(--md-sys-color-surface-container-low);
+    background: var(--md-sys-color-surface);
     overflow: hidden;
   }
 
@@ -160,6 +158,23 @@ const contactCta = content.contactCta;
     max-width: 1280px;
     margin: 0 auto;
     padding: 0 clamp(20px, 4vw, 48px);
+    position: relative;
+    z-index: 2;
+  }
+
+  /* Single gradient blob — same style as Hero's .gradient-blob */
+  #why-casys .gradient-blob {
+    position: absolute;
+    top: 30%;
+    left: 30%;
+    width: min(520px, 40vw);
+    height: min(340px, 28vh);
+    background:
+      radial-gradient(circle at 50% 50%, rgba(131, 70, 143, 0.3) 0%, rgba(131, 70, 143, 0.15) 30%, rgba(131, 70, 143, 0.04) 50%, transparent 72%);
+    filter: blur(60px);
+    opacity: 0.75;
+    z-index: 0;
+    pointer-events: none;
   }
 
   .section-intro {
@@ -196,27 +211,23 @@ const contactCta = content.contactCta;
 
   .feature-card {
     position: relative;
+    z-index: 1;
     border-radius: 30px;
     overflow: hidden;
-    border: 1px solid var(--md-sys-color-outline-variant);
-    background: var(--md-sys-color-surface-container);
+    background: var(--atmos-card-bg);
+    backdrop-filter: blur(var(--atmos-card-blur));
+    -webkit-backdrop-filter: blur(var(--atmos-card-blur));
     min-height: 340px;
-    transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+    transition: background 300ms ease;
   }
 
   .feature-card:hover {
-    transform: translateY(-2px);
-    border-color: var(--md-sys-color-primary);
-    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.12);
+    background: var(--atmos-card-bg-hover);
   }
 
   .feature-card-lead {
     grid-column: span 8;
     min-height: 540px;
-    background:
-      linear-gradient(180deg, rgba(131, 70, 143, 0.06), transparent 45%),
-      linear-gradient(135deg, rgba(131, 70, 143, 0.05), rgba(157, 132, 183, 0.02) 58%, transparent 74%),
-      var(--md-sys-color-surface-container-low);
   }
 
   .feature-card-side {
@@ -673,23 +684,15 @@ const contactCta = content.contactCta;
 
 <style is:global>
   html[data-theme='dark'] #why-casys {
+    background: var(--casys-warm-background);
+  }
+  html[data-theme='dark'] #why-casys .gradient-blob {
     background:
-      radial-gradient(circle at 82% 8%, rgba(157, 132, 183, 0.08), transparent 24%),
-      radial-gradient(circle at 8% 0%, rgba(255, 184, 111, 0.1), transparent 26%),
-      var(--casys-warm-background);
+      radial-gradient(circle at 50% 50%, rgba(255, 184, 111, 0.28) 0%, rgba(255, 184, 111, 0.14) 30%, rgba(255, 184, 111, 0.04) 50%, transparent 72%);
+    opacity: 0.7;
   }
 
-  html[data-theme='dark'] #why-casys .feature-card {
-    background: var(--casys-warm-surface);
-    border-color: rgba(255, 184, 111, 0.1);
-  }
-
-  html[data-theme='dark'] #why-casys .feature-card-lead {
-    background:
-      linear-gradient(180deg, rgba(255, 184, 111, 0.06), transparent 45%),
-      linear-gradient(135deg, rgba(255, 184, 111, 0.05), rgba(157, 132, 183, 0.03) 58%, transparent 74%),
-      var(--casys-warm-surface);
-  }
+  /* .feature-card background/border handled via --atmos-card-* tokens in styles.css */
 
   html[data-theme='dark'] #why-casys h2,
   html[data-theme='dark'] #why-casys h3,

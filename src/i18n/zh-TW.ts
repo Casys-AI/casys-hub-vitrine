@@ -53,7 +53,7 @@ export const zh_TW: Translations = {
     subtitle: "已在生產環境運行：ERPNext、電子發票、CRM、內部工具。GitHub 上有互動式示範。",
     cta: {
       primary: { text: "查看我們的工作", icon: "arrow_forward", url: "#use-cases-preview" },
-      secondary: { text: "預約諮詢", icon: "calendar_month", url: "https://cal.com/casys.ai" },
+      secondary: { text: "聯絡我們", icon: "mail", url: "#contact" },
     },
     proofLabel: "標準連接器",
     proofs: [
@@ -526,9 +526,9 @@ export const zh_TW: Translations = {
     ctaSecondary: { text: "聯絡我們" },
   },
   mcpEinvoicePage: {
-    eyebrow: "電子發票",
-    title: "法國電子發票，接入您的智慧體技術棧",
-    subtitle: "27 個 MCP 工具，涵蓋發票生命週期、目錄查詢、狀態追蹤和 DGFiP e-reporting。",
+    eyebrow: "MCP 現場產品",
+    title: "面向 AI 智慧體的 MCP E-Invoice",
+    subtitle: "2 分鐘測試現場電子發票工作流（目前覆蓋法國市場，相容歐洲 Peppol）。然後深入底層 MCP 技術棧。",
     intro: "MCP E-Invoice 透過 PA 無關的適配器模式，將您的 AI 智慧體連接至法國電子發票生態系統。目前已整合 Iopole，可擴展至任意認證平台。",
     stats: [
       { value: "27", label: "MCP 工具" },
@@ -569,8 +569,8 @@ export const zh_TW: Translations = {
       "OAuth2 client_credentials 支援自動更新",
       "4 個帶下鑽操作的 MCP Apps 檢視器",
     ],
-    ctaPrimary: { text: "在 GitHub 上查看" },
-    ctaSecondary: { text: "聯絡我們" },
+    ctaPrimary: { text: "測試平台", icon: "open_in_new", url: "https://einvoice-platform.fr" },
+    ctaSecondary: { text: "在 GitHub 上查看", icon: "code", url: "https://github.com/Casys-AI/mcp-einvoice" },
   },
   // ========================================
   // MCP PLATFORM (unified page)

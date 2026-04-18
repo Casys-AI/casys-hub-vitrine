@@ -29,6 +29,21 @@ body {
   line-height: 1.5;
 }
 
+/* ==========================================================================
+   Atmos Card — translucent cards for Hero wedges + WhyCasys feature cards.
+   Default: subtle translucent overlay (blobs peek through). Hover: more solid,
+   card comes forward. PlatformPreview keeps its own hardcoded styles.
+   ========================================================================== */
+:root {
+  --atmos-card-bg:          rgba(255, 255, 255, 0.5);
+  --atmos-card-bg-hover:    rgba(255, 255, 255, 0.85);
+  --atmos-card-blur:        14px;
+}
+html[data-theme="dark"] {
+  --atmos-card-bg:          rgba(255, 255, 255, 0.035);
+  --atmos-card-bg-hover:    rgba(255, 255, 255, 0.07);
+}
+
 /* Material 3 Typography Scale */
 h1 {
   font-size: var(--md-sys-typescale-display-large-size);

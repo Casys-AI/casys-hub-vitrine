@@ -17,12 +17,21 @@ const { content, githubUrl, localePrefix } = Astro.props;
       <p class="subtitle">{content.subtitle}</p>
       <p class="intro">{content.intro}</p>
       <div class="cta-group">
-        <a href={githubUrl} target="_blank" rel="noopener" class="cta-primary">
-          <span class="material-symbols-rounded">open_in_new</span>
+        <a
+          href={content.ctaPrimary.url ?? githubUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          class="cta-primary"
+        >
+          <span class="material-symbols-rounded">{content.ctaPrimary.icon ?? "open_in_new"}</span>
           <span>{content.ctaPrimary.text}</span>
         </a>
-        <a href={`${localePrefix}/#contact`} class="cta-secondary">
-          <span class="material-symbols-rounded">mail</span>
+        <a
+          href={content.ctaSecondary.url ?? `${localePrefix}/#contact`}
+          {...(content.ctaSecondary.url ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+          class="cta-secondary"
+        >
+          <span class="material-symbols-rounded">{content.ctaSecondary.icon ?? "mail"}</span>
           <span>{content.ctaSecondary.text}</span>
         </a>
       </div>

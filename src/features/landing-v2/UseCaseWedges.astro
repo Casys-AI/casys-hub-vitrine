@@ -1,0 +1,378 @@
+---
+const locale = (Astro as any).currentLocale ?? 'en';
+const localePath = locale === 'en' ? '' : `/${locale}`;
+
+// ── E-Invoice copy ──────────────────────────────────────────────────────────
+const einvoiceLabel =
+  locale === 'fr' ? 'PLATEFORME LIVE'
+  : locale === 'zh' ? '现场平台'
+  : locale === 'zh-TW' ? '現場平台'
+  : 'LIVE PLATFORM';
+
+const einvoiceTagline =
+  locale === 'fr' ? 'Testez la facturation électronique live en 2 minutes'
+  : locale === 'zh' ? '2 分钟测试现场电子发票平台'
+  : locale === 'zh-TW' ? '2 分鐘測試現場電子發票平台'
+  : 'Test a live e-invoicing platform in 2 minutes';
+
+const einvoiceBody =
+  locale === 'fr'
+    ? 'Plateforme MCP live. Explorez les flux de factures, l\'IAM et les actions agent-ready — marché français aujourd\'hui, compatible Peppol pour l\'UE.'
+    : locale === 'zh'
+      ? '基于 MCP 的现场平台。探索发票流程、IAM 和面向智能体的操作 — 目前覆盖法国市场，兼容欧洲 Peppol。'
+      : locale === 'zh-TW'
+        ? '基於 MCP 的現場平台。探索發票流程、IAM 和面向智慧體的操作 — 目前覆蓋法國市場，相容歐洲 Peppol。'
+        : 'Live MCP-powered platform. Explore invoice flows, IAM, and agent-ready actions — French market today, Peppol-compatible for EU.';
+
+const einvoiceCta =
+  locale === 'fr' ? 'Voir le cas →'
+  : locale === 'zh' ? '查看案例 →'
+  : locale === 'zh-TW' ? '查看案例 →'
+  : 'View use case →';
+
+// ── ERPNext copy ────────────────────────────────────────────────────────────
+const erpnextLabel =
+  locale === 'fr' ? 'PACKAGE OPEN SOURCE'
+  : locale === 'zh' ? '开源软件包'
+  : locale === 'zh-TW' ? '開源套件'
+  : 'OPEN-SOURCE PACKAGE';
+
+const erpnextTagline =
+  locale === 'fr' ? 'Intégration ERPNext en production pour agents IA'
+  : locale === 'zh' ? '生产环境运行的 ERPNext AI 智能体集成'
+  : locale === 'zh-TW' ? '在生產環境運行的 ERPNext AI 智慧體整合'
+  : 'ERPNext integration running in production for AI agents';
+
+const erpnextBody =
+  locale === 'fr'
+    ? 'Workflows observables, démos interactives, point de départ sérieux pour équipes techniques.'
+    : locale === 'zh'
+      ? '可观测的工作流、交互式演示、面向技术团队的严肃起点。'
+      : locale === 'zh-TW'
+        ? '可觀測的工作流、互動式示範、面向技術團隊的嚴肅起點。'
+        : 'Observable workflows, interactive demos, a serious starting point for technical teams building agent integrations.';
+
+const erpnextVideoCaption =
+  locale === 'fr' ? 'Voir l\'agent IA travailler sur ERPNext'
+  : locale === 'zh' ? '观看 AI 智能体在 ERPNext 上工作'
+  : locale === 'zh-TW' ? '觀看 AI 智慧體在 ERPNext 上工作'
+  : 'Watch the AI agent work on ERPNext';
+
+const erpnextCta =
+  locale === 'fr' ? 'Voir le cas →'
+  : locale === 'zh' ? '查看案例 →'
+  : locale === 'zh-TW' ? '查看案例 →'
+  : 'View use case →';
+---
+
+<div class="hero-wedges">
+  <div class="wedges-inner">
+
+    <!-- Left wedge — E-Invoice -->
+    <a href={`${localePath}/use-cases/mcp-einvoice`} class="wedge wedge--einvoice" data-umami-event="wedge-einvoice">
+      <div class="wedge-label-pill">{einvoiceLabel}</div>
+      <h3 class="wedge-tagline">{einvoiceTagline}</h3>
+      <p class="wedge-body">{einvoiceBody}</p>
+
+      <div class="wedge-media">
+        <div class="list-mockup" aria-hidden="true">
+          <div class="mockup-row">
+            <span class="mockup-dot dot-green"></span>
+            <span class="mockup-bar bar-long"></span>
+            <span class="mockup-badge">APPROVED</span>
+          </div>
+          <div class="mockup-row">
+            <span class="mockup-dot dot-orange"></span>
+            <span class="mockup-bar bar-med"></span>
+            <span class="mockup-badge">PENDING</span>
+          </div>
+          <div class="mockup-row">
+            <span class="mockup-dot dot-blue"></span>
+            <span class="mockup-bar bar-short"></span>
+            <span class="mockup-badge">SENT</span>
+          </div>
+          <div class="mockup-row">
+            <span class="mockup-dot dot-red"></span>
+            <span class="mockup-bar bar-med-long"></span>
+            <span class="mockup-badge">REFUSED</span>
+          </div>
+        </div>
+      </div>
+
+      <span class="wedge-link">{einvoiceCta}</span>
+    </a>
+
+    <!-- Right wedge — ERPNext -->
+    <a href={`${localePath}/use-cases/mcp-erpnext`} class="wedge wedge--erpnext" data-umami-event="wedge-erpnext">
+      <div class="wedge-label-pill">{erpnextLabel}</div>
+      <h3 class="wedge-tagline">{erpnextTagline}</h3>
+      <p class="wedge-body">{erpnextBody}</p>
+
+      <div class="wedge-media">
+        <div class="video-frame">
+          <video
+            muted
+            loop
+            playsinline
+            preload="metadata"
+            autoplay
+            aria-label={erpnextVideoCaption}
+          >
+            <source src="/videos/mcp-erpnext-demo.mp4" type="video/mp4" />
+          </video>
+        </div>
+        <p class="video-caption">{erpnextVideoCaption}</p>
+      </div>
+
+      <span class="wedge-link">{erpnextCta}</span>
+    </a>
+
+  </div>
+</div>
+
+<style>
+  .hero-wedges {
+    width: 100%;
+    position: relative;
+    z-index: 2;
+  }
+
+  .wedges-inner {
+    width: 100%;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 48px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: stretch;
+  }
+
+  .wedge {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    background: var(--atmos-card-bg);
+    backdrop-filter: blur(var(--atmos-card-blur));
+    -webkit-backdrop-filter: blur(var(--atmos-card-blur));
+    border-radius: 24px;
+    padding: 36px 36px 32px;
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 300ms ease;
+  }
+
+  .wedge:hover {
+    background: var(--atmos-card-bg-hover);
+  }
+
+  .wedge:hover .wedge-link {
+    transform: translateX(4px);
+  }
+
+  .wedge:focus-visible {
+    outline: 3px solid var(--md-sys-color-primary);
+    outline-offset: 4px;
+  }
+
+  .wedge-label-pill {
+    display: inline-flex;
+    align-self: flex-start;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: rgba(131, 70, 143, 0.08);
+    border: 1px solid rgba(131, 70, 143, 0.14);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--md-sys-color-primary);
+  }
+
+  .wedge-tagline {
+    margin: 0;
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: clamp(1.5rem, 2.1vw, 1.875rem);
+    font-weight: 500;
+    line-height: 1.12;
+    letter-spacing: -0.02em;
+    color: var(--md-sys-color-on-surface);
+  }
+
+  .wedge-body {
+    margin: 0;
+    max-width: 44ch;
+    font-family: 'Manrope', sans-serif;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--md-sys-color-on-surface-variant);
+  }
+
+  .wedge-media {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 180px;
+  }
+
+  .list-mockup {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 12px;
+    height: 100%;
+    padding: 20px;
+    background: var(--md-sys-color-surface-container-low);
+    border-radius: 14px;
+  }
+
+  .mockup-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 28px;
+  }
+
+  .mockup-dot {
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    opacity: 0.85;
+  }
+
+  .dot-green  { background: #4caf50; }
+  .dot-orange { background: #ff9800; }
+  .dot-blue   { background: #2196f3; }
+  .dot-red    { background: #f44336; }
+
+  .mockup-bar {
+    flex: 1;
+    height: 8px;
+    border-radius: 4px;
+    background: var(--md-sys-color-outline-variant);
+    opacity: 0.55;
+  }
+
+  .bar-long     { max-width: 62%; }
+  .bar-med      { max-width: 44%; }
+  .bar-short    { max-width: 30%; }
+  .bar-med-long { max-width: 52%; }
+
+  .mockup-badge {
+    flex-shrink: 0;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--md-sys-color-on-surface-variant);
+    opacity: 0.7;
+    white-space: nowrap;
+  }
+
+  .video-frame {
+    overflow: hidden;
+    border-radius: 14px;
+    background: #0d0d0d;
+    flex: 1;
+    min-height: 170px;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  }
+
+  .video-frame video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+  }
+
+  .video-caption {
+    margin: 0;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.68rem;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--md-sys-color-on-surface-variant);
+    opacity: 0.7;
+    text-align: center;
+  }
+
+  .wedge-link {
+    display: inline-flex;
+    align-self: flex-start;
+    margin-top: 4px;
+    font-family: 'Manrope', sans-serif;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--md-sys-color-primary);
+    text-decoration: none;
+    letter-spacing: 0.01em;
+    transition: opacity 180ms ease, transform 180ms ease;
+  }
+
+  .wedge-link:hover {
+    opacity: 0.75;
+    transform: translateX(3px);
+  }
+
+  .wedge-link:focus-visible {
+    outline: 3px solid var(--md-sys-color-primary);
+    outline-offset: 4px;
+    border-radius: 4px;
+  }
+
+  @media (max-width: 1024px) {
+    .wedges-inner {
+      grid-template-columns: 1fr;
+      padding: 0 24px;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .wedges-inner {
+      padding: 0 18px;
+    }
+    .wedge {
+      padding: 28px 24px;
+    }
+    .wedge-tagline {
+      font-size: 1.5rem;
+    }
+  }
+</style>
+
+<style is:global>
+  /* Dark mode handled automatically via --atmos-card-* tokens in styles.css */
+  html[data-theme='dark'] #hero .wedge-label-pill {
+    background: rgba(255, 184, 111, 0.1);
+    border-color: rgba(255, 184, 111, 0.18);
+    color: var(--casys-warm-accent);
+  }
+  html[data-theme='dark'] #hero .wedge-tagline {
+    color: var(--casys-warm-text-primary);
+  }
+  html[data-theme='dark'] #hero .wedge-body,
+  html[data-theme='dark'] #hero .video-caption {
+    color: var(--casys-warm-text-secondary);
+  }
+  html[data-theme='dark'] #hero .list-mockup {
+    background: rgba(255, 255, 255, 0.03);
+  }
+  html[data-theme='dark'] #hero .mockup-bar {
+    background: rgba(255, 184, 111, 0.16);
+  }
+  html[data-theme='dark'] #hero .mockup-badge {
+    color: var(--casys-warm-text-secondary);
+  }
+  html[data-theme='dark'] #hero .wedge-link {
+    color: var(--casys-warm-accent);
+  }
+</style>

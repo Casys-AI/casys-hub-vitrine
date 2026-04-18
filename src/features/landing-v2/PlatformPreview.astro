@@ -178,12 +178,8 @@ const packages = [
 
   /* Asymmetric vertical offsets */
   .card-0 { transform: translateY(-16px); }
-  .card-1 { transform: translateY(24px); background: var(--md-sys-color-surface-container-low); }
+  .card-1 { transform: translateY(24px); }
   .card-2 { transform: translateY(-8px); }
-
-  .card-1:hover {
-    background: var(--md-sys-color-surface-container);
-  }
 
   /* Watermark numbers */
   .card-watermark {
@@ -328,11 +324,6 @@ const packages = [
 
   html[data-theme="dark"] #platform-preview .stack-card:hover {
     background: #211f1e;
-  }
-
-  html[data-theme="dark"] #platform-preview .card-1 {
-    background: #211f1e;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
   }
 
   html[data-theme="dark"] #platform-preview .card-1:hover {

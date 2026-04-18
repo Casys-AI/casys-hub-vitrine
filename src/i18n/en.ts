@@ -575,10 +575,10 @@ export const en = {
     ctaSecondary: { text: "Talk to us" },
   },
   mcpEinvoicePage: {
-    eyebrow: "E-Invoicing",
-    title: "French e-invoicing, wired into your agent stack",
+    eyebrow: "Live MCP product",
+    title: "MCP E-Invoice for AI agents",
     subtitle:
-      "27 MCP tools for invoice lifecycle, directory lookup, status tracking, and DGFiP reporting.",
+      "Test a live e-invoicing workflow in 2 minutes (French market today, Peppol-compatible for EU). Then explore the MCP stack behind it.",
     intro:
       "MCP E-Invoice connects your AI agents to the French e-invoicing ecosystem through a PA-agnostic adapter pattern. Currently integrated with Iopole, extensible to any certified platform.",
     stats: [
@@ -632,8 +632,8 @@ export const en = {
       "OAuth2 client_credentials with auto-refresh",
       "4 MCP Apps viewers with drill-down actions",
     ],
-    ctaPrimary: { text: "View on GitHub" },
-    ctaSecondary: { text: "Talk to us" },
+    ctaPrimary: { text: "Test the platform", icon: "open_in_new", url: "https://einvoice-platform.fr" },
+    ctaSecondary: { text: "View on GitHub", icon: "code", url: "https://github.com/Casys-AI/mcp-einvoice" },
   },
   // ========================================
   // MCP PLATFORM (unified page)
