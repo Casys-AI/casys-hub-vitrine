@@ -54,13 +54,13 @@ const erpnextVideoCaption =
         <div class="featured-visual">
           <img
             src="/images/use-cases/mcp-einvoice-demo-light.png"
-            alt={featuredEinvoice.title[locale] || featuredEinvoice.title.en}
+            alt=""
             loading="lazy"
             class="featured-img featured-img-light"
           />
           <img
             src="/images/use-cases/mcp-einvoice-demo-dark.png"
-            alt={featuredEinvoice.title[locale] || featuredEinvoice.title.en}
+            alt=""
             loading="lazy"
             class="featured-img featured-img-dark"
           />
@@ -102,7 +102,8 @@ const erpnextVideoCaption =
             playsinline
             autoplay
             preload="metadata"
-            aria-label={erpnextVideoCaption}
+            aria-hidden="true"
+            tabindex="-1"
             class="featured-video"
           >
             <source src="/videos/mcp-erpnext-demo.mp4" type="video/mp4" />
@@ -313,6 +314,19 @@ const erpnextVideoCaption =
     display: block;
   }
 
+  /* Accessibility — hide autoplay video for users who prefer reduced motion.
+     A poster-like fallback lives on the parent .featured-visual-video bg. */
+  @media (prefers-reduced-motion: reduce) {
+    .featured-video {
+      display: none;
+    }
+    .featured-visual-video {
+      background-image: url('/images/screenshots/erpnext-mcp-demo.jpg');
+      background-size: cover;
+      background-position: left center;
+    }
+  }
+
   /* Content — 40% */
   .featured-content {
     flex: 0 0 40%;
@@ -398,7 +412,7 @@ const erpnextVideoCaption =
     flex-direction: column;
     padding: 36px 32px;
     border-radius: var(--card-radius);
-    background: var(--md-sys-color-surface-container-low);
+    background: var(--md-sys-color-surface);
     text-decoration: none;
     color: inherit;
     transition:
@@ -408,7 +422,7 @@ const erpnextVideoCaption =
   }
 
   .sec-card:hover {
-    background: var(--md-sys-color-surface-container);
+    background: var(--md-sys-color-surface-container-lowest);
     transform: translateY(-3px);
     box-shadow:
       0 2px 8px rgba(0, 0, 0, 0.04),

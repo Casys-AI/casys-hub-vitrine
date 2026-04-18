@@ -119,7 +119,8 @@ const erpnextCta =
             playsinline
             preload="metadata"
             autoplay
-            aria-label={erpnextVideoCaption}
+            aria-hidden="true"
+            tabindex="-1"
           >
             <source src="/videos/mcp-erpnext-demo.mp4" type="video/mp4" />
           </video>
@@ -245,6 +246,19 @@ const erpnextCta =
 
   /* Dual-theme images — light visible by default, dark hidden */
   .wedge-img-dark { display: none; }
+
+  /* Accessibility — honor user's motion preference.
+     Show a static first-frame poster instead of the looping autoplay. */
+  @media (prefers-reduced-motion: reduce) {
+    .video-frame video {
+      display: none;
+    }
+    .video-frame {
+      background-image: url('/images/screenshots/erpnext-mcp-demo.jpg');
+      background-size: cover;
+      background-position: center;
+    }
+  }
 
   .media-caption,
   .video-caption {

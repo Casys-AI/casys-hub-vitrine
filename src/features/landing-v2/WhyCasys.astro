@@ -49,6 +49,7 @@ const hrefById: Record<string, string> = {
           <a
             href={href}
             class="statement-row"
+            aria-label={item.title}
             target={external ? '_blank' : undefined}
             rel={external ? 'noopener noreferrer' : undefined}
           >
@@ -190,10 +191,11 @@ const hrefById: Record<string, string> = {
 
   .statement-desc {
     margin: 0;
-    font-size: 0.85rem;
+    max-width: 280px;
+    justify-self: end;
+    font-size: 0.78rem;
     line-height: 1.65;
     color: var(--md-sys-color-on-surface-variant);
-    text-align: right;
     font-weight: 300;
     transition: color 300ms ease;
   }
