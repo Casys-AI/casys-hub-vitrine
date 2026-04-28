@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="500" viewBox="0 0 720 500" font-family="ui-sans-serif, system-ui, sans-serif">
+  <rect width="720" height="500" fill="#08080a"/>
+
+  <!-- Title -->
+  <text x="360" y="38" text-anchor="middle" fill="#f0ede8" font-size="18" font-weight="600">openclaw: where ACP and A2A coexist</text>
+  <text x="360" y="60" text-anchor="middle" fill="#666666" font-size="12">ACP for the outside world, A2A for the inside world — same gateway</text>
+
+  <!-- User at top -->
+  <rect x="310" y="92" width="100" height="38" rx="8" fill="#2d2d35" stroke="#666666" stroke-width="1"/>
+  <text x="360" y="115" text-anchor="middle" fill="#f0ede8" font-size="12" font-weight="600">User</text>
+  <text x="360" y="126" text-anchor="middle" fill="#666666" font-size="9">/acp spawn · sessions_send</text>
+
+  <!-- Arrow user → gateway -->
+  <line x1="360" y1="130" x2="360" y2="158" stroke="#666666" stroke-width="1.5"/>
+  <polygon points="356,156 364,156 360,164" fill="#666666"/>
+
+  <!-- openclaw gateway (center, large) -->
+  <rect x="180" y="166" width="360" height="100" rx="10" fill="#1f1f23" stroke="#fbbf24" stroke-width="2"/>
+  <text x="360" y="192" text-anchor="middle" fill="#fbbf24" font-size="14" font-weight="600">openclaw gateway</text>
+  <text x="360" y="210" text-anchor="middle" fill="#666666" font-size="11">routing · sessions · policy · bindings</text>
+
+  <!-- Two seam labels inside gateway -->
+  <rect x="200" y="222" width="150" height="32" rx="6" fill="#2d2d35" stroke="#a78bfa" stroke-width="1.5"/>
+  <text x="275" y="242" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="600">A2A seam</text>
+
+  <rect x="370" y="222" width="150" height="32" rx="6" fill="#2d2d35" stroke="#60a5fa" stroke-width="1.5"/>
+  <text x="445" y="242" text-anchor="middle" fill="#60a5fa" font-size="11" font-weight="600">ACP seam (acpx)</text>
+
+  <!-- Left side: A2A authorization layer + internal agents (hub-spoke) -->
+  <text x="155" y="305" text-anchor="middle" fill="#a78bfa" font-size="11" font-weight="600">A2A — internal agents</text>
+  <text x="155" y="320" text-anchor="middle" fill="#666666" font-size="10">PR #39102 allowlist policy</text>
+
+  <!-- Hub: David -->
+  <rect x="100" y="348" width="110" height="38" rx="8" fill="#1f1f23" stroke="#a78bfa" stroke-width="1.5"/>
+  <text x="155" y="370" text-anchor="middle" fill="#f0ede8" font-size="12" font-weight="600">david</text>
+  <text x="155" y="382" text-anchor="middle" fill="#666666" font-size="9">hub · allow ["*"]</text>
+
+  <!-- Spokes -->
+  <rect x="40" y="416" width="100" height="36" rx="8" fill="#1f1f23" stroke="#a78bfa" stroke-width="1"/>
+  <text x="90" y="436" text-anchor="middle" fill="#f0ede8" font-size="11">spoke</text>
+  <text x="90" y="448" text-anchor="middle" fill="#666666" font-size="9">allow ["david"]</text>
+
+  <rect x="170" y="416" width="100" height="36" rx="8" fill="#1f1f23" stroke="#a78bfa" stroke-width="1"/>
+  <text x="220" y="436" text-anchor="middle" fill="#f0ede8" font-size="11">kelly</text>
+  <text x="220" y="448" text-anchor="middle" fill="#666666" font-size="9">allow ["david"]</text>
+
+  <!-- A2A connections (spoke→david, kelly→david, but no spoke↔kelly) -->
+  <line x1="105" y1="416" x2="140" y2="386" stroke="#a78bfa" stroke-width="1.5" opacity="0.7"/>
+  <polygon points="138,389 145,386 142,393" fill="#a78bfa"/>
+
+  <line x1="205" y1="416" x2="170" y2="386" stroke="#a78bfa" stroke-width="1.5" opacity="0.7"/>
+  <polygon points="172,389 165,386 168,393" fill="#a78bfa"/>
+
+  <!-- Denied path spoke ↔ kelly (red dashed) -->
+  <line x1="140" y1="434" x2="170" y2="434" stroke="#ef4444" stroke-width="1.2" stroke-dasharray="3,3" opacity="0.7"/>
+  <text x="155" y="430" text-anchor="middle" fill="#ef4444" font-size="9">denied</text>
+
+  <!-- Connector from gateway A2A seam to internal cluster -->
+  <line x1="275" y1="254" x2="155" y2="346" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+  <!-- Right side: ACP runtime spawning external harnesses -->
+  <text x="595" y="305" text-anchor="middle" fill="#60a5fa" font-size="11" font-weight="600">ACP — external harnesses</text>
+  <text x="595" y="320" text-anchor="middle" fill="#666666" font-size="10">acpx runtime plugin</text>
+
+  <!-- External agents (harnesses) -->
+  <rect x="540" y="348" width="110" height="36" rx="8" fill="#1f1f23" stroke="#60a5fa" stroke-width="1"/>
+  <text x="595" y="370" text-anchor="middle" fill="#f0ede8" font-size="11">Claude Code</text>
+
+  <rect x="540" y="392" width="110" height="36" rx="8" fill="#1f1f23" stroke="#60a5fa" stroke-width="1"/>
+  <text x="595" y="414" text-anchor="middle" fill="#f0ede8" font-size="11">Codex CLI</text>
+
+  <rect x="540" y="436" width="110" height="36" rx="8" fill="#1f1f23" stroke="#60a5fa" stroke-width="1"/>
+  <text x="595" y="458" text-anchor="middle" fill="#f0ede8" font-size="11">Gemini CLI</text>
+
+  <!-- Arrows from gateway ACP seam to harnesses -->
+  <line x1="445" y1="254" x2="540" y2="366" stroke="#60a5fa" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <line x1="445" y1="254" x2="540" y2="410" stroke="#60a5fa" stroke-width="1.2" stroke-dasharray="4,3" opacity="0.7"/>
+  <line x1="445" y1="254" x2="540" y2="454" stroke="#60a5fa" stroke-width="1.2" stroke-dasharray="4,3" opacity="0.7"/>
+
+  <!-- Legend bottom -->
+  <text x="360" y="490" text-anchor="middle" fill="#666666" font-size="10" font-style="italic">Same gateway, two protocols, two seams. ACP handles harness lifecycle, A2A handles cross-agent authorization.</text>
+</svg>

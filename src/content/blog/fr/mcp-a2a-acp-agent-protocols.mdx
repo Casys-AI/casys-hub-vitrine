@@ -1,0 +1,331 @@
+---
+title: "MCP vs A2A vs ACP : Les protocoles agents expliqués (et pourquoi il y avait deux ACP)"
+description: "Trois protocoles, trois couches, une collision d'acronymes. Un guide de terrain d'un contributeur openclaw travaillant sur la couche d'autorisation A2A — ce que chaque protocole résout réellement, leurs zones de chevauchement, et lequel votre système a besoin."
+author: "Erwan Lee Pesle"
+date: 2026-04-28
+tags:
+  - mcp
+  - a2a
+  - acp
+  - agent-protocols
+  - openclaw
+  - agents
+  - protocols
+category: "Ingénierie"
+language: fr
+snippet: "MCP, A2A, ACP — trois protocoles, trois couches, une collision d'acronymes. Voici ce que chacun résout réellement et lequel votre système a besoin."
+featured: true
+draft: false
+---
+import ExcalidrawDiagram from '../../../components/ExcalidrawDiagram.astro';
+
+## Il y avait autrefois deux ACP
+
+Si vous avez cherché « protocole ACP » récemment, vous avez trouvé deux choses complètement différentes — et vous ne vous en êtes probablement pas rendu compte. L'un est vivant. L'autre a été déprécié et absorbé dans [A2A](https://a2a-protocol.org/). Les articles que vous avez lus les traitaient sans doute comme un seul et même protocole.
+
+C'est le problème de la soupe d'acronymes des protocoles agents en 2026. **MCP**, **A2A**, **ACP** — et un **ANP** qui flotte par-ci par-là — sonnent tous de façon interchangeable. Ils ne le sont pas. Ils se situent à des couches différentes de la stack, résolvent des problèmes différents, et ont émergé d'écosystèmes différents avec des incitations différentes.
+
+Je contribue à [openclaw](https://github.com/openclaw/openclaw), l'un des rares systèmes open source où deux de ces protocoles coexistent réellement en code de production. Ma [PR ouverte #39102](https://github.com/openclaw/openclaw/pull/39102) implémente la allowlist A2A sortante par agent — la couche d'autorisation qui contrôle quels agents peuvent communiquer avec quels autres agents au sein d'un gateway. Ce travail m'a forcé à comprendre exactement où A2A s'arrête et où ACP commence. Cet article est le guide de terrain que j'aurais aimé avoir quand j'ai commencé.
+
+Nous allons parcourir ce que fait chaque protocole, d'où vient la confusion, pourquoi un ACP est mort, et lequel vous devriez utiliser selon ce que vous construisez. Il y a des diagrammes, des tableaux comparatifs et des liens vers les specs à la fin.
+
+<ExcalidrawDiagram src="mcp-a2a-acp-agent-protocols/three-protocols-stack" alt="MCP, ACP et A2A opèrent à trois couches distinctes — agent-vers-outils, client-vers-agent, et agent-vers-agent" />
+
+---
+
+## Les trois protocoles en un coup d'œil
+
+| Protocole | Direction | Créé par | Ce qu'il résout | Statut |
+|---|---|---|---|---|
+| **MCP** (Model Context Protocol) | agent ↔ outils / données | Anthropic, nov. 2024 → AAIF / Linux Foundation, 2026 | Interface standard entre un agent et des outils, fichiers, APIs externes | Production, ~97M téléchargements SDK/mois |
+| **ACP** (Agent Client Protocol) | client ↔ agent | Zed Industries, août 2025 (co-maintenu avec JetBrains) | Interface standard entre un éditeur ou CLI et un agent de code | En forte croissance, 19+ agents supportés |
+| **A2A** (Agent2Agent Protocol) | agent ↔ agent | Google, avr. 2025 (maintenant Linux Foundation) | Interface standard entre deux agents autonomes, souvent cross-organisation | 50+ partenaires enterprise, production naissante |
+| ~~ACP (Agent Communication Protocol)~~ | ~~agent ↔ agent~~ | ~~BeeAI / Linux Foundation~~ | ~~Collaboration inter-agents cross-vendor~~ | **Déprécié, fusionné dans A2A** |
+
+Le modèle mental le plus simple : imaginez trois systèmes téléphoniques distincts. MCP est la ligne entre un agent et le monde extérieur. ACP est la ligne entre vous et un agent. A2A est la ligne entre deux agents. Ils sont complémentaires, pas concurrents — un même système peut utiliser les trois.
+
+L'exception, c'est le mort. On y reviendra.
+
+---
+
+## MCP — Agent vers outils
+
+Le [Model Context Protocol](https://modelcontextprotocol.io/) était la réponse d'Anthropic à une question simple : comment un LLM appelle-t-il un outil externe sans que chaque fournisseur de modèle invente son propre format ?
+
+Avant MCP, chaque framework d'agents avait sa propre syntaxe d'appel d'outils, sa propre façon de décrire les paramètres, sa propre façon de streamer les résultats. Si vous vouliez que Claude lise votre base Postgres et que Cursor lise la même base, vous écriviez deux adaptateurs. Si vous vouliez ajouter un troisième client, trois adaptateurs.
+
+MCP a standardisé tout ça avec une interface JSON-RPC et trois primitives :
+
+- **Tools** : fonctions appelables avec des paramètres typés
+- **Resources** : sources de données en lecture seule (fichiers, requêtes SQL, pages web)
+- **Prompts** : templates de prompts réutilisables
+
+Un serveur MCP expose ces capacités. Un client MCP (l'agent ou son hôte) les découvre et les invoque. Le transport est JSON-RPC sur stdio pour les serveurs locaux, ou HTTP+SSE pour les serveurs distants.
+
+Résultat : un serveur MCP que vous écrivez une seule fois fonctionne avec Claude Desktop, Cursor, Zed, Continue, et tout le reste de l'écosystème. Anthropic annonce ~97 millions de téléchargements SDK mensuels début 2026 — le protocole a gagné sa niche.
+
+En 2026, MCP a également [rejoint la Linux Foundation](https://www.linuxfoundation.org/press/linux-foundation-announces-the-formation-of-the-agentic-ai-foundation) comme l'un des projets fondateurs de l'**Agentic AI Foundation (AAIF)**, aux côtés de goose (Block) et AGENTS.md (OpenAI). L'AAIF est co-fondée par Anthropic, Block et OpenAI avec le soutien de Google, Microsoft, AWS et Cloudflare. Le signal de gouvernance est clair : MCP n'est plus un protocole mono-vendor, c'est le substrat commun sur lequel tout l'écosystème s'engage.
+
+Pour une visite pratique des serveurs MCP, voir mon article précédent [Comment créer un serveur MCP pour les agents IA](/blog/make-mcp-server-ai-agents).
+
+> **En résumé :** MCP est la couche données-et-outils. Si votre agent a besoin de lire une base de données, d'appeler une API, ou d'utiliser un outil, c'est là que vous construisez. Il ne coordonne pas les agents entre eux.
+
+---
+
+## A2A — Agent vers agent
+
+[Agent2Agent](https://a2a-protocol.org/) a été annoncé par Google en [avril 2025](https://developers.googleblog.com/en/a2a-a-new-era-of-agent-interoperability/) et cédé à la Linux Foundation en juin 2025. La promesse : un standard pour que des agents autonomes se découvrent, négocient des modes d'interaction, et collaborent sur des tâches — entre vendors, entre entreprises, entre déploiements.
+
+Le modèle est pair à pair. Deux agents qui se parlent en égaux, sans que l'un contrôle l'état interne de l'autre.
+
+### Comment fonctionne A2A
+
+Trois composants centraux :
+
+**Agent Cards** — un document JSON publié à `/.well-known/agent.json`. Il décrit l'identité de l'agent, ses capacités, les modalités supportées (texte, fichiers, données structurées), les exigences d'authentification et les endpoints de service. Les autres agents récupèrent cette carte pour savoir à quoi ils ont affaire. Pensez-y comme un hybride robots.txt + OpenAPI pour les agents autonomes.
+
+```json
+{
+  "name": "support-triage-agent",
+  "description": "Routes customer issues to the right specialist",
+  "url": "https://agents.example.com/support",
+  "capabilities": ["streaming", "tasks"],
+  "modalities": ["text", "files"],
+  "authentication": { "schemes": ["oauth2"] },
+  "skills": [
+    { "id": "classify_ticket", "name": "Classify support ticket" }
+  ]
+}
+```
+
+**Tasks** — l'unité de travail. Une task est créée quand un agent demande à un autre de faire quelque chose. Les tasks ont un état (`submitted`, `working`, `completed`, `failed`), peuvent contenir plusieurs messages, et persistent via un `TaskStore`. C'est l'un des meilleurs choix de design d'A2A : le vrai travail cross-agents est rarement en un seul échange, donc les tasks modélisent correctement les allers-retours.
+
+**Messages** — les payloads structurés échangés dans une task. Ils transportent du texte, des fichiers et des données structurées, le tout via JSON-RPC 2.0 sur HTTP POST.
+
+### Où A2A apparaît
+
+Google a lancé A2A avec 50+ partenaires : Salesforce, SAP, ServiceNow, MongoDB, Atlassian, Box, Cohere, PayPal, Workday, et la plupart des grands cabinets de conseil (Accenture, Capgemini, Deloitte). Le positionnement est limpide : les écosystèmes d'agents enterprise où l'agent d'une entreprise doit se coordonner avec celui d'une autre.
+
+Les compromis sont tout aussi clairs. A2A exige des serveurs HTTP, des agent cards, des URIs bien connues, et une configuration d'authentification. Pour un développeur qui expérimente un mardi soir, la friction est réelle. Pour une enterprise qui intègre deux plateformes SaaS via leurs agents respectifs, la friction est acceptable — c'est ce à quoi ressemble l'interopérabilité enterprise.
+
+> **En résumé :** A2A est la couche cross-agents, cross-vendor. Si vous avez besoin que des agents de différentes organisations négocient et collaborent sur des tâches, A2A est la bonne primitive. C'est plus lourd qu'ACP et plus long à mettre en place, mais conçu pour le bon problème.
+
+---
+
+## ACP, version 1 : celui qui est mort
+
+C'est là que les résultats de recherche deviennent confus.
+
+<ExcalidrawDiagram src="mcp-a2a-acp-agent-protocols/acp-history" alt="Chronologie des deux ACP : l'Agent Communication Protocol de BeeAI a été lancé puis déprécié et fusionné dans A2A ; l'Agent Client Protocol de Zed a survécu et grandi" />
+
+En 2024-2025, le [projet BeeAI](https://agentcommunicationprotocol.dev) (associé à IBM, hébergé sous la Linux Foundation) a livré un protocole appelé **Agent Communication Protocol**, abrégé lui aussi ACP. C'était un protocole agent-to-agent, REST-first, conçu pour la coordination multi-agents au sein d'une organisation. Il utilisait les verbes HTTP (GET, POST, DELETE) et SSE pour le streaming, avait son propre format de métadonnées d'agent, et livrait des SDKs Python et TypeScript.
+
+On le trouve encore cité dans beaucoup d'articles de comparaison qui se positionnent sur « MCP vs A2A vs ACP » — le [post community.ibm.com](https://community.ibm.com/community/user/blogs/luca-corbo/2025/06/16/mcp-acp-and-a2a) d'IBM se classe #6 sur cette requête au moment où j'écris ces lignes. Les articles décrivent ACP comme « collaboration d'agents REST-based », le contrastent avec l'approche JSON-RPC d'A2A, et les présentent comme deux standards concurrents.
+
+Cette comparaison est désormais obsolète.
+
+Fin 2025, le projet BeeAI ACP a été [fusionné dans A2A](https://a2a-protocol.org/) sous la Linux Foundation. Le cadrage « deux protocoles, deux approches » s'est effondré en un seul. L'Agent Communication Protocol, en tant que spec indépendante, n'est plus maintenu. Les implémentations existantes fonctionnent toujours, mais le nouveau développement se fait sur A2A.
+
+La leçon est surtout historique, mais elle compte quand vous lisez des articles plus anciens : si un article de 2025 loue « le design REST d'ACP par rapport au JSON-RPC d'A2A », il parle d'un protocole qui n'existe plus en tant que projet indépendant. Traitez ses conclusions en conséquence.
+
+> **En résumé :** L'Agent Communication Protocol (BeeAI, aligné IBM) était un vrai protocole qui concurrençait A2A sur le créneau agent-to-agent. Il a perdu. L'écosystème s'est consolidé. Aujourd'hui, quand quelqu'un dit « ACP », il parle de l'autre.
+
+---
+
+## ACP, version 2 : celui qui a gagné
+
+L'**Agent Client Protocol**, c'est ce qui survit. Créé par [Zed Industries](https://zed.dev/acp), lancé le 27 août 2025. JetBrains a rejoint comme co-lead maintainer en février 2026, amenant Junie dans l'écosystème. La spec est sous licence Apache et se trouve sur [agentclientprotocol.com](https://agentclientprotocol.com).
+
+Il résout un problème différent d'A2A : pas agent-to-agent, mais **client-to-agent**. Le client est un éditeur (Zed, IDEs JetBrains, VS Code via plugins) ou un orchestrateur CLI. L'agent est un assistant de code — Claude Code, Codex CLI, Gemini CLI, Cursor, Copilot CLI, Cline, Goose, Junie, et une dizaine d'autres.
+
+### Comment fonctionne ACP
+
+JSON-RPC 2.0 sur stdio pour les agents locaux (le cas courant), HTTP ou WebSocket pour les agents distants. Une session type :
+
+1. Le client envoie `initialize` avec ses capacités
+2. Le serveur répond avec les siennes
+3. Le client envoie des prompts via `session/message`
+4. Le serveur streame des événements : chunks de texte, tool calls, demandes de permission, diffs de fichiers
+5. L'un ou l'autre peut annuler ou fermer
+
+Le choix de design crucial : stdio en premier. La configuration la plus simple, c'est l'agent comme processus enfant du client, communiquant via stdin/stdout. Pas de serveur HTTP, pas d'auth, pas d'agent card. Zéro infrastructure.
+
+Pour les cas distants et headless, ACP supporte HTTP, et il existe un client CLI headless appelé [acpx](https://github.com/openclaw/acpx) qui expose le protocole de façon scriptable. J'ai écrit un article détaillé sur acpx dans [ACPX dans Claude Code : Orchestration Multi-Agent en Pratique](/blog/acpx-multi-agent-orchestration) — l'article que vous lisez est son pendant au niveau protocole.
+
+### L'analogie LSP
+
+ACP est aux agents IA ce que le [Language Server Protocol](https://microsoft.github.io/language-server-protocol/) était à l'outillage des langages. Avant LSP, chaque éditeur avait besoin d'une intégration sur mesure avec chaque langage. Avec LSP, un seul serveur parle à tous les éditeurs. Le même effondrement M×N → M+N est en train de se produire avec ACP et les agents.
+
+| | Sans standard | Avec standard |
+|---|---|---|
+| **Outillage langage** | M éditeurs × N langages = M×N plugins | M + N (LSP) |
+| **Orchestration agents** | M orchestrateurs × N agents = M×N adaptateurs | M + N (ACP) |
+
+> **En résumé :** L'Agent Client Protocol est la couche d'interopérabilité dev tools. Si vous construisez un éditeur, un plugin IDE, ou un orchestrateur CLI qui doit invoquer n'importe quel agent de code, ACP est la ligne que vous câblez. Local-first, léger, et déjà adopté par tous ceux qui comptent dans les dev tools.
+
+---
+
+## Tableau comparatif — Quand utiliser quoi
+
+| Critère | MCP | ACP (Agent Client) | A2A |
+|---|---|---|---|
+| **Direction** | agent ↔ outils | client ↔ agent | agent ↔ agent |
+| **Transport** | JSON-RPC sur stdio / HTTP+SSE | JSON-RPC sur stdio / HTTP / WebSocket | JSON-RPC 2.0 sur HTTP POST |
+| **Découverte** | le client liste les outils au démarrage de session | le client lance un agent connu | Agent Cards à `/.well-known/agent.json` |
+| **Modèle d'état** | majoritairement stateless | scopé à la session | scopé à la task, multi-message, persistant |
+| **Auth** | généralement aucune en local ; OAuth pour le hosted | local : aucune ; distant : défini par l'implémentation | OAuth2 / clés API, intégrés |
+| **Effort de mise en place** | faible | très faible (stdio par défaut) | moyen-élevé (infra HTTP) |
+| **Idéal pour** | interfaces outils/données | orchestration IDE/CLI d'agents de code | collaboration enterprise cross-vendor |
+| **Adoption aujourd'hui** | ~97M téléchargements SDK/mois | 19+ agents, 4+ éditeurs | 50+ partenaires enterprise |
+| **Créé par** | Anthropic → AAIF (Linux Foundation) | Zed + JetBrains | Google → Linux Foundation |
+
+Une règle pratique :
+
+- Vous construisez un **outil** qu'un agent doit utiliser ? → MCP
+- Vous construisez un **client** qui doit invoquer n'importe quel agent de code ? → ACP
+- Vous construisez un **système où deux agents autonomes se coordonnent**, notamment entre orgs ? → A2A
+- Vous construisez les trois ? → Utilisez les trois. Ils se composent proprement.
+
+---
+
+## Un vrai système où deux d'entre eux coexistent
+
+La théorie, c'est facile. Voyons à quoi ça ressemble dans du code de production.
+
+[openclaw](https://github.com/openclaw/openclaw) est un gateway IA open source — il se positionne entre les utilisateurs et différents agents de code, gérant le routing, les sessions, les politiques et les bindings. Dans son codebase, A2A et ACP sont tous les deux de première classe :
+
+- **ACP** est utilisé via le plugin runtime `acpx` pour spawner des harnesses de code externes (Claude Code, Codex, Gemini CLI). L'utilisateur tape `/acp spawn codex --bind here`, et openclaw démarre l'agent via ACP et ramène ses événements dans la conversation.
+- **A2A** est utilisé en interne pour les outils de session cross-agents. Quand l'agent David tourne et doit envoyer un message à l'agent Spoke, openclaw route l'appel via l'outil `sessions_send`, lui-même protégé par une politique d'autorisation A2A.
+
+Ce sont deux coutures distinctes dans le même gateway. ACP gère le monde extérieur (vrais harnesses CLI). A2A gère le monde intérieur (agents nommés qui se parlent). La séparation architecturale est exactement ce pour quoi les protocoles ont été conçus.
+
+<ExcalidrawDiagram src="mcp-a2a-acp-agent-protocols/openclaw-stack" alt="Architecture openclaw : le runtime ACP spawne des harnesses externes tandis que l'autorisation A2A contrôle la communication cross-agents à l'intérieur du gateway" />
+
+### À quoi ressemble une politique d'autorisation A2A
+
+Ma [PR ouverte #39102](https://github.com/openclaw/openclaw/pull/39102) sur openclaw introduit des allowlists A2A sortantes par agent. Sans elle, openclaw avait une allowlist globale unique qui décidait quels agents pouvaient participer aux appels cross-agents — à grain grossier, difficile à raisonner pour des topologies hub-spoke ou fan-out.
+
+Le nouveau schéma :
+
+```json
+{
+  "tools": {
+    "agentToAgent": { "enabled": true, "allow": ["*"] }
+  },
+  "agents": {
+    "list": [
+      { "id": "david", "tools": { "agentToAgent": { "allow": ["*"] } } },
+      { "id": "spoke", "tools": { "agentToAgent": { "allow": ["david"] } } },
+      { "id": "kelly", "tools": { "agentToAgent": { "allow": ["david"] } } }
+    ]
+  }
+}
+```
+
+Pattern hub-spoke : `david` est le hub, `spoke` et `kelly` peuvent chacun appeler `david`, mais `spoke` ne peut pas atteindre `kelly` et vice versa. La porte globale (`tools.agentToAgent.allow`) est évaluée en premier comme porte de participation ; l'override par agent réduit ensuite ce que chaque demandeur peut atteindre. Sortant uniquement — la config du demandeur est vérifiée, pas celle de la cible.
+
+Ce n'est pas une politique exotique. C'est le type de contrôle d'accès dont tout vrai système multi-agents a besoin dès que vous avez plus de trois agents et que l'un d'eux est privilégié. A2A en tant que protocole vous donne le format de transport, mais pas les primitives de politique — c'est le rôle du gateway. Construire cette couche de politique, c'est exactement le genre de travail qui rend A2A utilisable en pratique.
+
+---
+
+## Voix du terrain
+
+Les articles de comparaison ont tendance à paraphraser les protocoles poliment. Les vraies conversations publiques sont plus tranchées, et elles en disent plus sur l'adoption que n'importe quel blog de vendor. Un échantillon de la dernière année de discussions [HN](https://news.ycombinator.com), de fils GitHub et de threads de développeurs.
+
+**Sur ACP — prudemment optimiste :**
+
+- *cube2222* (HN) : voit [Zed renouer avec ses racines collaboratives](https://news.ycombinator.com/item?id=45074147), s'attend à ce qu'ACP « réduise les coûts de changement entre les offres » — exactement le levier anti-lock-in que chaque acheteur d'outils de code veut activer.
+- *akattelu* (HN) : enthousiaste face à la standardisation après la démo Gemini CLI dans Zed, espère qu'ACP permettra à Helix d'ajouter des fonctionnalités IA sans travail d'intégration sur mesure.
+
+**Sur ACP — critiques légitimes :**
+
+- *greatgib* (HN) : pose la question évidente — [pourquoi ce n'est pas une extension LSP ?](https://news.ycombinator.com/item?id=45074147) La réponse est réelle (LSP est pour l'analyse statique, pas les événements d'agents en streaming) mais le cadrage expose la surface conceptuelle nouvelle qu'ACP introduit.
+- *jmull* (HN) : pourquoi médiatiser les outils agents via un protocole IDE plutôt que d'utiliser directement des CLIs ou MCP ? Ça mérite d'être pris au sérieux — ACP justifie son existence quand vous avez une UI ; pour l'orchestration headless, [acpx](https://github.com/openclaw/acpx) et les invocations CLI directes couvrent la plupart des cas.
+
+**Sur A2A — beaucoup plus sceptique :**
+
+- *phillipcarter* (HN) : peut-être la prise la plus cinglante que j'aie lue — [A2A résout des « problèmes marketing »](https://news.ycombinator.com/item?id=43631381) là où MCP répond à des besoins pratiques. Prédit que seul MCP survive au-delà de six mois puisque les contributeurs A2A travaillent majoritairement chez Google.
+- *wongarsu* (HN) : note que les partenaires au lancement incluent KPMG, Accenture, BCG — « dont les endorsements sont un signal d'alerte » plutôt qu'une preuve de mérite technique.
+- *simonw* (Simon Willison, HN) : s'interroge sur le fait que des LLMs appelant d'autres LLMs soit même une bonne idée quand des APIs déterministes existent. Ça multiplie l'instabilité. C'est la critique la plus profonde de la prémisse d'A2A, pas seulement de son design.
+- *whalesalad* (HN) : demande pourquoi A2A n'est pas simplement du REST/HTTP ordinaire — une question récurrente qui suggère que le design JSON-RPC-over-POST est genuinement déroutant pour les développeurs web, pas seulement inhabituel.
+
+**Sur l'évolution d'A2A — depuis l'intérieur du projet :**
+
+- *EditUndo* dans la [discussion A2A #693](https://github.com/a2aproject/A2A/discussions/693), intitulée « An Appeal for Simplicity » : changements de schéma rapides, prolifération de types d'ID (`id`, `taskId`, `messageId`, `contextId`), structures d'authentification qui débordent dans la couche protocole. Demande un engagement communautaire de style RFC et des intervalles de mise à jour plus longs. Le mainteneur (*pstephengoogle*) reconnaît la préoccupation et s'engage à cantonner les breaking changes à des branches séparées.
+
+Le schéma qui ressort de ces voix est cohérent. ACP reçoit des critiques techniques mais pas de doute existentiel — on débat de son design, pas de sa prémisse. A2A reçoit des objections au niveau de la prémisse : en a-t-on vraiment besoin ? fait-on confiance aux contributeurs ? la complexité vaut-elle son coût ? Cette asymétrie est le signal le plus clair de là où se tient la communauté dev tools en ce moment.
+
+---
+
+## Pourquoi ACP a gagné la course des dev tools
+
+Il est tentant de lire l'écart de volume — ACP est partout dans les dev tools, A2A est surtout des pilotes enterprise — et d'en conclure qu'A2A « a perdu ». C'est le mauvais cadre.
+
+**A2A et ACP ne sont pas en compétition.** Ils opèrent à des couches différentes, sur des calendriers différents, sur des marchés différents. Si ACP semble dominant en 2026, c'est parce que les dev tools ont des cycles d'adoption de quelques semaines et une douleur aiguë. Si A2A semble lent, c'est parce que l'intégration enterprise cross-org a des cycles d'adoption de plusieurs années et une douleur projetée. Les deux fonctionnent comme prévu.
+
+Cela dit, quatre vraies raisons pour lesquelles ACP a livré plus vite :
+
+**1. Douleur aiguë vs douleur projetée.** Avant ACP, orchestrer Claude Code depuis un autre outil impliquait du PTY scraping — spawner un processus enfant et lire les caractères bruts du terminal. Quiconque a essayé l'a détesté. ACP a réglé ça proprement. A2A, en revanche, résout un problème que la plupart des équipes n'ont pas encore en production : la collaboration autonome d'agents cross-vendor. Les vrais flux d'agents cross-org en 2026 sont encore rares. La douleur est surtout dans les slides.
+
+**2. Friction d'intégration.** Le stdio par défaut d'ACP est l'un des choix de design les plus intelligents de l'espace. On peut prototyper un agent ACP en une après-midi sans serveur HTTP, sans auth, sans agent card. A2A exige une infrastructure HTTP, des URIs bien connues, et OAuth. Les deux sont adaptés à leurs marchés cibles, mais la courbe de friction d'ACP produit une expérimentation plus rapide.
+
+**3. Adopté par des constructeurs d'outils, pas vendu à des enterprises.** Zed est une petite entreprise d'éditeur. Claude Code, Codex, Cline, Goose, Junie ont adopté ACP parce que ça résolvait leur problème d'interopérabilité. Le volant d'inertie : plus d'agents parlent ACP → plus de clients intègrent ACP → les nouveaux agents doivent parler ACP pour être accessibles. Ce volant tourne déjà. A2A a un volant différent — BD enterprise, annonces de partenariats, cabinets d'intégration — qui monte plus lentement.
+
+**4. La neutralité de marque compte dans les guerres de protocoles.** Qu'ACP soit co-piloté par Zed et JetBrains est politiquement propre. Anthropic, OpenAI, Google peuvent tous livrer des agents compatibles ACP sans céder de terrain à un concurrent. Qu'A2A ait été initialement estampillé Google a créé des frictions — même après le transfert à la Linux Foundation, la perception persiste. MCP a évité ce destin en rejoignant l'AAIF suffisamment tôt pour que l'écosystème le traite comme un substrat neutre dès le départ. L'adoption d'un protocole est en partie technique, en partie politique, et ce sont les protocoles dont la politique se résout le plus vite qui finissent par s'imposer.
+
+L'observation structurelle intéressante en 2026 est que **les trois protocoles se trouvent désormais sous l'égide de la Linux Foundation** sous une forme ou une autre — A2A directement, MCP via l'AAIF, et ACP sous un modèle de gouvernance open source indépendant avec plusieurs mainteneurs. La fragmentation que tout le monde craignait il y a un an ne s'est pas produite au niveau de la gouvernance. Elle s'est produite au niveau des formats de transport et des intentions, ce qui est exactement là où elle devrait être.
+
+**Le pronostic honnête :** le marché d'A2A existe, mais son calendrier est de 3 à 5 ans. À mesure que davantage d'enterprises déploiront réellement des systèmes multi-agents qui enjambent des vendors SaaS, le cas pour A2A deviendra structurant. ACP « a gagné le présent » parce que le présent récompense les protocoles local-first, à faible friction, pour les dev tools. L'avenir a probablement besoin des deux, avec MCP en dessous. La confusion n'existe que parce que le préfixe « Agent » revient dans toute la soupe d'acronymes.
+
+---
+
+## Sources & pour aller plus loin
+
+**Specs et sources primaires**
+
+- [Spec Model Context Protocol](https://modelcontextprotocol.io/)
+- [Spec Agent Client Protocol](https://agentclientprotocol.com) (Zed + JetBrains)
+- [Spec Agent2Agent Protocol](https://a2a-protocol.org/) (Linux Foundation)
+- [A2A GitHub](https://github.com/a2aproject/A2A)
+- [Annonce A2A par Google](https://developers.googleblog.com/en/a2a-a-new-era-of-agent-interoperability/), avril 2025
+- [Annonce MCP par Anthropic](https://www.anthropic.com/news/model-context-protocol), novembre 2024
+- [La Linux Foundation annonce l'Agentic AI Foundation (AAIF) — MCP rejoint](https://www.linuxfoundation.org/press/linux-foundation-announces-the-formation-of-the-agentic-ai-foundation), 2026
+- [GitHub Blog — MCP rejoint la Linux Foundation](https://github.blog/open-source/maintainers/mcp-joins-the-linux-foundation-what-this-means-for-developers-building-the-next-era-of-ai-tools-and-agents/)
+- [Roadmap MCP 2026](https://blog.modelcontextprotocol.io/posts/2026-mcp-roadmap/)
+
+**Références d'implémentation**
+
+- [acpx — client ACP headless](https://github.com/openclaw/acpx) (openclaw, MIT)
+- [openclaw gateway](https://github.com/openclaw/openclaw) — A2A + ACP en coexistence
+- [PR #39102 — allowlist A2A par agent](https://github.com/openclaw/openclaw/pull/39102) (la mienne)
+- [Docs runtime ACP openclaw](https://docs.openclaw.ai/tools/acp-agents)
+- [Post de lancement ACP par Zed](https://zed.dev/acp)
+
+**Articles casys.ai liés**
+
+- [ACPX dans Claude Code : Orchestration Multi-Agent en Pratique](/blog/acpx-multi-agent-orchestration) — le pendant dev tools de cet article
+- [Comment créer un serveur MCP pour les agents IA](/blog/make-mcp-server-ai-agents)
+- [De la DX à l'AX](/blog/from-dx-to-ax)
+
+**Discussions communautaires à lire**
+
+- [Thread HN sur le lancement d'ACP](https://news.ycombinator.com/item?id=45074147)
+- [Thread HN sur l'annonce A2A](https://news.ycombinator.com/item?id=43631381)
+- [Discussion A2A #693 — An Appeal for Simplicity](https://github.com/a2aproject/A2A/discussions/693)
+- [Rapport de progression ACP par Zed](https://zed.dev/blog/acp-progress-report)
+
+**Articles de comparaison à lire même s'ils sont antérieurs à la fusion BeeAI/A2A**
+
+- [WorkOS — MCP, ACP, A2A, Oh my!](https://workos.com/guide/understanding-mcp-acp-a2a)
+- [Heidloff — Comparison of Agent Protocols](https://heidloff.net/article/mcp-acp-a2a-agent-protocols/)
+- [Sandi Besen — An Unbiased Comparison of MCP, ACP, and A2A](https://medium.com/@sandibesen/an-unbiased-comparison-of-mcp-acp-and-a2a-protocols-0b45923a20f3)
+
+---
+
+## Pour conclure
+
+Si vous ne retenez qu'une chose de cet article : les trois protocoles résolvent trois problèmes différents. **MCP** c'est agent-vers-outils. **ACP** (Agent Client Protocol) c'est client-vers-agent. **A2A** c'est agent-vers-agent. Le fait qu'on ait eu deux ACP, et que l'un ait fusionné dans A2A, est une note de bas de page dont vous n'avez besoin que pour lire les articles plus anciens.
+
+Construisez des agents qui parlent MCP pour les outils, exposez-les via ACP pour que n'importe quel IDE ou CLI puisse les piloter, et tournez-vous vers A2A quand vous avez besoin qu'ils se coordonnent au-delà des frontières organisationnelles. Ils se composent. Ils ont été conçus pour ça.
+
+Si vous travaillez sur quelque chose à cette intersection — gateways, orchestrateurs, topologies multi-agents — je serais ravi d'en entendre parler. Les problèmes de design les plus intéressants dans cet espace ne sont pas dans les formats de transport mais dans les couches de politique qui se trouvent au-dessus, et nous les construisons tous à découvert.

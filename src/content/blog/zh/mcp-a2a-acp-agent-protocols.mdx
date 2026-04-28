@@ -1,0 +1,331 @@
+---
+title: "MCP vs A2A vs ACP：智能体协议详解（以及为什么曾经有两个 ACP）"
+description: "三个协议，三个层次，一次缩写冲突。来自 openclaw 贡献者的实战指南——每个协议究竟解决什么问题，它们在哪里重叠，以及你的系统需要哪一个。"
+author: "Erwan Lee Pesle"
+date: 2026-04-28
+tags:
+  - mcp
+  - a2a
+  - acp
+  - 智能体协议
+  - openclaw
+  - 智能体
+  - 协议
+category: "工程"
+language: zh
+snippet: "MCP、A2A、ACP——三个协议，三个层次，一次缩写冲突。以下是每个协议实际解决的问题，以及你的系统需要哪一个。"
+featured: true
+draft: false
+---
+import ExcalidrawDiagram from '../../../components/ExcalidrawDiagram.astro';
+
+## 曾经有两个 ACP
+
+如果你最近搜索过"ACP 协议"，你会发现两种完全不同的东西，而你几乎肯定没有意识到这一点。其中一个仍然存活。另一个已被弃用并并入 [A2A](https://a2a-protocol.org/)。你读到的文章很可能把它们当作同一件事来处理。
+
+这就是 2026 年智能体协议的字母汤问题。**MCP**、**A2A**、**ACP**——以及一个飘荡在外的 **ANP**——听起来可以互换。但它们不行。它们处于协议栈的不同层次，解决不同的问题，来自不同的生态系统，背后有各自不同的利益驱动。
+
+我一直在为 [openclaw](https://github.com/openclaw/openclaw) 做贡献，这是少数在生产代码中真正让这两个协议共存的开源系统之一。我的[开放 PR #39102](https://github.com/openclaw/openclaw/pull/39102) 实现了按智能体的出站 A2A 白名单——即控制网关内哪些智能体可以与哪些其他智能体通信的授权层。这项工作迫使我准确理解 A2A 在哪里结束、ACP 在哪里开始。本文就是我开始时希望拥有的实战指南。
+
+我们将依次介绍每个协议的作用、混乱从何而来、为什么一个 ACP 消亡了，以及根据你的需求应该选择哪一个。文末有图表、对比表和规范链接。
+
+<ExcalidrawDiagram src="mcp-a2a-acp-agent-protocols/three-protocols-stack" alt="MCP、ACP 和 A2A 运行在三个不同层次——智能体到工具、客户端到智能体、智能体到智能体" />
+
+---
+
+## 三个协议一览
+
+| 协议 | 方向 | 构建者 | 解决什么 | 状态 |
+|---|---|---|---|---|
+| **MCP**（Model Context Protocol）| 智能体 ↔ 工具/数据 | Anthropic，2024 年 11 月 → AAIF / Linux Foundation，2026 年 | 智能体与外部工具、文件、API 之间的标准接口 | 生产可用，每月约 9700 万 SDK 下载 |
+| **ACP**（Agent Client Protocol）| 客户端 ↔ 智能体 | Zed Industries，2025 年 8 月（现与 JetBrains 共同维护）| 编辑器或 CLI 与编码智能体之间的标准接口 | 快速增长，已支持 19+ 智能体 |
+| **A2A**（Agent2Agent Protocol）| 智能体 ↔ 智能体 | Google，2025 年 4 月（现属 Linux Foundation）| 两个自主智能体之间的标准接口，通常跨组织 | 50+ 企业合作伙伴，早期生产阶段 |
+| ~~ACP（Agent Communication Protocol）~~ | ~~智能体 ↔ 智能体~~ | ~~BeeAI / Linux Foundation~~ | ~~跨厂商智能体协作~~ | **已弃用，并入 A2A** |
+
+最直观的心智模型：把这三者想象成三套不同的电话系统。MCP 是智能体与外部世界之间的线路。ACP 是你与智能体之间的线路。A2A 是两个智能体之间的线路。它们是互补的，而非竞争关系——一个系统可以同时使用全部三个。
+
+例外是那个已死的。我们稍后会谈到它。
+
+---
+
+## MCP——智能体到工具
+
+[Model Context Protocol](https://modelcontextprotocol.io/) 是 Anthropic 对一个简单问题的回答：LLM 如何调用外部工具，而不需要每个模型提供商都发明自己的格式？
+
+在 MCP 之前，每个智能体框架都有自己的工具调用语法、自己的参数描述方式、自己的结果流式返回方式。如果你想让 Claude 读取 Postgres 数据库，同时让 Cursor 读取同一个数据库，你需要写两个适配器。如果要加第三个客户端，就是三个适配器。
+
+MCP 用 JSON-RPC 接口和三个原语标准化了这一切：
+
+- **Tools（工具）**：带类型参数的可调用函数
+- **Resources（资源）**：只读数据源（文件、数据库查询、网页）
+- **Prompts（提示词）**：可复用的提示词模板
+
+MCP 服务器暴露这些能力。MCP 客户端（智能体或其宿主）发现并调用它们。传输层对于本地服务器使用 JSON-RPC over stdio，对于远程服务器使用 HTTP+SSE。
+
+结果是：你编写一次的 MCP 服务器可以在 Claude Desktop、Cursor、Zed、Continue 以及整个生态系统中运行。Anthropic 报告截至 2026 年初每月约 9700 万 SDK 下载量——这个协议赢得了它的细分市场。
+
+2026 年，MCP 还[加入了 Linux Foundation](https://www.linuxfoundation.org/press/linux-foundation-announces-the-formation-of-the-agentic-ai-foundation)，成为 **Agentic AI Foundation（AAIF）** 的创始项目之一，与 Block 的 goose 和 OpenAI 的 AGENTS.md 并列。AAIF 由 Anthropic、Block 和 OpenAI 联合创立，Google、Microsoft、AWS 和 Cloudflare 提供支持。治理信号很明确：MCP 不再是单一厂商的协议，而是整个生态系统共同承诺的联合基础设施。
+
+关于 MCP 服务器的实操介绍，请参阅我早前的文章[如何为 AI 智能体构建 MCP 服务器](/blog/make-mcp-server-ai-agents)。
+
+> **一句话总结：** MCP 是数据与工具层。如果你的智能体需要读取数据库、调用 API 或使用工具，MCP 就是你的构建基础。它不负责智能体之间的协调。
+
+---
+
+## A2A——智能体到智能体
+
+[Agent2Agent](https://a2a-protocol.org/) 由 Google 于 [2025 年 4 月](https://developers.googleblog.com/en/a2a-a-new-era-of-agent-interoperability/)发布，并于 2025 年 6 月捐赠给 Linux Foundation。其定位是：为自主智能体提供一套标准，让它们能够发现彼此、协商交互模式并协作完成任务——跨厂商、跨企业、跨部署环境。
+
+模型是对等的。两个智能体作为平等的一方相互通信，任何一方都不控制另一方的内部状态。
+
+### A2A 的工作原理
+
+三个核心组件：
+
+**Agent Cards（智能体名片）**——发布在 `/.well-known/agent.json` 的 JSON 文档。它描述了智能体的身份、能力、支持的交互方式（文本、文件、结构化数据）、认证要求和服务端点。其他智能体通过获取这张名片来了解对方。可以把它看作自主智能体的 robots.txt + OpenAPI 混合体。
+
+```json
+{
+  "name": "support-triage-agent",
+  "description": "Routes customer issues to the right specialist",
+  "url": "https://agents.example.com/support",
+  "capabilities": ["streaming", "tasks"],
+  "modalities": ["text", "files"],
+  "authentication": { "schemes": ["oauth2"] },
+  "skills": [
+    { "id": "classify_ticket", "name": "Classify support ticket" }
+  ]
+}
+```
+
+**Tasks（任务）**——工作单元。当一个智能体请求另一个智能体执行某事时，就会创建一个任务。任务有状态（`submitted`、`working`、`completed`、`failed`），可以包含多条消息，并通过 `TaskStore` 持久化。这是 A2A 更强的设计选择之一：真实的跨智能体工作很少是一次性的，因此任务能够正确地建模来回往复过程。
+
+**Messages（消息）**——在任务内交换的结构化载荷。通过 JSON-RPC 2.0 over HTTP POST 传输文本、文件和结构化数据。
+
+### A2A 出现在哪里
+
+Google 带着 50+ 合作伙伴发布了 A2A：Salesforce、SAP、ServiceNow、MongoDB、Atlassian、Box、Cohere、PayPal、Workday，以及大多数主要咨询公司（埃森哲、凯捷、德勤）。定位很明确：适用于一家公司的智能体需要与另一家公司的智能体协调的企业级智能体生态系统。
+
+其取舍也很明确。A2A 需要 HTTP 服务器、智能体名片、well-known URI 和认证配置。对于周二晚上进行实验的开发者来说，这种摩擦是真实的。对于通过各自智能体集成两个 SaaS 平台的企业来说，这种摩擦是可以接受的——这就是企业级互操作的样子。
+
+> **一句话总结：** A2A 是跨智能体、跨厂商层。如果你需要来自不同组织的智能体协商并协作完成任务，A2A 是正确的原语。它比 ACP 更重、配置更慢，但为正确的问题而生。
+
+---
+
+## ACP 第一版：那个消亡的
+
+这就是搜索结果变得混乱的地方。
+
+<ExcalidrawDiagram src="mcp-a2a-acp-agent-protocols/acp-history" alt="两个 ACP 的时间线：BeeAI 的 Agent Communication Protocol 发布后被弃用并入 A2A；Zed 的 Agent Client Protocol 存活并持续成长" />
+
+2024-2025 年间，[BeeAI 项目](https://agentcommunicationprotocol.dev)（与 IBM 有关联，托管在 Linux Foundation 下）发布了一个名为 **Agent Communication Protocol** 的协议，缩写同样是 ACP。这是一个智能体到智能体协议，以 REST 为主，设计用于组织内部的多智能体协调。它使用 HTTP 动词（GET、POST、DELETE）和 SSE 进行流式传输，有自己的智能体元数据格式，并提供了 Python 和 TypeScript SDK。
+
+你仍然可以在许多搜索排名靠前的"MCP vs A2A vs ACP"对比文章中找到它的引用——IBM 自己的 [community.ibm.com 文章](https://community.ibm.com/community/user/blogs/luca-corbo/2025/06/16/mcp-acp-and-a2a)在我写这篇文章时排在该查询的第 6 位。这些文章将 ACP 描述为"基于 REST 的智能体协作"，将其与 A2A 的 JSON-RPC 方式对比，并把它们呈现为竞争标准。
+
+这种对比现在已经过时了。
+
+2025 年底，BeeAI ACP 项目[并入了 A2A](https://a2a-protocol.org/)，归属 Linux Foundation。"两个协议，两种方案"的框架坍缩为一个。Agent Communication Protocol 作为独立规范，不再维护。现有实现仍然可用，但新的开发已迁移到 A2A 上。
+
+这个教训主要是历史性的，但在阅读旧文章时很重要：如果一篇 2025 年的文章赞扬"ACP 的 REST 设计优于 A2A 的 JSON-RPC"，那篇文章谈论的是一个不再作为独立项目存在的协议。请相应地对待其结论。
+
+> **一句话总结：** Agent Communication Protocol（BeeAI，IBM 系）曾经是一个真实的协议，与 A2A 竞争智能体到智能体的位置。它输了。生态系统整合了。今天，当有人说"ACP"时，他们指的是另一个。
+
+---
+
+## ACP 第二版：那个存活的
+
+**Agent Client Protocol** 是幸存者。由 [Zed Industries](https://zed.dev/acp) 构建，于 2025 年 8 月 27 日发布。JetBrains 于 2026 年 2 月加入成为联合首席维护者，将 Junie 带入生态系统。规范采用 Apache 许可，托管在 [agentclientprotocol.com](https://agentclientprotocol.com)。
+
+它解决的问题与 A2A 不同：不是智能体到智能体，而是**客户端到智能体**。客户端是编辑器（Zed、JetBrains IDE、通过插件的 VS Code）或 CLI 编排器。智能体是编码助手——Claude Code、Codex CLI、Gemini CLI、Cursor、Copilot CLI、Cline、Goose、Junie 等十几个。
+
+### ACP 的工作原理
+
+本地智能体（常见情况）使用 JSON-RPC 2.0 over stdio，远程情况使用 HTTP 或 WebSocket。一次会话如下：
+
+1. 客户端发送 `initialize` 及其能力
+2. 服务器回复其能力
+3. 客户端通过 `session/message` 发送提示词
+4. 服务器流式返回事件：文本块、工具调用、权限请求、文件差异
+5. 任意一方可以取消或关闭
+
+关键设计选择：stdio 优先。最简单的配置是将智能体作为客户端的子进程，通过 stdin/stdout 通信。无需 HTTP 服务器、无需认证、无需智能体名片。零基础设施。
+
+对于远程和无头场景，ACP 支持 HTTP，还有一个名为 [acpx](https://github.com/openclaw/acpx) 的无头 CLI 客户端，可以通过脚本方式暴露协议。我在[在 Claude Code 中使用 ACPX：多智能体编排实战](/blog/acpx-multi-agent-orchestration)中详细介绍了 acpx——本文是协议层的配套文章。
+
+### LSP 类比
+
+ACP 之于 AI 智能体，正如[语言服务器协议](https://microsoft.github.io/language-server-protocol/)之于语言工具。在 LSP 之前，每个编辑器都需要对每种语言进行定制集成。有了 LSP，一个服务器可以与所有编辑器通信。同样的 M×N → M+N 折叠正在 ACP 和智能体之间发生。
+
+| | 无标准 | 有标准 |
+|---|---|---|
+| **语言工具** | M 编辑器 × N 语言 = M×N 插件 | M + N（LSP）|
+| **智能体编排** | M 编排器 × N 智能体 = M×N 适配器 | M + N（ACP）|
+
+> **一句话总结：** Agent Client Protocol 是开发工具互操作层。如果你正在构建一个编辑器、IDE 插件或 CLI 编排器，需要调用任何编码智能体，ACP 就是你要接入的线路。它本地优先、轻量，并且已被开发工具领域所有重要的参与者采用。
+
+---
+
+## 对比表——何时使用哪个
+
+| 关注点 | MCP | ACP（Agent Client）| A2A |
+|---|---|---|---|
+| **方向** | 智能体 ↔ 工具 | 客户端 ↔ 智能体 | 智能体 ↔ 智能体 |
+| **传输** | JSON-RPC over stdio / HTTP+SSE | JSON-RPC over stdio / HTTP / WebSocket | JSON-RPC 2.0 over HTTP POST |
+| **发现方式** | 客户端在会话开始时列出工具 | 客户端启动已知智能体 | `/.well-known/agent.json` 的 Agent Cards |
+| **状态模型** | 基本无状态 | 会话范围 | 任务范围，多消息，持久化 |
+| **认证** | 本地通常无需；托管版本用 OAuth | 本地无需；远程由实现定义 | OAuth2 / API 密钥，内置支持 |
+| **配置成本** | 低 | 极低（stdio 默认）| 中高（HTTP 基础设施）|
+| **最适合** | 工具/数据接口 | IDE / CLI 对编码智能体的编排 | 跨厂商企业级智能体协作 |
+| **当前覆盖** | 每月约 9700 万 SDK 下载 | 19+ 智能体，4+ 编辑器 | 50+ 企业合作伙伴 |
+| **构建者** | Anthropic → AAIF（Linux Foundation）| Zed + JetBrains | Google → Linux Foundation |
+
+一个实用的经验法则：
+
+- 构建供智能体使用的**工具**？→ MCP
+- 构建需要调用任意编码智能体的**客户端**？→ ACP
+- 构建**两个自主智能体协调**的系统，尤其是跨组织？→ A2A
+- 三个都要构建？→ 全部使用。它们可以干净地组合。
+
+---
+
+## 两个协议共存的真实系统
+
+理论容易。让我展示一下这在生产代码中是什么样子的。
+
+[openclaw](https://github.com/openclaw/openclaw) 是一个开源 AI 网关——它位于用户与各种编码智能体之间，处理路由、会话、策略和绑定。在其代码库中，A2A 和 ACP 都是一等公民：
+
+- **ACP** 通过 `acpx` 运行时插件使用，用于派生外部编码实例（Claude Code、Codex、Gemini CLI）。用户输入 `/acp spawn codex --bind here`，openclaw 就通过 ACP 启动智能体，并将其事件管道传回对话中。
+- **A2A** 用于跨智能体会话工具的内部通信。当智能体 David 正在运行并需要向智能体 Spoke 发送消息时，openclaw 通过 `sessions_send` 工具路由调用，该工具受 A2A 授权策略约束。
+
+这是同一个网关中两条截然不同的接缝。ACP 处理外部世界（真实的 CLI 实例）。A2A 处理内部世界（命名智能体相互通信）。这种架构分离正是这些协议被设计来实现的。
+
+<ExcalidrawDiagram src="mcp-a2a-acp-agent-protocols/openclaw-stack" alt="openclaw 架构：ACP 运行时派生外部实例，同时 A2A 授权层管控网关内的跨智能体通信" />
+
+### A2A 授权策略的样子
+
+我在 openclaw 上的[开放 PR #39102](https://github.com/openclaw/openclaw/pull/39102) 引入了按智能体的出站 A2A 白名单。在此之前，openclaw 有一个全局白名单来决定哪些智能体可以参与跨智能体调用——粒度粗糙，对于中心辐射型或扇出拓扑来说难以推理。
+
+新的模式：
+
+```json
+{
+  "tools": {
+    "agentToAgent": { "enabled": true, "allow": ["*"] }
+  },
+  "agents": {
+    "list": [
+      { "id": "david", "tools": { "agentToAgent": { "allow": ["*"] } } },
+      { "id": "spoke", "tools": { "agentToAgent": { "allow": ["david"] } } },
+      { "id": "kelly", "tools": { "agentToAgent": { "allow": ["david"] } } }
+    ]
+  }
+}
+```
+
+中心辐射模式：`david` 是中心，`spoke` 和 `kelly` 各自可以调用 `david`，但 `spoke` 无法访问 `kelly`，反之亦然。全局门控（`tools.agentToAgent.allow`）首先作为参与门控进行评估；按智能体的覆盖规则再缩小每个请求者可以访问的范围。仅限出站——检查的是请求者的配置，而非目标的配置。
+
+这不是什么奇异的策略。这是任何真实多智能体系统在拥有三个以上智能体且其中一个具有特权时都需要的访问控制。A2A 作为协议给了你线格式，但它不给你策略原语——那是网关的工作。构建这个策略层，正是让 A2A 在实践中可用的那类工作。
+
+---
+
+## 来自一线的声音
+
+对比文章倾向于礼貌地转述协议。真实的公开讨论更尖锐，它们比任何厂商博客都更能说明采用情况。以下是过去一年来自 [HN](https://news.ycombinator.com)、GitHub 讨论和开发者话题中的样本。
+
+**关于 ACP——谨慎乐观：**
+
+- *cube2222*（HN）：看到 [Zed 回归其协作根源](https://news.ycombinator.com/item?id=45074147)，预期 ACP 将"降低产品间的切换成本"——这正是每个编码工具买家想要解决的锁定问题。
+- *akattelu*（HN）：在 Zed 的 Gemini CLI 演示后对标准化感到兴奋，希望 ACP 能让 Helix 无需定制集成工作就能添加 AI 功能。
+
+**关于 ACP——合理的批评：**
+
+- *greatgib*（HN）：提出了一个显而易见的问题——[为什么这不是 LSP 的扩展？](https://news.ycombinator.com/item?id=45074147) 答案是真实的（LSP 用于静态分析，不适合流式智能体事件），但这种表述揭示了 ACP 引入了多少新的概念面积。
+- *jmull*（HN）：为什么要通过 IDE 协议中介智能体工具，而不是直接使用 CLI 或 MCP？值得认真对待——ACP 在有 UI 时才物有所值；对于无头编排，[acpx](https://github.com/openclaw/acpx) 和直接 CLI 调用覆盖了大多数情况。
+
+**关于 A2A——更多怀疑：**
+
+- *phillipcarter*（HN）：也许是我读过的最犀利的观点——[A2A 解决的是"营销问题"](https://news.ycombinator.com/item?id=43631381)，而 MCP 解决的是实际需求。预测六个月后只有 MCP 存活，因为 A2A 的贡献者大多为 Google 工作。
+- *wongarsu*（HN）：指出发布合作伙伴包括毕马威、埃森哲、波士顿咨询——"这些背书是警示信号"，而非技术优势的证据。
+- *simonw*（Simon Willison，HN）：质疑当存在确定性 API 时，让 LLM 调用其他 LLM 是否本身就是个好主意。不可靠性叠加。这是对 A2A 前提最深层的批评，而不仅仅是对其设计的批评。
+- *whalesalad*（HN）：问为什么 A2A 不直接用普通的 REST/HTTP——这个反复出现的问题表明，JSON-RPC-over-POST 的设计对 Web 开发者来说确实令人困惑，而不仅仅是不熟悉。
+
+**关于 A2A 的演进——来自项目内部：**
+
+- *EditUndo* 在 [A2A 讨论 #693](https://github.com/a2aproject/A2A/discussions/693)，题为"呼吁简洁"：快速的模式变更、不断增殖的 ID 类型（`id`、`taskId`、`messageId`、`contextId`）、渗入协议层的认证结构。呼吁 RFC 式的社区参与和更长的更新间隔。维护者（*pstephengoogle*）承认了这一担忧，并承诺将破坏性变更限制在单独的分支中。
+
+这些声音中的模式是一致的。ACP 受到技术批评，但没有遭受存在性质疑——人们争论的是它的设计，而非其前提。A2A 受到前提层面的质疑：我们真的需要这个吗？我们信任贡献者吗？复杂性有其应有的价值吗？这种不对称性是开发工具社区目前立场的最清晰信号。
+
+---
+
+## 为什么 ACP 赢得了开发工具竞赛
+
+很容易从体量差距——ACP 在开发工具中无处不在，A2A 大多停留在企业试点阶段——读出 A2A"输了"的结论。这是错误的框架。
+
+**A2A 和 ACP 并非竞争关系。** 它们处于不同层次，时间线不同，市场不同。ACP 在 2026 年感觉占主导地位，是因为开发工具的采用周期以周计算，且痛点迫切。A2A 感觉缓慢，是因为跨组织企业集成的采用周期以年计算，且痛点尚在预期中。两者都在按预期运作。
+
+话虽如此，ACP 更快落地有四个真实原因：
+
+**1. 迫切的痛点 vs 预期的痛点。** 在 ACP 之前，从其他工具编排 Claude Code 意味着 PTY 抓取——派生一个子进程并读取原始终端字符。任何试过的人都很讨厌它。ACP 干净地解决了它。相比之下，A2A 解决的是大多数团队在生产中尚未遇到的问题：跨厂商自主智能体协作。2026 年真实的跨组织智能体流程仍然罕见。这种痛点大多还停留在 PPT 里。
+
+**2. 集成摩擦。** ACP 的 stdio 默认是这个领域最聪明的设计选择之一。你可以在一个下午用 ACP 原型化一个智能体，无需 HTTP 服务器、无需认证、无需智能体名片。A2A 需要 HTTP 基础设施、well-known URI 和 OAuth。两者都与各自的目标市场相适应，但 ACP 的摩擦曲线产生了更快的实验速度。
+
+**3. 被工具构建者采用，而非被卖给企业。** Zed 是一家小型编辑器公司。Claude Code、Codex、Cline、Goose、Junie 采用 ACP，是因为它解决了它们的互操作问题。飞轮是：更多智能体支持 ACP → 更多客户端集成 ACP → 新智能体必须支持 ACP 才能被访问到。这个飞轮已经在转动。A2A 有不同的飞轮——企业 BD、合作公告、集成咨询——转动起来更慢。
+
+**4. 品牌中立性在协议竞争中很重要。** ACP 由 Zed 和 JetBrains 联合主导，政治上干净。Anthropic、OpenAI、Google 都可以发布兼容 ACP 的智能体，无需向竞争对手让步。A2A 最初带有 Google 标签，造成了摩擦——即使在 Linux Foundation 接管之后，这种印象仍然存在。MCP 通过足够早地迁移到 AAIF 避免了这种命运，生态系统从一开始就将其视为中立基础设施。协议的采用部分是技术问题，部分是政治问题，而那些政治问题解决得最快的协议往往最终落地。
+
+2026 年有趣的结构性观察是，**三个协议现在都以某种形式处于 Linux Foundation 旗下**——A2A 直接归属，MCP 通过 AAIF，ACP 则在拥有多个维护者的独立开源治理模型下。一年前大家担心的碎片化在治理层面没有发生。它发生在线格式和意图层面，而这正是它应该发生的地方。
+
+**诚实的预测：** A2A 的市场是存在的，但时间线是 3-5 年。随着越来越多的企业真正部署跨 SaaS 厂商的多智能体系统，A2A 的必要性将成为刚需。ACP "赢得了当下"，因为当下奖励的是本地优先、低摩擦的开发工具协议。未来很可能两者都需要，加上底层的 MCP。这种混乱的存在，仅仅是因为字母汤里所有协议都带着"Agent（智能体）"这个前缀。
+
+---
+
+## 参考资料与延伸阅读
+
+**规范与一手资料**
+
+- [Model Context Protocol 规范](https://modelcontextprotocol.io/)
+- [Agent Client Protocol 规范](https://agentclientprotocol.com)（Zed + JetBrains）
+- [Agent2Agent Protocol 规范](https://a2a-protocol.org/)（Linux Foundation）
+- [A2A GitHub](https://github.com/a2aproject/A2A)
+- [Google A2A 公告](https://developers.googleblog.com/en/a2a-a-new-era-of-agent-interoperability/)，2025 年 4 月
+- [Anthropic MCP 公告](https://www.anthropic.com/news/model-context-protocol)，2024 年 11 月
+- [Linux Foundation 宣布成立 Agentic AI Foundation（AAIF）——MCP 加入](https://www.linuxfoundation.org/press/linux-foundation-announces-the-formation-of-the-agentic-ai-foundation)，2026 年
+- [GitHub Blog——MCP 加入 Linux Foundation](https://github.blog/open-source/maintainers/mcp-joins-the-linux-foundation-what-this-means-for-developers-building-the-next-era-of-ai-tools-and-agents/)
+- [2026 MCP 路线图](https://blog.modelcontextprotocol.io/posts/2026-mcp-roadmap/)
+
+**实现参考**
+
+- [acpx——无头 ACP 客户端](https://github.com/openclaw/acpx)（openclaw，MIT）
+- [openclaw 网关](https://github.com/openclaw/openclaw)——A2A + ACP 共存
+- [PR #39102——按智能体的 A2A 白名单](https://github.com/openclaw/openclaw/pull/39102)（本人）
+- [openclaw ACP 运行时文档](https://docs.openclaw.ai/tools/acp-agents)
+- [Zed ACP 发布文章](https://zed.dev/acp)
+
+**casys.ai 相关文章**
+
+- [在 Claude Code 中使用 ACPX：多智能体编排实战](/blog/acpx-multi-agent-orchestration)——本文的开发工具配套篇
+- [如何为 AI 智能体构建 MCP 服务器](/blog/make-mcp-server-ai-agents)
+- [从 DX 到 AX](/blog/from-dx-to-ax)
+
+**值得阅读的社区讨论**
+
+- [HN 上的 ACP 发布话题](https://news.ycombinator.com/item?id=45074147)
+- [HN 上的 A2A 公告话题](https://news.ycombinator.com/item?id=43631381)
+- [A2A 讨论 #693——呼吁简洁](https://github.com/a2aproject/A2A/discussions/693)
+- [Zed ACP 进展报告](https://zed.dev/blog/acp-progress-report)
+
+**值得阅读的对比文章（尽管早于 BeeAI/A2A 合并）**
+
+- [WorkOS——MCP、ACP、A2A，我的天！](https://workos.com/guide/understanding-mcp-acp-a2a)
+- [Heidloff——智能体协议对比](https://heidloff.net/article/mcp-acp-a2a-agent-protocols/)
+- [Sandi Besen——MCP、ACP 和 A2A 的无偏见对比](https://medium.com/@sandibesen/an-unbiased-comparison-of-mcp-acp-and-a2a-protocols-0b45923a20f3)
+
+---
+
+## 结语
+
+如果你从这篇文章带走一件事：三个协议解决三个不同的问题。**MCP** 是智能体到工具。**ACP**（Agent Client Protocol）是客户端到智能体。**A2A** 是智能体到智能体。我们曾经有两个 ACP，其中一个并入了 A2A，这只是一个脚注——只有在阅读旧文章时才需要了解。
+
+构建使用 MCP 访问工具的智能体，通过 ACP 暴露它们以便任何 IDE 或 CLI 驱动，在需要跨组织边界协调时使用 A2A。它们可以组合。它们就是为此而设计的。
+
+如果你正在这个交叉点上进行工作——网关、编排器、多智能体拓扑——我很乐意听你分享。这个领域最有趣的设计问题不在线格式里，而在其上层的策略层，我们都在公开地摸索这些问题。

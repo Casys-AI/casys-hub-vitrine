@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="520" viewBox="0 0 720 520" font-family="ui-sans-serif, system-ui, sans-serif">
+  <rect width="720" height="520" fill="#08080a"/>
+
+  <!-- Title -->
+  <text x="360" y="40" text-anchor="middle" fill="#f0ede8" font-size="18" font-weight="600">Three protocols, three layers</text>
+  <text x="360" y="62" text-anchor="middle" fill="#666666" font-size="12">MCP, ACP and A2A solve different problems and compose cleanly</text>
+
+  <!-- Layer 1 (top): A2A -->
+  <rect x="80" y="100" width="560" height="100" rx="10" fill="#1f1f23" stroke="#a78bfa" stroke-width="2"/>
+  <rect x="80" y="100" width="6" height="100" rx="3" fill="#a78bfa"/>
+  <text x="110" y="130" fill="#f0ede8" font-size="16" font-weight="600">A2A — agent ↔ agent</text>
+  <text x="110" y="152" fill="#666666" font-size="12">Cross-vendor coordination, autonomous agents, often cross-org</text>
+  <text x="110" y="172" fill="#666666" font-size="11">Transport: JSON-RPC 2.0 over HTTP POST · Discovery: Agent Cards · Auth: OAuth2</text>
+  <text x="612" y="135" text-anchor="end" fill="#a78bfa" font-size="11" font-weight="600">Google → Linux Foundation</text>
+  <text x="612" y="152" text-anchor="end" fill="#666666" font-size="10">50+ enterprise partners</text>
+
+  <!-- Layer 2 (middle): ACP -->
+  <rect x="80" y="220" width="560" height="100" rx="10" fill="#1f1f23" stroke="#60a5fa" stroke-width="2"/>
+  <rect x="80" y="220" width="6" height="100" rx="3" fill="#60a5fa"/>
+  <text x="110" y="250" fill="#f0ede8" font-size="16" font-weight="600">ACP — client ↔ agent</text>
+  <text x="110" y="272" fill="#666666" font-size="12">Editor or CLI invokes a coding agent (Claude Code, Codex, Gemini, ...)</text>
+  <text x="110" y="292" fill="#666666" font-size="11">Transport: JSON-RPC over stdio (HTTP optional) · No agent card · No auth required locally</text>
+  <text x="612" y="255" text-anchor="end" fill="#60a5fa" font-size="11" font-weight="600">Zed + JetBrains</text>
+  <text x="612" y="272" text-anchor="end" fill="#666666" font-size="10">19+ supported agents</text>
+
+  <!-- Layer 3 (bottom): MCP -->
+  <rect x="80" y="340" width="560" height="100" rx="10" fill="#1f1f23" stroke="#4ade80" stroke-width="2"/>
+  <rect x="80" y="340" width="6" height="100" rx="3" fill="#4ade80"/>
+  <text x="110" y="370" fill="#f0ede8" font-size="16" font-weight="600">MCP — agent ↔ tools / data</text>
+  <text x="110" y="392" fill="#666666" font-size="12">Standard interface to call tools, read resources, render prompts</text>
+  <text x="110" y="412" fill="#666666" font-size="11">Transport: JSON-RPC over stdio or HTTP+SSE · Three primitives: tools, resources, prompts</text>
+  <text x="612" y="375" text-anchor="end" fill="#4ade80" font-size="11" font-weight="600">Anthropic → AAIF (LF)</text>
+  <text x="612" y="392" text-anchor="end" fill="#666666" font-size="10">~97M monthly SDK dl</text>
+
+  <!-- Connecting bidirectional arrows between layers -->
+  <line x1="360" y1="200" x2="360" y2="220" stroke="#666666" stroke-width="1.5" stroke-dasharray="3,3"/>
+  <line x1="360" y1="320" x2="360" y2="340" stroke="#666666" stroke-width="1.5" stroke-dasharray="3,3"/>
+
+  <!-- Bottom note -->
+  <text x="360" y="478" text-anchor="middle" fill="#f0ede8" font-size="12" font-weight="500">A single system can use all three. They were designed to compose.</text>
+  <text x="360" y="498" text-anchor="middle" fill="#666666" font-size="11">An agent reachable over ACP, calling tools via MCP, coordinating with peers via A2A.</text>
+</svg>
