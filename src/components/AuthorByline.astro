@@ -1,0 +1,136 @@
+---
+interface Props {
+  author: string;
+  locale: string;
+}
+
+const { author, locale } = Astro.props;
+
+const titles: Record<string, Record<string, string>> = {
+  'Erwan Lee Pesle': {
+    en: 'Founder, Casys AI',
+    fr: 'Fondateur, Casys AI',
+    zh: 'Casys AI 创始人',
+    'zh-TW': 'Casys AI 創辦人',
+  },
+};
+
+const profiles: Record<string, { photo: string; linkedin?: string; titleByLocale?: Record<string, string> }> = {
+  'Erwan Lee Pesle': {
+    photo: '/images/founder-erwan.webp',
+    linkedin: 'https://www.linkedin.com/in/erwan-lee-pesle-32085463',
+  },
+};
+
+const profile = profiles[author];
+const title = titles[author]?.[locale] ?? titles[author]?.en;
+---
+
+{profile ? (
+  <span class="author-byline" itemprop="author" itemscope itemtype="https://schema.org/Person">
+    <img src={profile.photo} alt={author} class="author-byline-photo" loading="lazy" width="24" height="24" />
+    {profile.linkedin ? (
+      <a href={profile.linkedin} target="_blank" rel="noopener author" class="author-byline-name" itemprop="url">
+        <span itemprop="name">{author}</span>
+      </a>
+    ) : (
+      <span class="author-byline-name" itemprop="name">{author}</span>
+    )}
+    {title && <span class="author-byline-title">{title}</span>}
+    {profile.linkedin && (
+      <a href={profile.linkedin} target="_blank" rel="noopener" aria-label="LinkedIn" class="author-byline-icon">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="12" height="12" aria-hidden="true">
+          <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
+        </svg>
+      </a>
+    )}
+  </span>
+) : (
+  <span itemprop="author">{author}</span>
+)}
+
+<style>
+  .author-byline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .author-byline-photo {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+
+  .author-byline-name {
+    font-weight: 500;
+    color: var(--md-sys-color-on-surface, #1c1b1f);
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+
+  a.author-byline-name:hover {
+    color: var(--md-sys-color-primary, #6750a4);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .author-byline-title {
+    color: var(--md-sys-color-on-surface-variant, #5f6368);
+    font-size: 0.8125rem;
+  }
+
+  .author-byline-title::before {
+    content: '·';
+    margin-right: 0.4rem;
+    color: var(--md-sys-color-outline, #79747e);
+  }
+
+  .author-byline-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    color: var(--md-sys-color-on-surface-variant, #5f6368);
+    transition: color 0.15s, background-color 0.15s;
+  }
+
+  .author-byline-icon:hover {
+    color: var(--md-sys-color-primary, #6750a4);
+    background-color: var(--md-sys-color-surface-variant, #f5f5f4);
+  }
+
+  .author-byline-icon:focus-visible {
+    outline: 2px solid var(--md-sys-color-primary);
+    outline-offset: 2px;
+  }
+
+  html[data-theme="dark"] .author-byline-name {
+    color: #f5f0ea;
+  }
+
+  html[data-theme="dark"] a.author-byline-name:hover {
+    color: #FFB86F;
+  }
+
+  html[data-theme="dark"] .author-byline-title {
+    color: #d5c3b5;
+  }
+
+  html[data-theme="dark"] .author-byline-title::before {
+    color: rgba(255, 184, 111, 0.3);
+  }
+
+  html[data-theme="dark"] .author-byline-icon {
+    color: #d5c3b5;
+  }
+
+  html[data-theme="dark"] .author-byline-icon:hover {
+    color: #FFB86F;
+    background-color: rgba(255, 184, 111, 0.08);
+  }
+</style>

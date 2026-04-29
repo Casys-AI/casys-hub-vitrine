@@ -1,6 +1,7 @@
 ---
 import { getCollection } from 'astro:content';
 import BlogLayout from '../../../layouts/BlogLayout.astro';
+import AuthorByline from '../../../components/AuthorByline.astro';
 
 const locale = 'fr';
 
@@ -102,7 +103,7 @@ function getPostSlug(post: typeof allPosts[0]) {
       <span class="meta-separator">&middot;</span>
 
       <div class="meta-item">
-        <span>{entry.data.author}</span>
+        <AuthorByline author={entry.data.author} locale={locale} />
       </div>
 
       {entry.data.updatedAt && (
