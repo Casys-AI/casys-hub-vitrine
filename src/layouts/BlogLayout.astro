@@ -876,8 +876,9 @@ function getPostSlug(post: typeof sortedPosts[0]) {
     color: var(--md-sys-color-on-surface, #1c1917);
   }
 
-  /* --- Reading progress bar (sits at the bottom edge of the topnav) --- */
+  /* --- Reading progress bar — mobile only (desktop has the TOC sidebar) --- */
   .reading-progress {
+    display: none;
     position: absolute;
     left: 0;
     bottom: -1px;
@@ -887,6 +888,10 @@ function getPostSlug(post: typeof sortedPosts[0]) {
     transition: width 0.08s linear;
     pointer-events: none;
     z-index: 41;
+  }
+
+  html[data-theme="dark"] .reading-progress {
+    background-color: #FFB86F;
   }
 
   /* --- Mobile TOC: floating action button --- */
@@ -917,6 +922,15 @@ function getPostSlug(post: typeof sortedPosts[0]) {
   .blog-toc-fab:focus-visible {
     outline: 2px solid var(--md-sys-color-primary);
     outline-offset: 3px;
+  }
+
+  html[data-theme="dark"] .blog-toc-fab {
+    background-color: #FFB86F;
+    color: #1a1815;
+  }
+
+  html[data-theme="dark"] .blog-toc-fab:focus-visible {
+    outline-color: #FFB86F;
   }
 
   /* --- Mobile TOC: bottom sheet --- */
@@ -1009,6 +1023,29 @@ function getPostSlug(post: typeof sortedPosts[0]) {
   .blog-toc-sheet-nav .blog-toc-link--h3 {
     font-size: 0.85rem;
     padding: 0.55rem 0.75rem 0.55rem 2rem;
+  }
+
+  /* --- Mobile TOC sheet (dark) --- */
+  html[data-theme="dark"] .blog-toc-sheet {
+    background-color: #1a1815;
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.6);
+  }
+
+  html[data-theme="dark"] .blog-toc-sheet-header {
+    border-bottom-color: rgba(255, 184, 111, 0.1);
+  }
+
+  html[data-theme="dark"] .blog-toc-sheet-header .blog-toc-label {
+    color: #d5c3b5;
+  }
+
+  html[data-theme="dark"] .blog-toc-sheet-close {
+    color: #d5c3b5;
+  }
+
+  html[data-theme="dark"] .blog-toc-sheet-close:hover {
+    background-color: rgba(255, 184, 111, 0.08);
+    color: #FFB86F;
   }
 
   /* --- Table of Contents (right side, visible when sidebar collapsed) --- */
@@ -1348,6 +1385,11 @@ function getPostSlug(post: typeof sortedPosts[0]) {
     /* Show floating TOC button on mobile (article pages only — JS removes [hidden]) */
     .blog-toc-fab:not([hidden]) {
       display: inline-flex;
+    }
+
+    /* Show reading progress bar on mobile (desktop has the TOC sidebar) */
+    .reading-progress {
+      display: block;
     }
 
     .blog-sidebar {
