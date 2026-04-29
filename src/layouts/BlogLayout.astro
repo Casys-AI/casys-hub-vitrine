@@ -533,15 +533,33 @@ function getPostSlug(post: typeof sortedPosts[0]) {
         if (!tocNav || !content || !mainEl) return;
 
         // Reading progress bar (article pages only)
+        // Desktop scrolls .blog-main; mobile (<768px) scrolls window — listen to both.
         const progressBar = document.getElementById('readingProgress');
         if (progressBar && !isBlogIndex) {
           const updateProgress = () => {
-            const max = mainEl.scrollHeight - mainEl.clientHeight;
-            const ratio = max > 0 ? Math.min(1, Math.max(0, mainEl.scrollTop / max)) : 0;
+            const isDesktop = window.matchMedia('(min-width: 768px)').matches;
+            const top = isDesktop ? mainEl.scrollTop : (window.scrollY || document.documentElement.scrollTop);
+            const max = isDesktop
+              ? mainEl.scrollHeight - mainEl.clientHeight
+              : document.documentElement.scrollHeight - window.innerHeight;
+            const ratio = max > 0 ? Math.min(1, Math.max(0, top / max)) : 0;
             progressBar.style.width = (ratio * 100).toFixed(2) + '%';
           };
           mainEl.addEventListener('scroll', updateProgress, { passive: true });
+          window.addEventListener('scroll', updateProgress, { passive: true });
+          window.addEventListener('resize', updateProgress, { passive: true });
           updateProgress();
+        }
+
+        // Auto-hide article scrollbar (visible on hover + while scrolling)
+        if (!isBlogIndex) {
+          let scrollTimeout;
+          const showScrollbar = () => {
+            mainEl.classList.add('is-scrolling');
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => mainEl.classList.remove('is-scrolling'), 1200);
+          };
+          mainEl.addEventListener('scroll', showScrollbar, { passive: true });
         }
 
         // Collect headings, stop at "related articles" boundary
@@ -1281,6 +1299,35 @@ function getPostSlug(post: typeof sortedPosts[0]) {
     flex: 1;
     overflow-y: auto;
     background-color: var(--md-sys-color-surface, #fafaf9);
+
+    /* Auto-hide scrollbar — visible only on hover or while actively scrolling */
+    scrollbar-width: none;
+    scrollbar-color: rgba(0, 0, 0, 0.18) transparent;
+  }
+
+  .blog-main:hover,
+  .blog-main.is-scrolling {
+    scrollbar-width: thin;
+  }
+
+  .blog-main::-webkit-scrollbar {
+    width: 0;
+    background: transparent;
+    transition: width 0.2s ease;
+  }
+
+  .blog-main:hover::-webkit-scrollbar,
+  .blog-main.is-scrolling::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .blog-main::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .blog-main::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.18);
+    border-radius: 999px;
   }
 
   .blog-content {
@@ -1740,16 +1787,12 @@ function getPostSlug(post: typeof sortedPosts[0]) {
     border-radius: 999px;
   }
 
-  html[data-theme="dark"] .blog-main::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  html[data-theme="dark"] .blog-main::-webkit-scrollbar-track {
-    background: transparent;
+  html[data-theme="dark"] .blog-main {
+    scrollbar-color: rgba(255, 184, 111, 0.18) transparent;
   }
 
   html[data-theme="dark"] .blog-main::-webkit-scrollbar-thumb {
-    background: rgba(255, 184, 111, 0.12);
+    background: rgba(255, 184, 111, 0.18);
     border-radius: 999px;
   }
 
