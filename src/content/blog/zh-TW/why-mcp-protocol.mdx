@@ -1,107 +1,433 @@
 ---
-title: "MCP 協議完整解析：Model Context Protocol 如何統一所有 AI 工具介面"
-description: "Model Context Protocol（MCP）是 AI 工具互通的開放標準。本文解析 MCP 協議的核心架構、為什麼所有主流 AI 平台都在支援它，以及 PML 如何在 MCP 之上提供智慧路由。"
+title: "什麼是 MCP？AI 工具的 USB-C 協定詳解（2026）"
+description: "Model Context Protocol（MCP）：讓 AI 工具互通的開放標準，做到 USB-C 對手機所做的事。架構解析、與 function calling 及 REST 的比較、2026 生態現況，以及如何用 TypeScript 建構你的第一個 MCP server。"
 author: "Erwan Lee Pesle"
-date: 2025-12-18
+date: 2026-04-29
 tags:
-  - pml
-  - mcp-server
   - mcp
+  - mcp-server
+  - mcp-gateway
   - 工具
   - 互通性
+  - 智慧體
 category: "產品"
 language: zh-TW
-snippet: "Model Context Protocol（MCP）是 AI 工具互通的開放標準。本文解析 MCP 協議的核心架構，以及 PML 如何在 MCP 之上提供智慧路由。"
-featured: false
+snippet: "什麼是 Model Context Protocol？它如何運作？為什麼所有主要 AI 廠商都在採用它？2026 年 MCP 完整技術指南。"
+featured: true
 draft: false
 ---
 import ExcalidrawDiagram from '../../../components/ExcalidrawDiagram.astro';
 
-## 充電器的煩惱
+## 什麼是 Model Context Protocol（MCP）？
 
-還記得 2010 年嗎？每個手機品牌都有自己專屬的充電器。出門旅行意味著要帶一堆線纜。
+**Model Context Protocol（MCP）** 是一個開放標準，定義了 AI 模型如何連接到外部工具、資料來源和服務。Anthropic 於 2024 年 11 月發布了初始規範。2025 年 12 月，他們將 MCP 捐贈給了 Linux Foundation 旗下新成立的 Agentic AI Foundation（AAIF）——讓這個協定成為一個中立的、由社群治理的標準。
 
-然後 USB-C 出現了。一根線，所有設備通用。
+一句話總結：MCP 是 AI 模型與你的軟體堆疊其他部分之間的通用轉接器。
 
-**AI 工具今天面臨著同樣的問題。**
+![Model Context Protocol 官方規範文件，位於 modelcontextprotocol.io](/images/screenshots/modelcontextprotocol-spec.png)
 
-每個 AI 服務商都有自己的工具接入方式：
-- OpenAI 用一種方式
-- Anthropic 用另一種方式
-- Google 又是另一套
-- 以此類推……
+在 MCP 出現之前，將 AI 模型連接到外部工具需要為每一組「模型 × 工具」組合撰寫客製化的整合程式碼。你有 OpenAI 的 function calling、Anthropic 的 tool use、Gemini 的 function declarations——三套不同的 API、三種不同的 schema、三種不同的錯誤處理方式。你為 GitHub 寫了一個整合，它只能用在某一個模型上。
 
-為一個平台開發了工具？想用在其他平台上，得重新開發。
+MCP 把 N×M 的問題轉化成 N+M。你為 GitHub 寫一個 MCP server。任何相容 MCP 的客戶端——Claude、GPT、Gemini、本地模型、IDE 外掛——都能使用它。下個月換了 AI 供應商？你的工具跟著走。
 
-<ExcalidrawDiagram src="why-mcp-protocol/mcp-without" alt="沒有 MCP：N 個適配器" />
+<ExcalidrawDiagram src="why-mcp-protocol/mcp-without" alt="沒有 MCP：需要維護 N×M 個整合" />
 
-## MCP 協議登場：AI 工具的統一標準
-
-**Model Context Protocol**（模型上下文協議）就是 AI 工具的 USB-C。
-
-一個標準，處處通用。
-
-<ExcalidrawDiagram src="why-mcp-protocol/mcp-with" alt="有了 MCP：一個標準" />
-
-開發一次工具，就能在 Claude、GPT、本地模型以及未來出現的任何模型上執行。
-
-## 這對你意味著什麼
-
-### 1. 不再被綁定
-
-今天在用 Claude？很好。明天想試試 GPT？你的工具可以直接帶過去。
-
-你不再需要和某一家 AI 服務商「綁定」了。
-
-### 2. 更多工具，更少麻煩
-
-MCP 生態系統正在快速增長：
-- 檔案管理
-- GitHub 整合
-- 資料庫存取
-- 網頁瀏覽
-- 還有數百個更多……
-
-這些工具開箱即用。不需要額外配置，不需要費力整合。
-
-### 3. 面向未來
-
-新的 AI 模型不斷湧現。有了 MCP，它們可以直接使用你現有的工具。
-
-你在工具上的投入不會過時。
-
-## PML 在 MCP 之上做了什麼：MCP 閘道器與智慧路由
-
-PML 連接 MCP 工具，並讓它們變得更智慧：
-
-| 沒有 PML | 有了 PML |
-| ----------- | -------- |
-| 你自己選擇用哪個工具 | PML 推薦合適的工具 |
-| 你手動串聯工具 | PML 自動建構工作流 |
-| 工具各自孤立 | 工具學會協同工作 |
-
-MCP 提供連接。PML 提供智慧。
-
-## MCP 生態效應：開發者與 AI 代理都是贏家
-
-真正令人興奮的是：越多工具支援 MCP，整個生態就越強大。
-
-- **工具開發者**觸及更多使用者
-- **AI 開發者**獲得更多能力
-- **使用者**得到更好的 AI 助手
-
-當大家認同同一個標準時，每個人都是贏家。
-
-## 總結
-
-MCP 正在為 AI 工具做 USB-C 為硬體設備做過的事。
-
-一個標準。全面相容。告別那一堆線纜。
-
-PML 基於 MCP 建構，因為我們相信開放標準。你的工具應該在任何地方都能用，而不是只服務於某一家服務商。
-
-**AI 的未來是互聯互通的。MCP 就是那根連接線。**
+<ExcalidrawDiagram src="why-mcp-protocol/mcp-with" alt="有了 MCP：N+M——一個 server，任何客戶端都能用" />
 
 ---
 
-*了解更多請造訪 [modelcontextprotocol.io](https://modelcontextprotocol.io)*
+## MCP 解決的問題
+
+要理解 MCP 為何存在，得先感受它消除的那種痛苦。
+
+### N×M 整合問題
+
+假設你有 10 個工具：一個 PostgreSQL 資料庫、一個 GitHub 整合、一個 Slack 通知器、一個 PDF 閱讀器、一個 REST API 客戶端、一個檔案系統、一個 Redis 快取、一個日曆、一個 CRM 和一個網頁爬蟲。
+
+你想讓這些工具對 4 個 AI 系統開放：Claude、ChatGPT、本地部署的 Llama、以及一個在你 VPC 裡跑的微調模型。
+
+沒有標準：10 × 4 = **40 個客製化整合**。每個都以某個模型的專有格式撰寫。每個都在重複相同的驗證邏輯、相同的錯誤處理、相同的 schema 定義。每次工具或模型改變介面，每個都得更新。
+
+有了 MCP：你一次性建構 10 個 MCP server。4 個 AI 系統中的任何一個——以及未來任何一個——都能呼叫這 10 個工具。
+
+<ExcalidrawDiagram src="why-mcp-protocol/mcp-n-times-m" alt="N×M 問題：有無 MCP 的對比" />
+
+### 不斷重建的跑步機
+
+N×M 的實際後果是：每次換掉或新增一個 AI 供應商，團隊都要花大量時間重建同樣的整合。當 OpenAI 推出 function calling、Anthropic 在同年推出 schema 不相容的 tool use 時，已經投資其中一方的團隊面臨了真實的遷移成本。
+
+MCP 讓這台跑步機停下來。協定不綁定任何供應商。今天能與 Claude 搭配使用的同一個 MCP server，明年也能與任何模型搭配使用。
+
+### 無法傳遞的上下文
+
+Function calling 解決了工具呼叫問題。它沒有解決上下文管理。每次對 LLM 的請求都從零開始——模型對之前呼叫過哪些工具毫無記憶、不知道有哪些資源可用、也無法動態地發現自身能力。
+
+MCP 透過形式化三種原語來解決這個問題：**tools**（可執行的動作）、**resources**（可讀取的資料）和 **prompts**（可複用的範本）。連接到 MCP server 的客戶端不只獲得呼叫函式的能力，還能結構化地發現有哪些東西可用、以及如何使用。
+
+---
+
+## MCP 如何運作：技術架構
+
+MCP 建構於 **JSON-RPC 2.0** 之上。每一則訊息——無論是工具呼叫、能力協商還是資源讀取——都是以 UTF-8 編碼的 JSON-RPC 訊息。
+
+### 客戶端-伺服器模型
+
+MCP 定義了兩個角色：
+
+- **MCP server**：暴露 tools、resources 和 prompts。以程序（本地）或服務（遠端）的形式執行。
+- **MCP client**：連接到 server、發現其能力、呼叫 tools。通常是 AI 的宿主應用程式——Claude Desktop、Cursor、自建的智慧體。
+
+生命週期從能力協商開始。客戶端發送一個 `initialize` 請求。server 回應其協定版本以及它支援什麼：是否暴露 tools？Resources？Prompts？是否支援 sampling 請求？這個握手在每次連線時只進行一次。
+
+```json
+// 客戶端 → 伺服器：initialize
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "initialize",
+  "params": {
+    "protocolVersion": "2025-11-25",
+    "capabilities": { "tools": {} },
+    "clientInfo": { "name": "my-agent", "version": "1.0.0" }
+  }
+}
+
+// 伺服器 → 客戶端：回應
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "protocolVersion": "2025-11-25",
+    "capabilities": {
+      "tools": { "listChanged": true }
+    },
+    "serverInfo": { "name": "my-mcp-server", "version": "2.1.0" }
+  }
+}
+```
+
+初始化之後，客戶端可以呼叫 `tools/list` 發現可用工具、呼叫 `resources/list` 發現可讀取的資料，以及呼叫 `tools/call` 來呼叫特定工具。
+
+### 傳輸層
+
+MCP 對傳輸層保持中立。規範定義了兩種標準傳輸：
+
+**stdio** — 客戶端將 MCP server 作為子程序啟動。server 從 stdin 讀取 JSON-RPC，並將回應寫入 stdout。這是本地工具的標準：存取檔案系統、git 操作、查詢本地資料庫。速度快、無網路開銷、程序管理簡單。
+
+```
+客戶端程序
+  └─ 啟動 MCP server 子程序
+       ├─ 從 stdin 讀取（JSON-RPC 請求）
+       └─ 寫入 stdout（JSON-RPC 回應）
+```
+
+**Streamable HTTP** — server 作為獨立程序執行，在一個 HTTP 端點上接受連線。客戶端發送 POST 請求來呼叫工具。server 可以用 `application/json` 回應簡單結果，或用 `text/event-stream`（Server-Sent Events）進行串流——適合產生漸進式輸出的長時間操作。此傳輸方式對遠端 server、多使用者部署以及所有透過網路的情境是必要的。
+
+2025 年 3 月的規範修訂將舊有的 HTTP+SSE 傳輸替換為 Streamable HTTP，在單一端點中統一了兩種模式。
+
+### 三種原語
+
+**Tools**：可呼叫的函式。它們有名稱、描述（LLM 用來決定何時呼叫它）以及 JSON Schema 格式的輸入 schema。server 收到帶有已驗證參數的 `tools/call` 請求，並回傳結果——文字內容、嵌入的 resources 或錯誤詳情。
+
+**Resources**：可讀取的資料。想像成 server 暴露的檔案或資料庫記錄。一個 resource 有 URI 和 MIME 類型。客戶端可以列出可用 resources（`resources/list`）並讀取個別項目（`resources/read`）。Resources 對注入上下文很有用——讓模型無需透過工具呼叫就能存取文件、程式碼或結構化資料。
+
+**Prompts**：可複用的範本。server 可以暴露精心設計的 prompt 範本，供客戶端提取並插入對話中。在當前實作中使用較少，但對於標準化領域知識呈現給模型的方式很有價值。
+
+---
+
+## MCP vs function calling
+
+Function calling 和 MCP 常常被混淆，因為它們在目的上有重疊。這個區別對你的架構決策很重要。
+
+**Function calling** 是 LLM 本身的一項能力。你將函式定義清單（名稱、描述、參數）直接嵌入你的 API 請求中。模型讀取這些定義，並在決定呼叫某個函式時產生結構化的 JSON 物件。你的程式碼攔截這個輸出、執行真正的函式，並將結果回傳給它。
+
+```python
+# Function calling：工具定義存在於每個 API 請求中
+response = openai.chat.completions.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": "我的資料庫裡有什麼？"}],
+    tools=[{
+        "type": "function",
+        "function": {
+            "name": "query_database",
+            "description": "執行 SQL 查詢",
+            "parameters": { "query": { "type": "string" } }
+        }
+    }]
+)
+```
+
+只用 function calling 的問題：
+1. **強耦合**：工具定義嵌入在你的 API 呼叫中。換了供應商，定義得重寫。
+2. **沒有發現機制**：模型只知道你事先告訴它的東西。沒有動態能力協商。
+3. **Token 成本**：每個工具定義在每次請求時都消耗 context window。
+4. **沒有標準化**：OpenAI、Anthropic 和 Google 各自使用不同的 schema。
+
+**MCP 在底層使用 function calling**——當 MCP 客戶端呼叫一個 tool 時，LLM 仍然做出 function call 決策。但 MCP 在上層增加了：一個用於發現哪些工具存在的標準協定、一個用於定義工具的一致 schema，以及一個在所有供應商之間都能運作的執行傳輸層。
+
+關鍵區別：function calling 是機制。MCP 是標準。
+
+| | Function Calling | MCP |
+|---|---|---|
+| 範圍 | 單一 API 請求 | 持久連線 |
+| 發現 | 靜態，每次請求 | 透過 `tools/list` 動態發現 |
+| 供應商可攜性 | 無——每個廠商一套 schema | 通用 |
+| 傳輸 | 在 LLM API 呼叫中 | stdio 或 HTTP |
+| 上下文 | 無狀態 | 有會話、有 resources |
+| 可複用性 | 每個供應商重建一次 | 建構一次 |
+
+對於只有兩個自訂函式的小型原型，function calling 更簡單。對於在多個 AI 供應商上使用十幾個外部整合的生產智慧體，MCP 才是正確的架構。
+
+---
+
+## MCP vs REST API
+
+MCP 不是 REST 的替代品。這個比較之所以反覆出現，是因為兩者都是客戶端呼叫伺服器來獲取資料或觸發動作。但它們解決的是不同的問題。
+
+**REST** 設計用於人類發起的請求。開發者撰寫程式碼，明確知道要呼叫哪些端點以及如何呼叫。API 是靜態文件。呼叫方有預先知識。
+
+**MCP** 設計用於 AI 發起的請求。模型對有哪些東西可用沒有預先知識——它需要在執行時發現能力。MCP 增加了三個 REST 沒有的東西：
+
+1. **動態發現**：一個標準的 `tools/list` 端點，模型可以呼叫它來了解有哪些工具，附帶機器可讀的描述。
+2. **預設串流**：Streamable HTTP 專為漸進式結果設計，而非單純的請求/回應。
+3. **會話與上下文管理**：MCP 連線是有狀態的，這是 REST 所不具備的，讓模型能在同一個會話的多次工具呼叫之間維持上下文。
+
+實際上，大多數 MCP server 都封裝了 REST API。你的 GitHub MCP server 在內部呼叫 GitHub REST API。MCP 層是讓這個 API 能被 AI 模型以可發現、標準化的方式存取的那一層。
+
+---
+
+## 2026 年的 MCP 生態
+
+MCP 在 2025 年從早期採用者轉變為主流。幾個里程碑：
+
+- **2025 年 3 月**：OpenAI 正式採用 MCP 並將其整合到其產品中，包括 ChatGPT Desktop。
+- **2025 年底**：Google DeepMind 採用 MCP。主要 LLM 供應商在這個標準上趨同。
+- **2025 年 12 月**：Anthropic 將 MCP 捐贈給 Linux Foundation 旗下的 Agentic AI Foundation，確立了其開放中立標準的地位。
+- **2026 年**：Gartner 預測 40% 的企業應用程式將在年底前嵌入 AI 智慧體。MCP 就是那個管線。
+
+<ExcalidrawDiagram src="why-mcp-protocol/mcp-adoption-timeline" alt="MCP 採用時間軸：2024 年至 2026 年" />
+
+### 原生支援 MCP 的客戶端
+
+- **Claude Desktop** / **Claude Code** — 參考實作
+- **Cursor** — 具備 MCP 的 IDE，提供程式碼情境工具
+- **Windsurf** — AI IDE
+- **VS Code** 搭配 Copilot — Microsoft 的整合
+- **Amazon Bedrock** — 雲端 AI 平台
+- **Cline、RooCode、Witsy** — 開源 AI 智慧體
+
+### 伺服器登錄目錄
+
+兩個主要目錄彙整了可用的 MCP server：
+
+- **[Smithery](https://smithery.ai)** — 精選目錄，附帶安裝工具與評分
+- **[Glama](https://glama.ai/mcp/servers)** — 每日更新的完整目錄
+
+除了這些目錄，GitHub 上的 `awesome-mcp-servers` 清單已成長至數百個社群建構的 server，涵蓋資料庫、雲端供應商、生產力工具、開發服務和商業整合。
+
+<ExcalidrawDiagram src="_shared/mcp-ecosystem-2026" alt="2026 年的 MCP 生態：客戶端、框架與登錄目錄" />
+
+### 現有的工具
+
+目前可用的 MCP server 類別（不完整列舉）：
+
+- **資料庫**：PostgreSQL、MySQL、SQLite、MongoDB、Redis、Supabase
+- **開發工具**：GitHub、GitLab、Jira、Linear、Sentry
+- **雲端**：AWS、GCP、Azure、Cloudflare
+- **生產力**：Notion、Google Drive、Slack、電子郵件
+- **網路**：瀏覽器自動化、網路搜尋、爬蟲
+- **專業**：Figma、SysML/SysON、ERPNext、財務資料
+
+---
+
+## 用 TypeScript 建構 MCP Server
+
+### 官方 SDK
+
+官方 `@modelcontextprotocol/sdk` 讓你用不到 20 行程式碼建出一個可運作的 MCP server：
+
+```typescript
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
+
+const server = new McpServer({
+  name: "my-server",
+  version: "1.0.0",
+});
+
+server.tool(
+  "query_db",
+  "對生產資料庫執行唯讀 SQL 查詢",
+  { query: z.string().describe("SELECT SQL 陳述式") },
+  async ({ query }) => {
+    const rows = await db.query(query);
+    return { content: [{ type: "text", text: JSON.stringify(rows) }] };
+  }
+);
+
+const transport = new StdioServerTransport();
+await server.connect(transport);
+```
+
+這樣就能運作。對於本地工具或原型，這樣就夠了。對於生產環境——驗證、速率限制、超出 schema 的輸入驗證、可觀測性、優雅關機——你得自己寫。
+
+### @casys/mcp-server 框架
+
+[`@casys/mcp-server`](https://jsr.io/@casys/mcp-server) 是一個用於 MCP server 的生產框架。其前提是：所有 MCP server 都需要相同的生產基礎建設。一次建構，而非每個 server 重建一次。
+
+```typescript
+import { ConcurrentMCPServer } from "@casys/mcp-server";
+
+const server = new ConcurrentMCPServer({
+  name: "my-production-server",
+  version: "2.0.0",
+  auth: { type: "bearer", validate: verifyJWT },
+  rateLimit: { requests: 100, windowMs: 60_000 },
+  cors: { origins: ["https://app.example.com"] },
+});
+
+server.tool({
+  name: "query_db",
+  description: "執行唯讀 SQL 查詢",
+  inputSchema: z.object({ query: z.string() }),
+  scopes: ["db:read"],
+  handler: async ({ query }, ctx) => {
+    const rows = await db.query(query);
+    return { content: [{ type: "text", text: JSON.stringify(rows) }] };
+  },
+});
+
+await server.start({ transport: "streamable-http", port: 3000 });
+```
+
+開箱即用：JWT/OAuth2 驗證、每個 tool 的 RBAC 範圍、速率限制、輸入驗證、Prometheus 指標、SIGTERM 處理。可在 [JSR](https://jsr.io/@casys/mcp-server) 和 [npm](https://www.npmjs.com/package/@casys/mcp-server) 取得。支援 Deno 和 Node.js。
+
+![JSR 上的 @casys/mcp-server 框架——具備 100% JSR 評分的生產就緒 MCP server](/images/screenshots/jsr-casys-mcp-server.png)
+
+完整的生產部署指南在 [MCP Server 生產部署：完整 TypeScript 指南](/zh-TW/blog/mcp-server-guide)。
+
+### @casys/mcp-bridge 與 @casys/mcp-erpnext
+
+對於在 MCP 與其他生態系之間建構橋接的團隊，[`@casys/mcp-bridge`](https://www.npmjs.com/package/@casys/mcp-bridge) 將 MCP 工具呼叫連接到 Telegram Mini Apps 和 LINE LIFF——當你想從行動通訊介面暴露 AI 驅動的工作流程時很有用。
+
+[`@casys/mcp-erpnext`](https://www.npmjs.com/package/@casys/mcp-erpnext) 是一個獨立 CLI，將 ERPNext 的 REST API 封裝成 MCP server，讓 AI 模型能透過標準 MCP 工具呼叫存取 ERP 資料——採購訂單、BOM、庫存、會計分錄。
+
+---
+
+## 當一個 Server 不夠用時：MCP Gateway 模式
+
+標準的 MCP 架構是一個客戶端連接到一個或幾個 server。這在規模化時會出問題。
+
+一個企業部署可能有 30 個 MCP server：資料庫存取、雲端 API、內部工具、文件管理、通訊系統、商業整合。每個 server 都有自己的驗證、自己的連線生命週期、自己的錯誤特性。從每個 AI 智慧體直接管理 30 個連線在運維上是不可持續的。
+
+解決方案是 **MCP gateway（閘道器）**——智慧體連接的單一 MCP 端點，它將呼叫路由到正確的後端 server。
+
+<ExcalidrawDiagram src="_shared/gateway-architecture" alt="MCP Gateway：單一端點，路由到 N 個後端伺服器" />
+
+閘道器帶來：
+
+- **統一驗證**：智慧體只驗證一次；閘道器管理各 server 的憑證
+- **跨所有 server 的工具發現**：`tools/list` 回傳所有可用工具的聯集
+- **路由**：工具呼叫被導向正確的 server，智慧體不需要知道哪個 server 託管哪個 tool
+- **可觀測性**：所有工具呼叫的集中日誌、指標與追蹤
+- **智慧選擇**：當工具有重疊時，閘道器可以根據能力中繼資料、過去的效能或成本進行路由
+
+這正是 [MCP Gateway 模式](/zh-TW/blog/mcp-gateway-guide)所解決的——你的 AI 客戶端與不斷增長的 MCP server 生態之間缺失的路由層。
+
+```
+智慧體 → MCP Gateway（單一端點）
+          ├─ 標準工具（通用工具）
+          ├─ 檔案系統 server
+          ├─ PostgreSQL server
+          ├─ GitHub server
+          └─ 你的業務 server
+```
+
+從「管理個別 MCP server」過渡到「執行 MCP gateway」，就是團隊從實驗走向生產 AI 基礎設施的那個時刻。
+
+---
+
+## 關於 MCP 的常見誤解
+
+### 「MCP 取代了 REST API」
+
+不是。MCP 通常是封裝 REST API 的。你的 PostgreSQL MCP server 透過網路連線發送 SQL。你的 GitHub MCP server 呼叫 GitHub REST API。MCP 是面向 AI 的介面；底層的資料存取方式不變。
+
+### 「MCP 只用於 Anthropic 的產品」
+
+MCP 由 Anthropic 建立，但現在由 Linux Foundation 旗下的 Agentic AI Foundation 治理。OpenAI、Google DeepMind、Microsoft 和數十家其他公司都已採用它。這是一個跨產業的開放標準。
+
+### 「MCP 需要網路連線」
+
+stdio 傳輸完全是本地的。許多 MCP server 作為子程序執行，完全沒有網路存取——檔案系統工具、本地資料庫工具、CLI 封裝器。HTTP 傳輸是給遠端 server 用的。兩者都是規範中的一等公民。
+
+### 「MCP 只能讀取資料」
+
+MCP tools 可以讀取也可以寫入。規範對副作用沒有任何限制。你的 MCP tool 可以發送電子郵件、寫入資料庫、部署基礎設施或觸發工作流程。模型根據你撰寫的描述決定是否呼叫它。撰寫精確的描述，並實作你自己的授權邏輯來控制什麼可以被呼叫。
+
+### 「需要 MCP 才能給 AI 存取工具」
+
+Function calling 在簡單情境下運作得很好。如果你有三個工具、只被一個模型在一個應用程式中使用，建立一個 MCP server 是額外的負擔。MCP 在你需要可攜性、發現機制、多模型支援或超過幾個工具時才划算。
+
+### 「MCP 解決了工具選擇問題」
+
+MCP 標準化了工具呼叫協定。它沒有解決工具選擇問題——當你有 200 個工具可用時，知道要為某個任務呼叫哪個仍然是個開放問題。這就是工具描述的語義搜尋、能力圖和路由智慧在規範所提供的範疇之外帶來價值的地方。
+
+---
+
+## 開始使用 MCP
+
+### 閱讀規範
+
+官方規範位於 [modelcontextprotocol.io](https://modelcontextprotocol.io)。2025 年 11 月版本是當前穩定修訂版。2025 年 3 月的規範引入了 Streamable HTTP 和 OAuth 2.1 授權。
+
+### 使用現有客戶端
+
+理解 MCP 最快的方式是使用 Claude Desktop 或 Claude Code 搭配幾個 MCP server。檔案系統 server 和 PostgreSQL server 是很好的起點——兩者都可在 [MCP server 官方儲存庫](https://github.com/modelcontextprotocol/servers)取得。
+
+### 建構你的第一個 Server
+
+安裝官方 SDK：
+
+```bash
+npm install @modelcontextprotocol/sdk zod
+```
+
+或直接使用生產框架：
+
+```bash
+# Deno
+deno add jsr:@casys/mcp-server
+
+# Node.js
+npm install @casys/mcp-server
+```
+
+從上面的範例開始，登錄一個 tool，然後透過 `claude_desktop_config.json` 設定檔的 `mcpServers` 區段將其連接到 Claude Desktop。一旦運作，新增更多 tools，然後在準備好時加入驗證和 HTTP 傳輸。
+
+### 部署閘道器
+
+當你超過 5-6 個 server 時，研究 MCP Gateway 模式。自託管、開源、基於 Deno。透過專案根目錄的設定檔連接。提供單一 MCP 端點，讓你的智慧體連接，而不用個別管理每個連線。詳細資訊在 [MCP Gateway：為什麼你的 AI 智慧體需要它](/zh-TW/blog/mcp-gateway-guide)。
+
+---
+
+## 贏得勝利的標準
+
+MCP 不是第一次嘗試標準化 AI 工具存取。它是成功的那一次，原因很明確：它在正確的時機出現，有正確的背書，並且在成為護城河之前就捐了出去。
+
+Anthropic 本可以讓 MCP 保持專有。一個專有的工具協定會把開發者鎖定在 Claude 上。但他們選擇公開發布規範，然後將治理移交給中立的基金會。OpenAI 和 Google 選擇採用它而不是建立競爭標準，因為維護三個不相容協定的成本很高，而單一標準的生態價值更高。
+
+USB-C 的類比成立。USB-C 的成功不是因為它是可能最好的連接器規範，而是因為足夠多的產業在同一時間達成共識。MCP 具備這種協調。所有主要 AI IDE、所有主要 LLM 供應商，以及不斷增長的 server 實作目錄都在向同一個協定收斂。
+
+對於建構 AI 應用程式的開發者來說，實際含義很清楚：投資 MCP。你今天建構的工具明年也能與任何模型配合使用。你一次完成的整合工作，換了供應商時無需重做。你接入的生態只會越來越大。
+
+一次建構 server。隨處連接。
+
+---
+
+*建構生產就緒的 MCP server：[`@casys/mcp-server`](https://jsr.io/@casys/mcp-server)，可在 JSR 和 npm 取得。*
+
+*深入了解路由模式：[MCP Gateway：為什麼你的 AI 智慧體需要它](/zh-TW/blog/mcp-gateway-guide)。*
+
+*MCP 規範：[modelcontextprotocol.io](https://modelcontextprotocol.io)*

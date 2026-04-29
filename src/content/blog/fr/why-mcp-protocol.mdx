@@ -1,107 +1,433 @@
 ---
-title: "Qu'est-ce que MCP ? Le protocole USB-C des outils IA"
-description: "Model Context Protocol (MCP) : le standard ouvert qui fait à l'IA ce que l'USB-C a fait aux téléphones. Guide d'introduction pour comprendre MCP en 10 minutes."
+title: "Qu'est-ce que MCP ? Le protocole USB-C des outils IA expliqué (2026)"
+description: "Model Context Protocol (MCP) : le standard ouvert qui fait à l'IA ce que l'USB-C a fait aux téléphones. Architecture, comparaison avec function calling et REST, écosystème 2026, et comment construire votre premier serveur MCP en TypeScript."
 author: "Erwan Lee Pesle"
-date: 2025-12-18
+date: 2026-04-29
 tags:
-  - pml
-  - mcp-server
   - mcp
-  - outils
+  - mcp-server
+  - mcp-gateway
+  - tools
   - interopérabilité
+  - agents
 category: "Produit"
 language: fr
-snippet: "Vous vous souvenez quand chaque téléphone avait son propre chargeur ? Les outils IA ont le même problème aujourd'hui. MCP est en train de le résoudre."
-featured: false
+snippet: "Qu'est-ce que le Model Context Protocol, comment fonctionne-t-il, et pourquoi tous les grands acteurs de l'IA l'adoptent ? Guide technique complet de MCP en 2026."
+featured: true
 draft: false
 ---
 import ExcalidrawDiagram from '../../../components/ExcalidrawDiagram.astro';
 
-## Le problème du chargeur
+## Qu'est-ce que le Model Context Protocol (MCP) ?
 
-Vous vous souvenez de 2010 ? Chaque marque de téléphone avait son propre chargeur. Voyager, c'était trimballer un sac de câbles.
+Le **Model Context Protocol (MCP)** est un standard ouvert qui définit comment les modèles d'IA se connectent à des outils externes, des sources de données et des services. Anthropic en a publié la spécification initiale en novembre 2024. En décembre 2025, ils ont fait don de MCP à la toute nouvelle Agentic AI Foundation (AAIF) sous l'égide de la Linux Foundation — faisant du protocole un standard neutre, gouverné par la communauté.
 
-Et puis l'USB-C est arrivé. Un seul câble, tous les appareils.
+En une phrase : MCP est un adaptateur universel entre les modèles d'IA et le reste de votre stack logicielle.
 
-**Les outils IA ont exactement le même problème aujourd'hui.**
+![La spécification officielle du Model Context Protocol sur modelcontextprotocol.io](/images/screenshots/modelcontextprotocol-spec.png)
 
-Chaque fournisseur d'IA a sa propre façon de connecter les outils :
-- OpenAI fait comme ci
-- Anthropic fait comme ça
-- Google fait encore autrement
-- Et ainsi de suite...
+Avant MCP, connecter un modèle d'IA à un outil externe imposait d'écrire du code d'intégration sur mesure pour chaque combinaison modèle × outil. Vous aviez le function calling d'OpenAI, le tool use d'Anthropic, les function declarations de Gemini — trois APIs différentes, trois schémas différents, trois manières différentes de gérer les erreurs. Vous écriviez une intégration GitHub une fois, et elle marchait pour exactement un modèle.
 
-Vous développez un outil pour l'un ? Il faut le reconstruire pour les autres.
+MCP transforme ce problème N×M en N+M. Vous écrivez un serveur MCP pour GitHub. N'importe quel client compatible MCP — Claude, GPT, Gemini, modèles locaux, plugins d'IDE — peut l'utiliser. Vous changez de fournisseur d'IA le mois prochain ? Vos outils vous suivent.
 
-<ExcalidrawDiagram src="why-mcp-protocol/mcp-without" alt="Sans MCP : N adaptateurs" />
+<ExcalidrawDiagram src="why-mcp-protocol/mcp-without" alt="Sans MCP : N×M intégrations à maintenir" />
 
-## MCP entre en scène
-
-Le **Model Context Protocol** est le USB-C des outils IA.
-
-Un seul standard. Compatible partout.
-
-<ExcalidrawDiagram src="why-mcp-protocol/mcp-with" alt="Avec MCP : un seul standard" />
-
-Développez votre outil une fois. Il fonctionne avec Claude, GPT, les modèles locaux, et tout ce qui viendra après.
-
-## Ce que ça change pour vous
-
-### 1. Pas d'enfermement
-
-Vous utilisez Claude aujourd'hui ? Parfait. Envie d'essayer GPT demain ? Vos outils vous suivent.
-
-Vous n'êtes plus marié à un seul fournisseur d'IA.
-
-### 2. Plus d'outils, moins d'effort
-
-L'écosystème MCP grandit vite :
-- Gestion de fichiers
-- Intégration GitHub
-- Accès aux bases de données
-- Navigation web
-- Et des centaines d'autres...
-
-Ces outils fonctionnent immédiatement. Pas de configuration, pas de casse-tête d'intégration.
-
-### 3. Pérennité garantie
-
-De nouveaux modèles IA apparaissent en permanence. Avec MCP, ils peuvent utiliser vos outils existants dès le premier jour.
-
-Votre investissement dans les outils ne devient jamais obsolète.
-
-## Ce que PML fait avec MCP
-
-PML se connecte aux outils MCP et les rend plus intelligents :
-
-| Sans PML | Avec PML |
-| -------- | -------- |
-| Vous choisissez quel outil utiliser | PML suggère le bon outil |
-| Vous enchaînez les outils manuellement | PML construit les workflows automatiquement |
-| Les outils sont isolés | Les outils apprennent à travailler ensemble |
-
-MCP fournit les connexions. PML fournit l'intelligence.
-
-## L'effet écosystème
-
-Voilà ce qui est enthousiasmant : plus il y a d'outils qui parlent MCP, plus l'écosystème gagne en puissance.
-
-- **Les créateurs d'outils** touchent plus d'utilisateurs
-- **Les développeurs IA** accèdent à plus de fonctionnalités
-- **Les utilisateurs** obtiennent de meilleurs assistants IA
-
-Tout le monde y gagne quand on s'accorde sur le standard.
-
-## En résumé
-
-MCP fait pour les outils IA ce que l'USB-C a fait pour les appareils.
-
-Un seul standard. Compatibilité universelle. Fini le sac de câbles.
-
-PML est construit sur MCP parce que nous croyons aux standards ouverts. Vos outils doivent fonctionner partout, pas seulement chez un fournisseur.
-
-**L'avenir de l'IA est connecté. MCP est la connexion.**
+<ExcalidrawDiagram src="why-mcp-protocol/mcp-with" alt="Avec MCP : N+M — un serveur, n'importe quel client" />
 
 ---
 
-*En savoir plus sur [modelcontextprotocol.io](https://modelcontextprotocol.io)*
+## Le problème que MCP résout
+
+Pour comprendre pourquoi MCP existe, il faut sentir la douleur qu'il élimine.
+
+### Le problème d'intégration N×M
+
+Imaginez que vous avez 10 outils : une base PostgreSQL, une intégration GitHub, un notifier Slack, un lecteur PDF, un client REST API, un système de fichiers, un cache Redis, un calendrier, un CRM et un scraper web.
+
+Vous voulez les rendre accessibles à 4 systèmes IA : Claude, ChatGPT, un déploiement Llama local et un modèle fine-tuné qui tourne dans votre VPC.
+
+Sans standard : 10 × 4 = **40 intégrations sur mesure**. Chacune écrite dans le format propriétaire d'un modèle. Chacune dupliquant la même logique d'auth, le même error handling, les mêmes définitions de schéma. Chacune à mettre à jour quand l'outil ou le modèle change d'interface.
+
+Avec MCP : vous construisez 10 serveurs MCP une seule fois. N'importe lequel des 4 systèmes IA — et n'importe quel système futur — peut appeler les 10.
+
+<ExcalidrawDiagram src="why-mcp-protocol/mcp-n-times-m" alt="Le problème N×M : sans MCP vs avec MCP" />
+
+### Le tapis roulant de la reconstruction
+
+La conséquence concrète de N×M, c'est que les équipes passent un temps fou à reconstruire la même intégration à chaque fois qu'elles changent ou ajoutent un fournisseur d'IA. Quand OpenAI a sorti le function calling et qu'Anthropic a sorti le tool use la même année avec des schémas incompatibles, les équipes qui avaient investi dans l'un ont fait face à un vrai coût de migration pour supporter l'autre.
+
+MCP brise le tapis roulant. Le protocole est agnostique au fournisseur. Le même serveur MCP qui marche avec Claude aujourd'hui marchera avec n'importe quel modèle l'année prochaine.
+
+### Du contexte qui ne voyage pas
+
+Le function calling résout l'invocation d'outils. Il ne résout pas la gestion du contexte. Chaque requête à un LLM redémarre à zéro — le modèle n'a aucune mémoire des outils qu'il a appelés avant, aucune conscience des ressources disponibles, aucun moyen de découvrir ses capacités dynamiquement.
+
+MCP s'attaque à ce problème en formalisant trois primitives : les **tools** (actions exécutables), les **resources** (données lisibles) et les **prompts** (templates réutilisables). Un client qui se connecte à un serveur MCP obtient non seulement la capacité d'appeler des fonctions, mais aussi une découverte structurée de ce qui est disponible et de comment l'utiliser.
+
+---
+
+## Comment fonctionne MCP : l'architecture technique
+
+MCP est construit sur **JSON-RPC 2.0**. Chaque message — qu'il s'agisse d'un appel d'outil, d'une négociation de capacités ou d'une lecture de ressource — est un message JSON-RPC encodé en UTF-8.
+
+### Le modèle client-serveur
+
+MCP définit deux rôles :
+
+- **Serveur MCP** : expose des tools, des resources et des prompts. Tourne en tant que process (local) ou service (distant).
+- **Client MCP** : se connecte aux serveurs, découvre leurs capacités, invoque les tools. C'est généralement l'application hôte de l'IA — Claude Desktop, Cursor, un agent custom.
+
+Le cycle de vie commence par une négociation de capacités. Le client envoie une requête `initialize`. Le serveur répond avec sa version de protocole et ce qu'il supporte : expose-t-il des tools ? Des resources ? Des prompts ? Sait-il gérer les requêtes de sampling ? Ce handshake a lieu une fois par connexion.
+
+```json
+// Client → Serveur : initialize
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "initialize",
+  "params": {
+    "protocolVersion": "2025-11-25",
+    "capabilities": { "tools": {} },
+    "clientInfo": { "name": "my-agent", "version": "1.0.0" }
+  }
+}
+
+// Serveur → Client : réponse
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "protocolVersion": "2025-11-25",
+    "capabilities": {
+      "tools": { "listChanged": true }
+    },
+    "serverInfo": { "name": "my-mcp-server", "version": "2.1.0" }
+  }
+}
+```
+
+Après l'initialisation, le client peut appeler `tools/list` pour découvrir les outils disponibles, `resources/list` pour découvrir les données lisibles, et `tools/call` pour invoquer un outil précis.
+
+### Les transports
+
+MCP est agnostique au transport. La spec définit deux transports standards :
+
+**stdio** — Le client lance le serveur MCP comme un processus enfant. Le serveur lit du JSON-RPC sur stdin et écrit ses réponses sur stdout. C'est le standard pour les outils locaux : accès au filesystem, opérations git, requêtes vers une base locale. Rapide, pas de surcoût réseau, gestion de processus simple.
+
+```
+Process client
+  └─ lance un sous-processus MCP server
+       ├─ lit depuis stdin (requêtes JSON-RPC)
+       └─ écrit sur stdout (réponses JSON-RPC)
+```
+
+**Streamable HTTP** — Le serveur tourne comme un processus indépendant et accepte des connexions sur un endpoint HTTP. Le client envoie des requêtes POST pour invoquer les tools. Le serveur peut répondre en `application/json` pour les résultats simples, ou en `text/event-stream` (Server-Sent Events) pour le streaming — utile pour les opérations longues qui produisent une sortie incrémentale. Ce transport est obligatoire pour les serveurs distants, les déploiements multi-utilisateurs, et tout ce qui passe par le réseau.
+
+La révision de la spec en mars 2025 a remplacé l'ancien transport HTTP+SSE par Streamable HTTP, unifiant les deux modes dans un seul endpoint.
+
+### Les trois primitives
+
+**Tools** : des fonctions appelables. Elles ont un nom, une description (que le LLM utilise pour décider quand les appeler) et un schéma d'entrée en JSON Schema. Le serveur reçoit une requête `tools/call` avec des arguments validés et renvoie un résultat — du contenu texte, des resources embarquées ou des détails d'erreur.
+
+**Resources** : des données lisibles. Pensez fichiers ou enregistrements de base exposés par le serveur. Une resource a une URI et un type MIME. Le client peut lister les resources disponibles (`resources/list`) et lire les individuelles (`resources/read`). Les resources sont utiles pour l'injection de contexte — donner au modèle accès à de la doc, du code ou des données structurées sans le forcer à passer par un appel d'outil.
+
+**Prompts** : des templates réutilisables. Un serveur peut exposer des templates de prompts curatés que le client peut récupérer et insérer dans les conversations. Sous-utilisé dans les implémentations actuelles mais précieux pour standardiser comment la connaissance domaine est présentée aux modèles.
+
+---
+
+## MCP vs function calling
+
+Le function calling et MCP sont souvent confondus parce qu'ils se recouvrent dans leur but. La distinction compte pour vos décisions d'architecture.
+
+Le **function calling** est une capacité du LLM lui-même. Vous embarquez une liste de définitions de fonctions (nom, description, paramètres) directement dans votre requête API. Le modèle lit ces définitions et produit un objet JSON structuré quand il décide d'invoquer une fonction. Votre code intercepte cette sortie, exécute la vraie fonction et lui renvoie le résultat.
+
+```python
+# Function calling : la définition de l'outil vit dans chaque requête API
+response = openai.chat.completions.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": "Que contient ma base ?"}],
+    tools=[{
+        "type": "function",
+        "function": {
+            "name": "query_database",
+            "description": "Exécute une requête SQL",
+            "parameters": { "query": { "type": "string" } }
+        }
+    }]
+)
+```
+
+Les problèmes du function calling tout seul :
+1. **Couplage fort** : la définition de l'outil est intégrée à votre appel API. Vous changez de fournisseur, vous réécrivez les définitions.
+2. **Pas de découverte** : le modèle ne connaît que ce que vous lui dites en amont. Pas de négociation dynamique de capacités.
+3. **Coût en tokens** : chaque définition d'outil consomme du context window à chaque requête.
+4. **Pas de standardisation** : OpenAI, Anthropic et Google utilisent tous des schémas différents.
+
+**MCP utilise le function calling sous le capot** — quand un client MCP appelle un tool, le LLM prend toujours une décision de function call. Mais MCP ajoute la couche au-dessus : un protocole standard pour découvrir quels outils existent, un schéma cohérent pour les définir, et un transport pour les exécuter qui marche entre tous les fournisseurs.
+
+La distinction clé : le function calling est le mécanisme. MCP est le standard.
+
+| | Function Calling | MCP |
+|---|---|---|
+| Portée | Une seule requête API | Connexion persistante |
+| Découverte | Statique, par requête | Dynamique via `tools/list` |
+| Portabilité fournisseur | Aucune — schéma par vendeur | Universelle |
+| Transport | Dans l'appel API LLM | stdio ou HTTP |
+| Contexte | Sans état | Sessions, resources |
+| Réutilisation | Reconstruction par fournisseur | Construit une fois |
+
+Pour un petit prototype avec deux fonctions custom, le function calling est plus simple. Pour un agent en production avec une dizaine d'intégrations externes utilisées sur plusieurs fournisseurs d'IA, MCP est l'architecture correcte.
+
+---
+
+## MCP vs REST API
+
+MCP n'est pas un remplaçant de REST. La comparaison revient parce que dans les deux cas un client appelle un serveur pour récupérer des données ou déclencher des actions. Mais ils résolvent des problèmes différents.
+
+**REST** est conçu pour des requêtes initiées par des humains. Le développeur écrit du code qui sait exactement quels endpoints appeler et comment. L'API est de la documentation statique. L'appelant a une connaissance préalable.
+
+**MCP** est conçu pour des requêtes initiées par une IA. Le modèle n'a pas de connaissance préalable de ce qui est disponible — il a besoin de découvrir les capacités au runtime. MCP ajoute trois choses que REST n'a pas :
+
+1. **Découverte dynamique** : un endpoint `tools/list` standard que le modèle peut appeler pour apprendre quels outils existent, avec des descriptions exploitables par machine.
+2. **Streaming par défaut** : Streamable HTTP est conçu pour des résultats progressifs, pas seulement du request/response.
+3. **Gestion de session et de contexte** : les connexions MCP sont stateful d'une manière que REST ne l'est pas, ce qui permet au modèle de maintenir du contexte entre plusieurs appels d'outils dans une même session.
+
+En pratique, la plupart des serveurs MCP encapsulent des APIs REST. Votre serveur MCP GitHub appelle l'API REST GitHub en interne. La couche MCP est ce qui rend cette API accessible aux modèles d'IA de manière découvrable et standardisée.
+
+---
+
+## L'écosystème MCP en 2026
+
+MCP est passé du statut d'early adopter à celui de mainstream en 2025. Quelques jalons :
+
+- **Mars 2025** : OpenAI adopte officiellement MCP et l'intègre à ses produits, dont ChatGPT Desktop.
+- **Fin 2025** : Google DeepMind adopte MCP. Les grands fournisseurs de LLM convergent sur le standard.
+- **Décembre 2025** : Anthropic donne MCP à l'Agentic AI Foundation sous l'égide de la Linux Foundation, scellant son statut de standard ouvert et neutre.
+- **2026** : Gartner prévoit que 40 % des applications d'entreprise embarqueront des agents IA d'ici la fin de l'année. MCP, c'est la plomberie.
+
+<ExcalidrawDiagram src="why-mcp-protocol/mcp-adoption-timeline" alt="Timeline d'adoption de MCP de 2024 à 2026" />
+
+### Les clients avec support natif MCP
+
+- **Claude Desktop** / **Claude Code** — implémentation de référence
+- **Cursor** — IDE avec MCP pour des outils contextuels au code
+- **Windsurf** — IDE IA
+- **VS Code** avec Copilot — l'intégration de Microsoft
+- **Amazon Bedrock** — plateforme IA cloud
+- **Cline, RooCode, Witsy** — agents IA open source
+
+### Les registries de serveurs
+
+Deux registries principaux agrègent les serveurs MCP disponibles :
+
+- **[Smithery](https://smithery.ai)** — registry curaté avec outillage d'installation et serveurs notés
+- **[Glama](https://glama.ai/mcp/servers)** — catalogue exhaustif mis à jour quotidiennement
+
+Au-delà des registries, la liste GitHub `awesome-mcp-servers` a grandi jusqu'à des centaines de serveurs construits par la communauté, couvrant bases de données, fournisseurs cloud, outils de productivité, services dev et intégrations métier.
+
+<ExcalidrawDiagram src="_shared/mcp-ecosystem-2026" alt="L'écosystème MCP en 2026 : clients, frameworks et registries" />
+
+### Ce qui est disponible
+
+Un échantillon non exhaustif de catégories de serveurs MCP disponibles aujourd'hui :
+
+- **Bases de données** : PostgreSQL, MySQL, SQLite, MongoDB, Redis, Supabase
+- **Outils dev** : GitHub, GitLab, Jira, Linear, Sentry
+- **Cloud** : AWS, GCP, Azure, Cloudflare
+- **Productivité** : Notion, Google Drive, Slack, e-mail
+- **Web** : automatisation navigateur, recherche web, scraping
+- **Spécialisés** : Figma, SysML/SysON, ERPNext, données financières
+
+---
+
+## Construire un serveur MCP en TypeScript
+
+### Le SDK officiel
+
+Le SDK officiel `@modelcontextprotocol/sdk` vous donne un serveur MCP fonctionnel en moins de 20 lignes :
+
+```typescript
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
+
+const server = new McpServer({
+  name: "my-server",
+  version: "1.0.0",
+});
+
+server.tool(
+  "query_db",
+  "Exécute une requête SQL en lecture seule sur la base de production",
+  { query: z.string().describe("Instruction SQL SELECT") },
+  async ({ query }) => {
+    const rows = await db.query(query);
+    return { content: [{ type: "text", text: JSON.stringify(rows) }] };
+  }
+);
+
+const transport = new StdioServerTransport();
+await server.connect(transport);
+```
+
+Ça marche. Pour un outil local ou un prototype, c'est suffisant. Pour la production — authentification, rate limiting, validation d'entrée au-delà du schéma, observabilité, shutdown gracieux — vous l'écrivez vous-même.
+
+### Le framework @casys/mcp-server
+
+[`@casys/mcp-server`](https://jsr.io/@casys/mcp-server) est un framework de production pour serveurs MCP. Le postulat : tous les serveurs MCP ont besoin des mêmes briques de production. Construisez-les une fois, pas par serveur.
+
+```typescript
+import { ConcurrentMCPServer } from "@casys/mcp-server";
+
+const server = new ConcurrentMCPServer({
+  name: "my-production-server",
+  version: "2.0.0",
+  auth: { type: "bearer", validate: verifyJWT },
+  rateLimit: { requests: 100, windowMs: 60_000 },
+  cors: { origins: ["https://app.example.com"] },
+});
+
+server.tool({
+  name: "query_db",
+  description: "Exécute une requête SQL en lecture seule",
+  inputSchema: z.object({ query: z.string() }),
+  scopes: ["db:read"],
+  handler: async ({ query }, ctx) => {
+    const rows = await db.query(query);
+    return { content: [{ type: "text", text: JSON.stringify(rows) }] };
+  },
+});
+
+await server.start({ transport: "streamable-http", port: 3000 });
+```
+
+Out of the box : auth JWT/OAuth2, scopes RBAC par tool, rate limiting, validation d'entrée, métriques Prometheus, gestion SIGTERM. Disponible sur [JSR](https://jsr.io/@casys/mcp-server) et [npm](https://www.npmjs.com/package/@casys/mcp-server). Tourne sur Deno et Node.js.
+
+![Le framework @casys/mcp-server sur JSR — serveur MCP production-ready avec un JSR Score de 100 %](/images/screenshots/jsr-casys-mcp-server.png)
+
+Le guide complet de mise en production est dans [MCP Server en production : le guide TypeScript complet](/fr/blog/mcp-server-guide).
+
+### @casys/mcp-bridge et @casys/mcp-erpnext
+
+Pour les équipes qui construisent des ponts entre MCP et d'autres écosystèmes, [`@casys/mcp-bridge`](https://www.npmjs.com/package/@casys/mcp-bridge) connecte les appels d'outils MCP aux Telegram Mini Apps et à LINE LIFF — utile quand vous voulez exposer des workflows pilotés par IA depuis des interfaces de messagerie mobile.
+
+[`@casys/mcp-erpnext`](https://www.npmjs.com/package/@casys/mcp-erpnext) est un CLI standalone qui encapsule l'API REST d'ERPNext en serveur MCP, donnant aux modèles d'IA accès aux données ERP — bons de commande, BOM, inventaire, écritures comptables — via les appels d'outils MCP standards.
+
+---
+
+## Quand un serveur ne suffit plus : le pattern MCP Gateway
+
+L'architecture MCP standard, c'est un client qui se connecte à un ou quelques serveurs. Ça casse à l'échelle.
+
+Un déploiement entreprise peut avoir 30 serveurs MCP : accès base de données, APIs cloud, outillage interne, gestion documentaire, systèmes de communication, intégrations métier. Chaque serveur a sa propre auth, son propre cycle de vie de connexion, ses propres caractéristiques d'erreur. Gérer 30 connexions directes depuis chaque agent IA n'est pas tenable opérationnellement.
+
+La solution est un **MCP gateway** — un endpoint MCP unique auquel l'agent se connecte, qui route les appels vers le bon serveur backend.
+
+<ExcalidrawDiagram src="_shared/gateway-architecture" alt="MCP Gateway : un endpoint unique qui route vers N serveurs backend" />
+
+Un gateway apporte :
+
+- **Auth unifiée** : l'agent s'authentifie une fois ; le gateway gère les credentials par serveur
+- **Découverte d'outils sur l'ensemble des serveurs** : `tools/list` retourne l'union de tout ce qui est disponible
+- **Routage** : les appels d'outils partent vers le bon serveur sans que l'agent ait besoin de savoir quel serveur héberge quel tool
+- **Observabilité** : logs, métriques et tracing centralisés pour tous les appels d'outils
+- **Sélection intelligente** : quand des outils se recouvrent, le gateway peut router selon les métadonnées de capacité, les performances passées ou le coût
+
+C'est exactement ce que résout le [pattern MCP Gateway](/fr/blog/mcp-gateway-guide) — la couche de routage manquante entre vos clients IA et un écosystème de serveurs MCP qui ne cesse de grandir.
+
+```
+Agent → MCP Gateway (endpoint unique)
+          ├─ outils standards (utilitaires)
+          ├─ serveur filesystem
+          ├─ serveur PostgreSQL
+          ├─ serveur GitHub
+          └─ vos serveurs métier
+```
+
+La transition de « gérer des serveurs MCP individuels » vers « faire tourner un MCP gateway », c'est le moment où les équipes passent de l'expérimentation à l'infrastructure IA de production.
+
+---
+
+## Idées reçues sur MCP
+
+### « MCP remplace les APIs REST »
+
+Non. MCP encapsule typiquement des APIs REST. Votre serveur MCP PostgreSQL émet du SQL via une connexion réseau. Votre serveur MCP GitHub appelle l'API REST de GitHub. MCP est l'interface tournée IA ; l'accès aux données sous-jacent ne change pas.
+
+### « MCP n'est que pour les produits Anthropic »
+
+MCP a été créé par Anthropic mais est désormais gouverné par l'Agentic AI Foundation sous la Linux Foundation. OpenAI, Google DeepMind, Microsoft et des dizaines d'autres entreprises l'ont adopté. C'est un standard ouvert cross-industrie.
+
+### « MCP nécessite une connexion internet »
+
+Le transport stdio est entièrement local. Beaucoup de serveurs MCP tournent comme des sous-processus sans aucun accès réseau — outils filesystem, outils base locale, wrappers CLI. Le transport HTTP est pour les serveurs distants. Les deux sont des citoyens de première classe de la spec.
+
+### « MCP n'est que pour la lecture de données »
+
+Les tools MCP peuvent lire et écrire. La spec n'impose aucune restriction sur les effets de bord. Votre tool MCP peut envoyer des e-mails, écrire en base, déployer de l'infrastructure ou déclencher des workflows. Le modèle décide s'il l'appelle en se basant sur la description que vous écrivez. Écrivez des descriptions précises et implémentez votre propre autorisation pour contrôler ce qui peut être invoqué.
+
+### « Il faut MCP pour donner accès à des outils à une IA »
+
+Le function calling marche très bien dans les cas simples. Si vous avez trois outils utilisés par un seul modèle dans une seule application, monter un serveur MCP est de l'overhead. MCP rentabilise quand vous avez besoin de portabilité, de découverte, de support multi-modèles ou de plus d'une poignée d'outils.
+
+### « MCP a résolu le problème de la sélection d'outils »
+
+MCP standardise le protocole d'invocation d'outils. Il ne résout pas leur sélection — quand vous avez 200 outils disponibles, savoir lequel appeler pour une tâche donnée reste un problème ouvert. C'est là que la recherche sémantique sur les descriptions d'outils, les graphes de capacités et l'intelligence de routage apportent de la valeur au-delà de ce que la spec fournit.
+
+---
+
+## Démarrer avec MCP
+
+### Lire la spécification
+
+La spec officielle vit sur [modelcontextprotocol.io](https://modelcontextprotocol.io). La version de novembre 2025 est la révision stable courante. La spec de mars 2025 a introduit Streamable HTTP et l'autorisation OAuth 2.1.
+
+### Utiliser un client existant
+
+La voie la plus rapide pour comprendre MCP, c'est d'utiliser Claude Desktop ou Claude Code avec quelques serveurs MCP. Le serveur filesystem et le serveur PostgreSQL sont de bons points de départ — tous deux disponibles dans le [dépôt officiel des serveurs MCP](https://github.com/modelcontextprotocol/servers).
+
+### Construire votre premier serveur
+
+Installez le SDK officiel :
+
+```bash
+npm install @modelcontextprotocol/sdk zod
+```
+
+Ou allez direct au framework de production :
+
+```bash
+# Deno
+deno add jsr:@casys/mcp-server
+
+# Node.js
+npm install @casys/mcp-server
+```
+
+Partez de l'exemple plus haut, enregistrez un tool, et connectez-le à Claude Desktop via la section `mcpServers` du fichier `claude_desktop_config.json`. Une fois que ça marche, ajoutez d'autres tools, puis l'auth et le transport HTTP quand vous êtes prêt.
+
+### Déployer un gateway
+
+Quand vous dépassez 5-6 serveurs, regardez le pattern MCP Gateway. Self-hosted, open source, basé Deno. Connecté via fichier de configuration à la racine de votre projet. Fournit un endpoint MCP unique auquel vos agents se connectent au lieu de gérer chaque connexion individuellement. Détails dans [MCP Gateway : pourquoi vos agents IA en ont besoin](/fr/blog/mcp-gateway-guide).
+
+---
+
+## Le standard qui a gagné
+
+MCP n'est pas la première tentative de standardiser l'accès aux outils par les IA. C'est celle qui a réussi, pour une raison précise : elle est sortie au bon moment, avec le bon backing, et elle a été donnée avant de devenir une douve.
+
+Anthropic aurait pu garder MCP propriétaire. Un protocole d'outils propriétaire aurait verrouillé les développeurs sur Claude. À la place, ils ont publié la spec ouvertement, puis ont confié sa gouvernance à une fondation neutre. OpenAI et Google l'ont adopté plutôt que de construire des standards concurrents, parce que le coût de maintenir trois protocoles incompatibles est élevé et que la valeur d'écosystème d'un standard unique est plus élevée encore.
+
+L'analogie de l'USB-C tient. L'USB-C n'a pas réussi parce que c'était la meilleure spec de connecteur possible, mais parce qu'une part suffisante de l'industrie s'est mise d'accord dessus en même temps. MCP a cette coordination. Tous les grands IDE IA, tous les grands fournisseurs de LLM, et un catalogue grandissant d'implémentations de serveurs convergent sur le même protocole.
+
+Pour les développeurs qui construisent des applications IA, l'implication pratique est claire : investissez dans MCP. Les outils que vous construisez aujourd'hui marcheront avec les modèles disponibles l'année prochaine. Le travail d'intégration que vous faites une fois ne sera pas à refaire quand vous changerez de fournisseur. L'écosystème dans lequel vous vous branchez ne va faire que grossir.
+
+Construisez le serveur une fois. Connectez partout.
+
+---
+
+*Construire des serveurs MCP de production : [`@casys/mcp-server`](https://jsr.io/@casys/mcp-server) sur JSR et npm.*
+
+*Approfondir le pattern de routage : [MCP Gateway : pourquoi vos agents IA en ont besoin](/fr/blog/mcp-gateway-guide).*
+
+*Spécification MCP : [modelcontextprotocol.io](https://modelcontextprotocol.io)*
