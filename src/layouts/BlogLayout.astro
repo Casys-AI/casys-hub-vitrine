@@ -284,6 +284,7 @@ function getPostSlug(post: typeof sortedPosts[0]) {
           </a>
         </div>
       </div>
+      <div class="reading-progress" id="readingProgress" aria-hidden="true"></div>
     </nav>
 
     <!-- Main layout: sidebar + content -->
@@ -449,6 +450,32 @@ function getPostSlug(post: typeof sortedPosts[0]) {
         </div>
       </aside>
     </div>
+
+    <!-- Mobile TOC: floating button + bottom sheet (article pages only) -->
+    <button class="blog-toc-fab" id="blogTocFab" aria-label={t.toc} aria-expanded="false" aria-controls="blogTocSheet" hidden>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <line x1="8" y1="6" x2="21" y2="6"></line>
+        <line x1="8" y1="12" x2="21" y2="12"></line>
+        <line x1="8" y1="18" x2="21" y2="18"></line>
+        <circle cx="4" cy="6" r="1.2" fill="currentColor"></circle>
+        <circle cx="4" cy="12" r="1.2" fill="currentColor"></circle>
+        <circle cx="4" cy="18" r="1.2" fill="currentColor"></circle>
+      </svg>
+    </button>
+    <div class="blog-toc-sheet-overlay" id="blogTocSheetOverlay" hidden></div>
+    <aside class="blog-toc-sheet" id="blogTocSheet" role="dialog" aria-modal="true" aria-label={t.toc} hidden>
+      <div class="blog-toc-sheet-header">
+        <span class="blog-toc-label">{t.toc}</span>
+        <button class="blog-toc-sheet-close" id="blogTocSheetClose" aria-label="Close">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <nav class="blog-toc-sheet-nav" id="blogTocSheetNav" aria-label="Article navigation"></nav>
+    </aside>
+
     <script>
       document.addEventListener('DOMContentLoaded', () => {
         const toggle = document.getElementById('sidebarToggle');
@@ -500,9 +527,22 @@ function getPostSlug(post: typeof sortedPosts[0]) {
 
         // Build Table of Contents
         const tocNav = document.getElementById('blogTocNav');
+        const tocNavMobile = document.getElementById('blogTocSheetNav');
         const content = document.querySelector('.blog-content');
         const mainEl = document.getElementById('blogMain');
         if (!tocNav || !content || !mainEl) return;
+
+        // Reading progress bar (article pages only)
+        const progressBar = document.getElementById('readingProgress');
+        if (progressBar && !isBlogIndex) {
+          const updateProgress = () => {
+            const max = mainEl.scrollHeight - mainEl.clientHeight;
+            const ratio = max > 0 ? Math.min(1, Math.max(0, mainEl.scrollTop / max)) : 0;
+            progressBar.style.width = (ratio * 100).toFixed(2) + '%';
+          };
+          mainEl.addEventListener('scroll', updateProgress, { passive: true });
+          updateProgress();
+        }
 
         // Collect headings, stop at "related articles" boundary
         const stopWords = ['articles similaires', 'related articles', 'see also', '相关文章', '相關文章'];
@@ -515,36 +555,83 @@ function getPostSlug(post: typeof sortedPosts[0]) {
         }
         if (headings.length === 0) return;
 
+        // Mobile TOC sheet wiring
+        const tocFab = document.getElementById('blogTocFab');
+        const tocSheet = document.getElementById('blogTocSheet');
+        const tocSheetOverlay = document.getElementById('blogTocSheetOverlay');
+        const tocSheetClose = document.getElementById('blogTocSheetClose');
+        const openSheet = () => {
+          if (!tocSheet || !tocSheetOverlay || !tocFab) return;
+          tocSheet.hidden = false;
+          tocSheetOverlay.hidden = false;
+          requestAnimationFrame(() => {
+            tocSheet.classList.add('is-open');
+            tocSheetOverlay.classList.add('is-open');
+          });
+          tocFab.setAttribute('aria-expanded', 'true');
+          document.body.style.overflow = 'hidden';
+        };
+        const closeSheet = () => {
+          if (!tocSheet || !tocSheetOverlay || !tocFab) return;
+          tocSheet.classList.remove('is-open');
+          tocSheetOverlay.classList.remove('is-open');
+          tocFab.setAttribute('aria-expanded', 'false');
+          document.body.style.overflow = '';
+          setTimeout(() => {
+            tocSheet.hidden = true;
+            tocSheetOverlay.hidden = true;
+          }, 220);
+        };
+        if (!isBlogIndex && tocFab) {
+          tocFab.hidden = false;
+          tocFab.addEventListener('click', openSheet);
+          if (tocSheetClose) tocSheetClose.addEventListener('click', closeSheet);
+          if (tocSheetOverlay) tocSheetOverlay.addEventListener('click', closeSheet);
+        }
+
         headings.forEach((heading, i) => {
           if (!heading.id) heading.id = 'toc-' + i;
-          const link = document.createElement('a');
-          link.href = '#' + heading.id;
-          link.textContent = heading.textContent.trim();
           const isH3 = heading.tagName === 'H3';
           let cls = 'blog-toc-link';
           if (isH3) cls += ' blog-toc-link--h3';
           // Add section separator before h2 (except first)
           if (!isH3 && i > 0) cls += ' blog-toc-link--section';
-          link.className = cls;
-          link.addEventListener('click', (e) => {
-            e.preventDefault();
-            heading.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          });
-          tocNav.appendChild(link);
+
+          const makeLink = (afterClick) => {
+            const link = document.createElement('a');
+            link.href = '#' + heading.id;
+            link.textContent = heading.textContent.trim();
+            link.className = cls;
+            link.addEventListener('click', (e) => {
+              e.preventDefault();
+              heading.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              if (afterClick) afterClick();
+            });
+            return link;
+          };
+
+          tocNav.appendChild(makeLink());
+          if (tocNavMobile) tocNavMobile.appendChild(makeLink(closeSheet));
         });
 
-        // Scroll spy with IntersectionObserver
-        let currentActive = null;
+        // Scroll spy with IntersectionObserver — sync active state in both navs
+        const activeLinks = new Set();
         const observer = new IntersectionObserver((entries) => {
           entries.forEach(entry => {
             if (entry.isIntersecting) {
-              if (currentActive) currentActive.classList.remove('blog-toc-link--active');
-              const link = tocNav.querySelector('a[href="#' + entry.target.id + '"]');
-              if (link) {
-                link.classList.add('blog-toc-link--active');
-                currentActive = link;
-                // Scroll active link into view within TOC
-                link.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+              activeLinks.forEach(l => l.classList.remove('blog-toc-link--active'));
+              activeLinks.clear();
+              const selector = 'a[href="#' + entry.target.id + '"]';
+              const desktopLink = tocNav.querySelector(selector);
+              const mobileLink = tocNavMobile && tocNavMobile.querySelector(selector);
+              if (desktopLink) {
+                desktopLink.classList.add('blog-toc-link--active');
+                activeLinks.add(desktopLink);
+                desktopLink.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+              }
+              if (mobileLink) {
+                mobileLink.classList.add('blog-toc-link--active');
+                activeLinks.add(mobileLink);
               }
             }
           });
@@ -787,6 +874,141 @@ function getPostSlug(post: typeof sortedPosts[0]) {
   .blog-sidebar-collapse:hover {
     background-color: var(--md-sys-color-surface-variant, #f5f5f4);
     color: var(--md-sys-color-on-surface, #1c1917);
+  }
+
+  /* --- Reading progress bar (sits at the bottom edge of the topnav) --- */
+  .reading-progress {
+    position: absolute;
+    left: 0;
+    bottom: -1px;
+    height: 3px;
+    width: 0%;
+    background-color: var(--md-sys-color-primary, #6750a4);
+    transition: width 0.08s linear;
+    pointer-events: none;
+    z-index: 41;
+  }
+
+  /* --- Mobile TOC: floating action button --- */
+  .blog-toc-fab {
+    display: none;
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: none;
+    background-color: var(--md-sys-color-primary, #6750a4);
+    color: #fff;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+    cursor: pointer;
+    z-index: 45;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .blog-toc-fab:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.22);
+  }
+
+  .blog-toc-fab:focus-visible {
+    outline: 2px solid var(--md-sys-color-primary);
+    outline-offset: 3px;
+  }
+
+  /* --- Mobile TOC: bottom sheet --- */
+  .blog-toc-sheet-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 49;
+  }
+
+  .blog-toc-sheet-overlay.is-open {
+    opacity: 1;
+  }
+
+  .blog-toc-sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-height: 70vh;
+    background-color: var(--md-sys-color-surface, #ffffff);
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.15);
+    transform: translateY(100%);
+    transition: transform 0.22s ease;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .blog-toc-sheet.is-open {
+    transform: translateY(0);
+  }
+
+  .blog-toc-sheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--md-sys-color-outline-variant, #e7e5e4);
+  }
+
+  .blog-toc-sheet-header .blog-toc-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--md-sys-color-on-surface-variant, #57534e);
+  }
+
+  .blog-toc-sheet-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--md-sys-color-on-surface-variant, #57534e);
+    cursor: pointer;
+  }
+
+  .blog-toc-sheet-close:hover {
+    background-color: var(--md-sys-color-surface-variant, #f5f5f4);
+  }
+
+  .blog-toc-sheet-nav {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.75rem 1rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Sheet TOC links: allow wrapping + bigger tap target than the desktop sidebar */
+  .blog-toc-sheet-nav .blog-toc-link {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    font-size: 0.95rem;
+    padding: 0.7rem 0.75rem 0.7rem 1rem;
+    min-height: 44px;
+  }
+
+  .blog-toc-sheet-nav .blog-toc-link--h3 {
+    font-size: 0.85rem;
+    padding: 0.55rem 0.75rem 0.55rem 2rem;
   }
 
   /* --- Table of Contents (right side, visible when sidebar collapsed) --- */
@@ -1121,6 +1343,11 @@ function getPostSlug(post: typeof sortedPosts[0]) {
     /* Hide redundant "← Home" link on mobile — clickable CASYS brand replaces it */
     .blog-topnav-links .blog-topnav-link {
       display: none;
+    }
+
+    /* Show floating TOC button on mobile (article pages only — JS removes [hidden]) */
+    .blog-toc-fab:not([hidden]) {
+      display: inline-flex;
     }
 
     .blog-sidebar {
