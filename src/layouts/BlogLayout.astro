@@ -1118,6 +1118,11 @@ function getPostSlug(post: typeof sortedPosts[0]) {
       display: none !important;
     }
 
+    /* Hide redundant "← Home" link on mobile — clickable CASYS brand replaces it */
+    .blog-topnav-links .blog-topnav-link {
+      display: none;
+    }
+
     .blog-sidebar {
       position: fixed;
       top: 0;
