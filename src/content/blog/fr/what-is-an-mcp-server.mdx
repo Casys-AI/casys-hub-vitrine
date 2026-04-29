@@ -1,6 +1,6 @@
 ---
 title: "Qu'est-ce qu'un serveur MCP ? Guide avec exemples concrets"
-description: "Qu'est-ce qu'un serveur MCP ? Explication claire des trois primitives (tools, resources, prompts), différences avec une API classique, et exemples de code."
+description: "Un serveur MCP, c'est quoi exactement ? Définition claire, les 3 primitives (tools, resources, prompts), différence avec une API REST, et exemples de code prêts à lire."
 author: "Erwan Lee Pesle"
 date: 2026-04-17
 tags:
@@ -14,7 +14,15 @@ featured: false
 draft: false
 ---
 
-Un **serveur MCP** est un petit service qu'un agent IA peut appeler pour découvrir et exécuter des capacités — des outils qu'il peut invoquer, des données qu'il peut lire, et des templates de prompts qu'il peut utiliser. Pensez-y comme à un pilote ou un adaptateur pour un système spécifique : un serveur MCP PostgreSQL sait parler à Postgres, un serveur MCP GitHub sait parler à l'API GitHub, et votre serveur MCP interne sait parler au système métier que vous lui pointez. Le [Model Context Protocol](https://modelcontextprotocol.io) — publié par Anthropic en novembre 2024, puis cédé à l'Agentic AI Foundation sous la Linux Foundation en décembre 2025 — est le standard qui définit exactement comment cette conversation se déroule. Tout serveur MCP parle le même protocole : n'importe quel client compatible — Claude, Cursor, VS Code Copilot, un agent maison — peut se connecter à n'importe quel serveur MCP sans code d'intégration spécifique.
+Tout le monde parle de **serveurs MCP** depuis qu'Anthropic a publié le protocole fin 2024. Mais quand vous demandez ce que c'est *concrètement*, vous récupérez soit un schéma marketing avec des flèches, soit une spec de 80 pages. Ni l'un ni l'autre ne répond à la question.
+
+Voici la version courte :
+
+> **Un serveur MCP est un petit service qui expose des outils, des données et des prompts à un agent IA, via JSON-RPC.** Pensez "pilote USB" pour vos LLM : un serveur par système (Postgres, GitHub, votre API métier), et n'importe quel client compatible — Claude, Cursor, VS Code Copilot, un agent maison — peut s'y connecter sans code d'intégration spécifique.
+
+Le [Model Context Protocol](https://modelcontextprotocol.io) qui définit ce contrat a été publié par Anthropic en novembre 2024, puis cédé à l'Agentic AI Foundation sous la Linux Foundation en décembre 2025. C'est aujourd'hui le standard de fait pour brancher un agent à un système externe.
+
+La suite explique ce que le serveur expose vraiment, à quoi ressemble un échange réel, en quoi ce n'est pas une API REST, et ce qu'il faut prévoir si vous voulez en mettre un en production.
 
 ---
 
@@ -42,7 +50,7 @@ Les prompts sont des templates de messages réutilisables. Un serveur peut expos
 
 ---
 
-## À quoi ça ressemble en pratique
+## Exemple concret : un serveur MCP en JSON-RPC
 
 Voici à quoi ressemble une définition d'outil dans le format wire MCP — ce que le serveur renvoie quand le client appelle `tools/list` :
 
@@ -102,15 +110,20 @@ Le modèle récupère du contenu texte structuré et peut continuer à raisonner
 
 ---
 
-## Serveur MCP vs API
+## Serveur MCP vs API REST : la vraie différence
 
-La question revient souvent : "un serveur MCP, c'est pas juste une API REST ?"
+La question revient à chaque conversation : « un serveur MCP, c'est pas juste une API REST avec un autre nom ? »
 
-Pas exactement. Une API REST est conçue pour des appelants qui savent déjà quels endpoints existent et quels paramètres passer. Vous écrivez du code qui connaît `/api/v1/invoices` en dur, les query params, les headers d'auth. L'appelant a une connaissance préalable complète.
+**Réponse courte : non. Une API REST suppose un appelant qui connaît déjà l'interface. Un serveur MCP la décrit lui-même au moment de la connexion, pour qu'un agent IA puisse la découvrir sans code écrit à l'avance.**
 
-Un serveur MCP est conçu pour des agents IA qui n'ont aucune connaissance préalable. L'agent se connecte, envoie `tools/list`, reçoit en retour un catalogue lisible par machine — noms, descriptions, schémas d'entrée — et décide à partir de là quoi appeler. Pas d'endpoint codé en dur. La découverte se fait à l'exécution, à chaque session.
+Concrètement :
 
-MCP est aussi une couche de protocole par-dessus un transport (stdio ou HTTP), pas un remplacement de votre API existante. La plupart des serveurs MCP sont des adaptateurs : le serveur MCP GitHub appelle l'API REST GitHub en interne ; votre serveur MCP de facturation appelle votre API de facturation. MCP est l'interface côté agent. L'accès aux données sous-jacentes reste exactement comme il est. L'avantage concret : un serveur MCP, n'importe quel client IA, sans code d'intégration spécifique à chaque fournisseur.
+- **API REST** — vous codez en dur `/api/v1/invoices`, les query params, les headers d'auth. L'appelant a une connaissance préalable complète. Si l'API change, vous redéployez le client.
+- **Serveur MCP** — l'agent se connecte, envoie `tools/list`, reçoit un catalogue lisible par machine (noms, descriptions, schémas JSON d'entrée), et décide à partir de là quoi appeler. La découverte se fait à l'exécution, à chaque session. Si le serveur ajoute un outil, l'agent le voit immédiatement.
+
+MCP est aussi une couche de protocole par-dessus un transport (stdio ou HTTP), **pas** un remplacement de votre API existante. La plupart des serveurs MCP sont des adaptateurs : le serveur MCP GitHub appelle l'API REST GitHub en interne, votre serveur MCP de facturation appelle votre API de facturation. MCP est l'interface côté agent ; l'accès aux données sous-jacentes reste exactement comme il est.
+
+L'avantage concret : un seul serveur MCP, n'importe quel client IA, zéro code d'intégration spécifique par fournisseur.
 
 ---
 
@@ -124,19 +137,50 @@ Les entreprises construisent des serveurs MCP internes pour donner à leurs agen
 
 ---
 
-## Du serveur MCP à la production
+## Comment créer un serveur MCP en production
 
 Faire répondre un serveur MCP à `tools/call` prend un après-midi. Le faire tenir sous du trafic réel — authentification OAuth2, rate limiting par client, observabilité, arrêt propre sous charge — prend bien plus longtemps.
 
 Rien de tout ça n'est dans le spec MCP. Le spec définit le format des messages et les trois primitives. Ce qu'il faut faire quand un client envoie 500 requêtes par minute, comment vérifier un bearer token, comment émettre des métriques — c'est votre problème.
 
-Le [guide de production](/blog/mcp-server-guide) couvre tout ça : implémentation TypeScript de zéro, auth avec JWT et presets OAuth2, rate limiting, métriques Prometheus, traces OpenTelemetry, déploiement Docker et systemd. Si vous construisez un serveur qui doit survivre à un usage réel, commencez là.
+Deux chemins possibles :
 
-Pour les équipes qui ne veulent pas câbler chaque préoccupation de production manuellement, [`@casys/mcp-server`](/mcp-server) est le framework que nous utilisons et maintenons — il gère l'auth, le rate limiting, la backpressure et l'observabilité nativement, sur Deno comme sur Node.js.
+1. **Câbler vous-même.** Le [guide de production](/blog/mcp-server-guide) couvre tout : implémentation TypeScript de zéro, auth avec JWT et presets OAuth2, rate limiting, métriques Prometheus, traces OpenTelemetry, déploiement Docker et systemd. Si vous construisez un serveur qui doit survivre à un usage réel, commencez là.
+2. **Partir d'un framework.** [`@casys/mcp-server`](/mcp-server) est le framework que nous utilisons et maintenons — il gère l'auth, le rate limiting, la backpressure et l'observabilité nativement, sur Deno comme sur Node.js. Vous écrivez vos outils, le framework s'occupe du reste.
+
+Si vous prévoyez d'exposer plusieurs serveurs MCP à vos agents, regardez aussi le [MCP Gateway](/blog/mcp-gateway-guide) — un seul point d'entrée qui multiplexe et sécurise vos serveurs en aval.
 
 ---
 
-Le serveur MCP est la brique de base sur laquelle repose tout le protocole. Une fois que vous comprenez ce qu'il expose et pourquoi, le reste de l'écosystème — clients, gateways, registres — suit naturellement. Passez au [guide de production](/blog/mcp-server-guide) quand vous êtes prêt à construire.
+## FAQ — Questions fréquentes sur les serveurs MCP
+
+### Quelle est la différence entre un serveur MCP et une API REST ?
+
+Une API REST suppose que l'appelant connaît déjà les endpoints. Un serveur MCP se *décrit lui-même* au moment de la connexion via `tools/list`, pour qu'un agent IA puisse découvrir et invoquer ses capacités sans intégration codée en dur. MCP s'utilise généralement *par-dessus* une API existante, pas à la place.
+
+### Comment créer un serveur MCP ?
+
+Commencez par installer un SDK officiel ([TypeScript](https://github.com/modelcontextprotocol/typescript-sdk), [Python](https://github.com/modelcontextprotocol/python-sdk)), définissez vos `tools` avec un JSON Schema d'entrée, et lancez le serveur en stdio ou HTTP. Pour la production (auth, rate limiting, observabilité), suivez notre [guide pas-à-pas](/blog/mcp-server-guide) ou utilisez [`@casys/mcp-server`](/mcp-server).
+
+### En quel langage écrire un serveur MCP ?
+
+N'importe lequel qui sait parler JSON-RPC 2.0. Anthropic maintient des SDK officiels en **TypeScript**, **Python**, **Java**, **Kotlin** et **C#**. La communauté a publié des SDK Go, Rust et Deno. Le protocole étant transport-agnostique, tout langage avec un client HTTP ou un accès stdio peut implémenter un serveur.
+
+### Qui maintient le protocole MCP ?
+
+[Anthropic](https://anthropic.com) a publié MCP en novembre 2024 et a transféré la gouvernance à l'**Agentic AI Foundation** sous la **Linux Foundation** en décembre 2025. Le protocole est désormais ouvert, multi-vendor, et adopté par OpenAI, Google, Microsoft et la quasi-totalité des éditeurs d'agents.
+
+### Quels sont les serveurs MCP les plus utilisés ?
+
+Côté Anthropic : `filesystem`, `git`, `github`, `postgres`, `slack`, `puppeteer`. Côté communauté : Notion, Linear, Stripe, AWS, Google Drive, Sentry — voir les registres [Smithery](https://smithery.ai) et [Glama](https://glama.ai/mcp/servers) qui en cataloguent plusieurs centaines.
+
+---
+
+## Le serveur MCP, brique de base de tout le reste
+
+Une fois que vous voyez ce que le serveur expose — trois primitives, JSON-RPC, découverte à l'exécution — le reste de l'écosystème (clients, gateways, registres, agents multi-serveurs) prend du sens immédiatement. C'est la même brique qui sert de fondation à toutes les architectures agentiques modernes.
+
+**Prochaine étape :** si vous voulez en construire un, [le guide de production](/blog/mcp-server-guide) est l'endroit où commencer. Si vous voulez d'abord comprendre *pourquoi* MCP existe et le problème qu'il résout, lisez [Qu'est-ce que MCP ?](/blog/why-mcp-protocol).
 
 ---
 
