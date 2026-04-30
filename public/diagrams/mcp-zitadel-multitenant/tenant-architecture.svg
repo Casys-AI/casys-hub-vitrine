@@ -1,0 +1,184 @@
+<svg id="mcp-zitadel-tenant-architecture" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="mcp-zitadel-tenant-architecture-title mcp-zitadel-tenant-architecture-desc" xmlns="http://www.w3.org/2000/svg">
+  <title id="mcp-zitadel-tenant-architecture-title">Multi-tenant MCP request architecture with Zitadel</title>
+  <desc id="mcp-zitadel-tenant-architecture-desc">Claude calls a tenant MCP URL. Zitadel proves the user identity. The MCP route resolves the tenant, validates the token, loads the tenant MCP app, then runs provider tools with tenant credentials.</desc>
+  <defs>
+    <style>
+      #mcp-zitadel-tenant-architecture {
+        --bg: #fffdf8;
+        --ink: #1f2937;
+        --muted: #536071;
+        --line: #263445;
+        --soft-line: #c9c0b3;
+        --panel: #fff8ed;
+        --neutral-bg: #f7f3ea;
+        --blue-bg: #eaf3ff;
+        --blue-line: #2f6feb;
+        --green-bg: #e9f8ef;
+        --green-line: #17954d;
+        --amber-bg: #fff1c9;
+        --amber-line: #cf7b12;
+        --violet-bg: #f0ecff;
+        --violet-line: #7048e8;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        #mcp-zitadel-tenant-architecture {
+          --bg: #11100e;
+          --ink: #f4efe6;
+          --muted: #c8bdae;
+          --line: #eadfce;
+          --soft-line: #695e51;
+          --panel: #1c1813;
+          --neutral-bg: #242018;
+          --blue-bg: #14243a;
+          --blue-line: #77aaff;
+          --green-bg: #123221;
+          --green-line: #75d78e;
+          --amber-bg: #35260e;
+          --amber-line: #ffbf62;
+          --violet-bg: #231b3b;
+          --violet-line: #b7a0ff;
+        }
+      }
+
+      html[data-theme="light"] #mcp-zitadel-tenant-architecture {
+        --bg: #fffdf8;
+        --ink: #1f2937;
+        --muted: #536071;
+        --line: #263445;
+        --soft-line: #c9c0b3;
+        --panel: #fff8ed;
+        --neutral-bg: #f7f3ea;
+        --blue-bg: #eaf3ff;
+        --blue-line: #2f6feb;
+        --green-bg: #e9f8ef;
+        --green-line: #17954d;
+        --amber-bg: #fff1c9;
+        --amber-line: #cf7b12;
+        --violet-bg: #f0ecff;
+        --violet-line: #7048e8;
+      }
+
+      html[data-theme="dark"] #mcp-zitadel-tenant-architecture {
+        --bg: #11100e;
+        --ink: #f4efe6;
+        --muted: #c8bdae;
+        --line: #eadfce;
+        --soft-line: #695e51;
+        --panel: #1c1813;
+        --neutral-bg: #242018;
+        --blue-bg: #14243a;
+        --blue-line: #77aaff;
+        --green-bg: #123221;
+        --green-line: #75d78e;
+        --amber-bg: #35260e;
+        --amber-line: #ffbf62;
+        --violet-bg: #231b3b;
+        --violet-line: #b7a0ff;
+      }
+
+      #mcp-zitadel-tenant-architecture .title { fill: var(--ink); font: 760 34px Inter, Arial, sans-serif; }
+      #mcp-zitadel-tenant-architecture .subtitle { fill: var(--muted); font: 18px Inter, Arial, sans-serif; }
+      #mcp-zitadel-tenant-architecture .label { fill: var(--ink); font: 760 22px Inter, Arial, sans-serif; }
+      #mcp-zitadel-tenant-architecture .body { fill: var(--muted); font: 17px Inter, Arial, sans-serif; }
+      #mcp-zitadel-tenant-architecture .small { fill: var(--muted); font: 15px Inter, Arial, sans-serif; }
+      #mcp-zitadel-tenant-architecture .step { fill: var(--bg); font: 760 15px Inter, Arial, sans-serif; }
+      #mcp-zitadel-tenant-architecture .code { fill: var(--ink); font: 15px Menlo, Consolas, monospace; }
+      #mcp-zitadel-tenant-architecture .panel { fill: var(--panel); stroke: var(--soft-line); stroke-width: 1.6; }
+      #mcp-zitadel-tenant-architecture .box { stroke: var(--line); stroke-width: 2.3; stroke-linejoin: round; }
+      #mcp-zitadel-tenant-architecture .rough { fill: none; stroke: var(--line); stroke-width: 1.15; stroke-linecap: round; stroke-linejoin: round; opacity: 0.58; }
+      #mcp-zitadel-tenant-architecture .arrow { fill: none; stroke: var(--line); stroke-width: 3.1; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#mcp-zitadel-tenant-architecture-arrow); }
+      #mcp-zitadel-tenant-architecture .side-arrow { fill: none; stroke: var(--soft-line); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 7 8; opacity: 0.78; marker-end: url(#mcp-zitadel-tenant-architecture-soft-arrow); }
+      #mcp-zitadel-tenant-architecture .arrow-label { fill: var(--muted); font: 700 15px Inter, Arial, sans-serif; }
+      #mcp-zitadel-tenant-architecture .blue { fill: var(--blue-bg); stroke: var(--blue-line); }
+      #mcp-zitadel-tenant-architecture .green { fill: var(--green-bg); stroke: var(--green-line); }
+      #mcp-zitadel-tenant-architecture .amber { fill: var(--amber-bg); stroke: var(--amber-line); }
+      #mcp-zitadel-tenant-architecture .violet { fill: var(--violet-bg); stroke: var(--violet-line); }
+      #mcp-zitadel-tenant-architecture .neutral { fill: var(--neutral-bg); }
+      #mcp-zitadel-tenant-architecture .badge { fill: var(--line); }
+    </style>
+    <marker id="mcp-zitadel-tenant-architecture-arrow" markerWidth="13" markerHeight="13" refX="11" refY="6.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L11,6.5 L2,11" fill="none" stroke="var(--line)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="mcp-zitadel-tenant-architecture-soft-arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10" fill="none" stroke="var(--soft-line)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="720" rx="30" fill="var(--bg)"/>
+  <rect class="panel" x="32" y="32" width="1136" height="656" rx="24"/>
+
+  <text class="title" x="70" y="78">Multi-tenant MCP: one request, one tenant</text>
+  <text class="subtitle" x="70" y="112">Zitadel proves identity. The MCP server chooses the tenant and the tools.</text>
+
+  <g>
+    <rect class="box neutral" x="70" y="278" width="205" height="128" rx="18"/>
+    <path class="rough" d="M78 283 C124 274, 222 278, 269 284 M275 294 C281 328, 280 375, 269 399 M259 405 C211 411, 122 409, 78 399 M70 390 C64 354, 66 316, 76 284"/>
+    <circle class="badge" cx="100" cy="308" r="17"/>
+    <text class="step" x="95" y="314">1</text>
+    <text class="label" x="122" y="314">Claude.ai</text>
+    <text class="body" x="100" y="352">calls a remote</text>
+    <text class="body" x="100" y="378">MCP connector</text>
+  </g>
+
+  <g>
+    <rect class="box green" x="355" y="266" width="260" height="152" rx="18"/>
+    <path class="rough" d="M363 270 C424 262, 553 266, 608 272 M615 284 C621 326, 620 381, 608 411 M599 417 C538 423, 425 421, 363 411 M355 402 C349 358, 351 313, 361 271"/>
+    <circle class="badge" cx="386" cy="298" r="17"/>
+    <text class="step" x="381" y="304">2</text>
+    <text class="label" x="410" y="304">Tenant URL</text>
+    <text class="code" x="385" y="344">acme.einvoice.../mcp</text>
+    <text class="body" x="385" y="376">host carries tenant slug</text>
+  </g>
+
+  <g>
+    <rect class="box blue" x="705" y="240" width="290" height="205" rx="20"/>
+    <path class="rough" d="M714 246 C783 236, 928 241, 987 248 M995 262 C1003 319, 1002 392, 987 437 M978 445 C909 452, 780 450, 714 437 M705 426 C698 367, 701 304, 712 246"/>
+    <circle class="badge" cx="738" cy="274" r="17"/>
+    <text class="step" x="733" y="280">3</text>
+    <text class="label" x="762" y="280">MCP route</text>
+    <text class="body" x="735" y="322">verify JWT signature</text>
+    <text class="body" x="735" y="352">resolve tenant row</text>
+    <text class="body" x="735" y="382">pick cached MCP app</text>
+    <text class="body" x="735" y="412">reject wrong tenant</text>
+  </g>
+
+  <g>
+    <rect class="box amber" x="835" y="126" width="265" height="104" rx="18"/>
+    <path class="rough" d="M843 131 C906 122, 1037 126, 1093 132 M1100 142 C1106 170, 1105 204, 1093 224 M1084 230 C1021 236, 907 234, 843 224 M835 216 C829 186, 831 158, 841 132"/>
+    <text class="label" x="866" y="168">Zitadel</text>
+    <text class="body" x="866" y="199">login, consent, JWT, JWKS</text>
+  </g>
+
+  <g>
+    <rect class="box violet" x="315" y="510" width="335" height="125" rx="18"/>
+    <path class="rough" d="M324 515 C404 506, 575 510, 642 516 M650 527 C657 561, 656 606, 642 629 M633 635 C552 641, 405 640, 324 629 M315 620 C309 585, 311 548, 322 516"/>
+    <circle class="badge" cx="350" cy="544" r="17"/>
+    <text class="step" x="345" y="550">4</text>
+    <text class="label" x="374" y="550">Tenant McpApp</text>
+    <text class="body" x="345" y="590">tools and UI resources</text>
+    <text class="body" x="345" y="616">bound to this tenant</text>
+  </g>
+
+  <g>
+    <rect class="box green" x="760" y="510" width="330" height="125" rx="18"/>
+    <path class="rough" d="M769 515 C848 506, 1019 510, 1083 516 M1090 527 C1097 561, 1096 606, 1083 629 M1074 635 C994 641, 850 640, 769 629 M760 620 C754 585, 756 548, 767 516"/>
+    <circle class="badge" cx="795" cy="544" r="17"/>
+    <text class="step" x="790" y="550">5</text>
+    <text class="label" x="819" y="550">Provider tools</text>
+    <text class="body" x="790" y="590">tenant credentials only</text>
+    <text class="body" x="790" y="616">Iopole / Storecove adapters</text>
+  </g>
+
+  <path class="arrow" d="M278 342 C302 340, 328 340, 350 342"/>
+  <text class="arrow-label" x="292" y="326">Bearer JWT</text>
+  <path class="arrow" d="M618 342 C648 340, 677 340, 699 342"/>
+  <path class="arrow" d="M850 447 C816 480, 727 503, 653 542"/>
+  <path class="arrow" d="M653 572 C689 570, 724 570, 754 572"/>
+
+  <path class="side-arrow" d="M835 176 C640 150, 365 196, 250 276"/>
+  <path class="side-arrow" d="M920 232 C906 244, 892 252, 878 260"/>
+
+  <rect class="panel" x="76" y="648" width="1048" height="34" rx="12"/>
+  <text class="small" x="96" y="670">Invariant: identity is global, but tool execution is tenant-local.</text>
+</svg>

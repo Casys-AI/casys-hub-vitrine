@@ -1,0 +1,176 @@
+<svg id="mcp-zitadel-tenant-auth-flow" width="1200" height="660" viewBox="0 0 1200 660" role="img" aria-labelledby="mcp-zitadel-tenant-auth-flow-title mcp-zitadel-tenant-auth-flow-desc" xmlns="http://www.w3.org/2000/svg">
+  <title id="mcp-zitadel-tenant-auth-flow-title">Tenant isolation in the MCP request path</title>
+  <desc id="mcp-zitadel-tenant-auth-flow-desc">The request path verifies a JWT, parses the host, resolves the tenant row, then branches between private tenant claim matching and a public demo tenant path.</desc>
+  <defs>
+    <style>
+      #mcp-zitadel-tenant-auth-flow {
+        --page: #fffaf0;
+        --paper: #fffdf7;
+        --ink: #1f2937;
+        --muted: #5f6673;
+        --line: #334155;
+        --soft-line: #b8aea0;
+        --shadow: rgba(31, 41, 55, 0.12);
+        --blue-bg: #eaf3ff;
+        --blue-line: #3b82f6;
+        --green-bg: #eaf8ee;
+        --green-line: #16a34a;
+        --amber-bg: #fff3d2;
+        --amber-line: #d97706;
+        --violet-bg: #f1edff;
+        --violet-line: #7c3aed;
+        --gray-bg: #f5f1e8;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        #mcp-zitadel-tenant-auth-flow {
+          --page: #15110c;
+          --paper: #211b14;
+          --ink: #f4efe6;
+          --muted: #c4b7a6;
+          --line: #e2d7c8;
+          --soft-line: #6f6255;
+          --shadow: rgba(0, 0, 0, 0.28);
+          --blue-bg: #17263c;
+          --blue-line: #7db5ff;
+          --green-bg: #163321;
+          --green-line: #7adf93;
+          --amber-bg: #35250d;
+          --amber-line: #ffbf62;
+          --violet-bg: #241c3a;
+          --violet-line: #b69cff;
+          --gray-bg: #27221b;
+        }
+      }
+
+      html[data-theme="light"] #mcp-zitadel-tenant-auth-flow {
+        --page: #fffaf0;
+        --paper: #fffdf7;
+        --ink: #1f2937;
+        --muted: #5f6673;
+        --line: #334155;
+        --soft-line: #b8aea0;
+        --shadow: rgba(31, 41, 55, 0.12);
+        --blue-bg: #eaf3ff;
+        --blue-line: #3b82f6;
+        --green-bg: #eaf8ee;
+        --green-line: #16a34a;
+        --amber-bg: #fff3d2;
+        --amber-line: #d97706;
+        --violet-bg: #f1edff;
+        --violet-line: #7c3aed;
+        --gray-bg: #f5f1e8;
+      }
+
+      html[data-theme="dark"] #mcp-zitadel-tenant-auth-flow {
+        --page: #15110c;
+        --paper: #211b14;
+        --ink: #f4efe6;
+        --muted: #c4b7a6;
+        --line: #e2d7c8;
+        --soft-line: #6f6255;
+        --shadow: rgba(0, 0, 0, 0.28);
+        --blue-bg: #17263c;
+        --blue-line: #7db5ff;
+        --green-bg: #163321;
+        --green-line: #7adf93;
+        --amber-bg: #35250d;
+        --amber-line: #ffbf62;
+        --violet-bg: #241c3a;
+        --violet-line: #b69cff;
+        --gray-bg: #27221b;
+      }
+
+      #mcp-zitadel-tenant-auth-flow .font { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      #mcp-zitadel-tenant-auth-flow .title { font-size: 31px; font-weight: 750; fill: var(--ink); }
+      #mcp-zitadel-tenant-auth-flow .subtitle { font-size: 17px; fill: var(--muted); }
+      #mcp-zitadel-tenant-auth-flow .box-title { font-size: 20px; font-weight: 750; fill: var(--ink); }
+      #mcp-zitadel-tenant-auth-flow .section-title { font-size: 21px; font-weight: 750; fill: var(--ink); }
+      #mcp-zitadel-tenant-auth-flow .body { font-size: 15px; fill: var(--muted); }
+      #mcp-zitadel-tenant-auth-flow .body-large { font-size: 16px; fill: var(--muted); }
+      #mcp-zitadel-tenant-auth-flow .code { font-size: 14px; fill: var(--ink); }
+      #mcp-zitadel-tenant-auth-flow .note { font-size: 15px; fill: var(--muted); }
+      #mcp-zitadel-tenant-auth-flow .card { stroke: var(--line); stroke-width: 2.2; filter: url(#mcp-zitadel-tenant-auth-flow-card-shadow); }
+      #mcp-zitadel-tenant-auth-flow .rough { fill: none; stroke: var(--line); stroke-width: 1.15; stroke-linecap: round; stroke-linejoin: round; opacity: 0.55; }
+      #mcp-zitadel-tenant-auth-flow .arrow { fill: none; stroke: var(--line); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#mcp-zitadel-tenant-auth-flow-arrow); }
+      #mcp-zitadel-tenant-auth-flow .accent-blue { stroke: var(--blue-line); }
+      #mcp-zitadel-tenant-auth-flow .accent-green { stroke: var(--green-line); }
+      #mcp-zitadel-tenant-auth-flow .accent-amber { stroke: var(--amber-line); }
+      #mcp-zitadel-tenant-auth-flow .accent-violet { stroke: var(--violet-line); }
+    </style>
+    <filter id="mcp-zitadel-tenant-auth-flow-card-shadow" x="-8%" y="-8%" width="116%" height="116%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="var(--shadow)"/>
+    </filter>
+    <marker id="mcp-zitadel-tenant-auth-flow-arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2.2,2.2 L10,6 L2.2,9.8" fill="none" stroke="var(--line)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <pattern id="mcp-zitadel-tenant-auth-flow-grain" width="28" height="28" patternUnits="userSpaceOnUse">
+      <path d="M2 14h1.5M14 3v1.5M25 21h1.5" stroke="var(--soft-line)" stroke-width="1" opacity="0.25" stroke-linecap="round"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="660" rx="30" fill="var(--page)"/>
+  <rect x="22" y="22" width="1156" height="616" rx="24" fill="url(#mcp-zitadel-tenant-auth-flow-grain)" opacity="0.72"/>
+
+  <text class="font title" x="58" y="64">Tenant isolation in the MCP request path</text>
+  <text class="font subtitle" x="58" y="98">Authentication answers who the user is. The tenant resolver answers whether that user may use this subdomain.</text>
+
+  <g>
+    <rect class="card" x="62" y="156" width="194" height="100" rx="15" fill="var(--gray-bg)"/>
+    <path class="rough" d="M68 159 C111 153, 211 156, 250 160 M256 168 C261 194, 260 228, 250 251 M243 256 C195 260, 112 259, 68 252 M62 246 C57 218, 58 185, 66 160"/>
+    <text class="font box-title" x="92" y="195">1. Request</text>
+    <text class="font body" x="92" y="226">POST /mcp</text>
+  </g>
+
+  <g>
+    <rect class="card accent-blue" x="332" y="156" width="214" height="100" rx="15" fill="var(--blue-bg)"/>
+    <path class="rough accent-blue" d="M338 159 C389 152, 493 156, 540 160 M546 168 C551 195, 550 228, 540 251 M533 256 C482 261, 386 259, 338 252 M332 246 C327 218, 328 185, 336 160"/>
+    <text class="font box-title" x="362" y="195">2. JWT check</text>
+    <text class="font body" x="362" y="226">issuer, audience, JWKS</text>
+  </g>
+
+  <g>
+    <rect class="card accent-amber" x="622" y="156" width="234" height="100" rx="15" fill="var(--amber-bg)"/>
+    <path class="rough accent-amber" d="M628 159 C685 152, 799 156, 850 160 M856 168 C861 195, 860 228, 850 251 M843 256 C787 261, 684 259, 628 252 M622 246 C617 218, 618 185, 626 160"/>
+    <text class="font box-title" x="652" y="195">3. Host parse</text>
+    <text class="font code" x="652" y="226">acme.einvoice-platform.fr</text>
+  </g>
+
+  <g>
+    <rect class="card accent-green" x="932" y="156" width="210" height="100" rx="15" fill="var(--green-bg)"/>
+    <path class="rough accent-green" d="M938 159 C988 152, 1090 156, 1136 160 M1142 168 C1147 195, 1146 228, 1136 251 M1129 256 C1078 261, 987 259, 938 252 M932 246 C927 218, 928 185, 936 160"/>
+    <text class="font box-title" x="962" y="195">4. Tenant row</text>
+    <text class="font body" x="962" y="226">slug, org id, public flag</text>
+  </g>
+
+  <path class="arrow" d="M258 206 C280 204, 302 204, 322 206"/>
+  <path class="arrow" d="M548 206 C570 204, 592 204, 612 206"/>
+  <path class="arrow" d="M858 206 C880 204, 902 204, 922 206"/>
+
+  <g>
+    <rect class="card accent-violet" x="150" y="358" width="392" height="168" rx="16" fill="var(--paper)"/>
+    <path class="rough accent-violet" d="M157 362 C250 354, 445 358, 536 363 M542 372 C548 417, 547 483, 537 521 M528 526 C433 532, 253 531, 157 522 M150 514 C144 468, 146 405, 155 362"/>
+    <text class="font section-title" x="184" y="401">Private tenant path</text>
+    <text class="font body-large" x="184" y="437">Require Zitadel resource-owner claim:</text>
+    <text class="font code" x="184" y="467">urn:zitadel:iam:user:resourceowner:id</text>
+    <text class="font body-large" x="184" y="497">Accept only when claim == tenant.zitadelOrgId.</text>
+  </g>
+
+  <g>
+    <rect class="card accent-green" x="658" y="358" width="398" height="168" rx="16" fill="var(--green-bg)"/>
+    <path class="rough accent-green" d="M665 362 C759 354, 956 358, 1050 363 M1056 372 C1062 417, 1061 483, 1051 521 M1042 526 C947 532, 760 531, 665 522 M658 514 C652 468, 654 405, 663 362"/>
+    <text class="font section-title" x="694" y="401">Public demo tenant path</text>
+    <text class="font body-large" x="694" y="437">Still verify the JWT fully.</text>
+    <text class="font body-large" x="694" y="467">Skip org claim matching because DCR clients</text>
+    <text class="font body-large" x="694" y="497">do not always receive Zitadel-specific claims.</text>
+  </g>
+
+  <path class="arrow" d="M992 257 C878 293, 641 316, 456 350"/>
+  <path class="arrow" d="M1030 257 C1000 297, 932 322, 874 350"/>
+
+  <g>
+    <rect x="118" y="570" width="964" height="50" rx="13" fill="var(--paper)" stroke="var(--soft-line)" stroke-width="1.5"/>
+    <path class="rough" d="M124 574 C357 568, 850 571, 1075 575 M1082 582 C1086 594, 1085 609, 1076 616 M1068 620 C833 624, 354 624, 124 616 M118 610 C113 598, 115 585, 122 575"/>
+    <text class="font note" x="144" y="601">Rejection details stay in server logs; Claude only receives a generic invalid_token response.</text>
+  </g>
+</svg>

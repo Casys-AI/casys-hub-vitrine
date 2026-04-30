@@ -1,6 +1,6 @@
 ---
-title: "MCP 伺服器實戰指南：用 TypeScript 打造生產級工具服務"
-description: "從零開始建構生產級 MCP 伺服器的完整 TypeScript 教學指南。涵蓋工具註冊、OAuth2 驗證、中介軟體管線、背壓控制與 OpenTelemetry 可觀測性。附 @casys/mcp-server 與官方 SDK 框架對比表，以及台灣智慧製造的實際應用場景與部署範例。"
+title: "MCP server 教學：用 TypeScript 打造生產級 MCP 伺服器"
+description: "MCP server 教學與實戰範例：從零開始建構生產級 MCP 伺服器。涵蓋工具註冊、OAuth2 驗證、中介軟體管線、背壓控制與 OpenTelemetry 可觀測性。附 @casys/mcp-server 與官方 SDK 框架對比表，以及台灣智慧製造的實際應用場景。"
 author: "Erwan Lee Pesle"
 date: 2026-02-27
 tags:
@@ -11,13 +11,13 @@ tags:
   - infrastructure
 category: "產品"
 language: zh-TW
-snippet: "手把手教你用 TypeScript 建構 MCP 伺服器：從第一行程式碼到生產部署。涵蓋工具註冊、OAuth2 驗證、OpenTelemetry 可觀測性與 Prometheus 監控，附 @casys/mcp-server 與官方 SDK 對比表及台灣智慧製造應用範例。"
+snippet: "MCP server 教學：手把手用 TypeScript 建構 MCP 伺服器，從第一行程式碼到生產部署。涵蓋工具註冊、OAuth2 驗證、OpenTelemetry 可觀測性與 Prometheus 監控，附 @casys/mcp-server 與官方 SDK 對比及應用範例。"
 featured: true
 draft: false
 ---
 import ExcalidrawDiagram from '../../../components/ExcalidrawDiagram.astro';
 
-## 為什麼你需要關注 MCP 伺服器：2026 年 AI 架構的核心組件
+## 為什麼你需要關注 MCP server：2026 年 AI 架構的核心組件
 
 2026 年，MCP 伺服器正在成為 AI 應用程式架構的核心組件。在台灣，從台積電的智慧製造到新創公司的對話式介面，開發者面對一個共同的問題：**如何讓 AI 模型安全、可靠地使用外部工具？**
 
@@ -48,7 +48,7 @@ import ExcalidrawDiagram from '../../../components/ExcalidrawDiagram.astro';
 
 ---
 
-## MCP 伺服器教學：建構你的第一個 TypeScript 範例
+## MCP server 教學：建構你的第一個 TypeScript 範例
 
 我們使用 [`@casys/mcp-server`](https://jsr.io/@casys/mcp-server) 框架 — 它是建立在官方 [`@modelcontextprotocol/sdk`](https://github.com/modelcontextprotocol/typescript-sdk) 之上的生產級框架，定位是 **「MCP 的 Hono」**：輕量、快速、型別安全。
 

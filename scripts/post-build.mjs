@@ -14,7 +14,8 @@
  *    BEFORE the "handle": "filesystem" route, so analytics and subdomain
  *    routing work in the deployed Build Output
  * 2. Resolves pnpm workspace symlinks in .vercel/output/ that break Vercel uploads
- * 3. Copies built UI component HTML files from @casys/mcp-std into static output,
+ * 3. Patches generated Chinese SEO metadata for Starlight/sitemap output
+ * 4. Copies built UI component HTML files from @casys/mcp-std into static output,
  *    injecting an auto-resize script so the catalog can display interactive previews
  *    without any API dependency
  *
@@ -37,7 +38,7 @@
  *   vercel alias set <deployment-url> www.casys.ai
  */
 
-import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, lstatSync, readlinkSync, rmSync, cpSync } from 'node:fs';
+import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, lstatSync, readlinkSync, rmSync, cpSync, renameSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 
@@ -120,7 +121,138 @@ if (symlinks) {
   console.log('[post-build] No symlinks found');
 }
 
-// --- 3. Copy UI component HTML files from @casys/mcp-std ---
+// --- 3. Patch generated Chinese SEO metadata ---
+// Custom layouts use zh-CN for /zh, but Starlight and @astrojs/sitemap derive
+// generated metadata from Astro's internal locale key (`zh`). We keep the
+// internal key stable for application code, then patch generated output.
+
+const STATIC_OUTPUT_DIRS = ['dist/client', '.vercel/output/static'];
+const CANONICAL_ZH_TW_DIR = 'zh-TW';
+const DUPLICATE_ZH_TW_DOC_DIRS = [
+  'fr/zh-tw',
+  'zh/zh-tw',
+  'zh-TW/zh-tw',
+];
+
+function walkFiles(root, extensions, files = []) {
+  if (!existsSync(root)) return files;
+
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    const fullPath = join(root, entry.name);
+    if (entry.isDirectory()) {
+      walkFiles(fullPath, extensions, files);
+    } else if (extensions.some((extension) => entry.name.endsWith(extension))) {
+      files.push(fullPath);
+    }
+  }
+
+  return files;
+}
+
+function resolveExactPath(root, relativePath) {
+  let current = root;
+
+  for (const part of relativePath.split('/')) {
+    if (!existsSync(current)) return null;
+
+    const exactEntry = readdirSync(current, { withFileTypes: true })
+      .find((entry) => entry.name === part);
+    if (!exactEntry) return null;
+
+    current = join(current, exactEntry.name);
+  }
+
+  return current;
+}
+
+function normalizeRootZhTwDir(root) {
+  const rootEntries = readdirSync(root, { withFileTypes: true });
+  const exactCanonical = rootEntries.find((entry) =>
+    entry.isDirectory() && entry.name === CANONICAL_ZH_TW_DIR
+  );
+  if (exactCanonical) return false;
+
+  const lowercaseTaiwanDir = rootEntries.find((entry) =>
+    entry.isDirectory() && entry.name === 'zh-tw'
+  );
+  if (!lowercaseTaiwanDir) return false;
+
+  const currentPath = join(root, lowercaseTaiwanDir.name);
+  const temporaryPath = join(root, `.tmp-${lowercaseTaiwanDir.name}-${Date.now()}`);
+  renameSync(currentPath, temporaryPath);
+  renameSync(temporaryPath, join(root, CANONICAL_ZH_TW_DIR));
+  return true;
+}
+
+function patchChineseSeoMetadata(root) {
+  if (!existsSync(root)) return { htmlPatched: 0, sitemapPatched: 0, dirsRemoved: 0, dirsNormalized: 0 };
+
+  let htmlPatched = 0;
+  let sitemapPatched = 0;
+  let dirsRemoved = 0;
+  let dirsNormalized = 0;
+
+  if (normalizeRootZhTwDir(root)) {
+    dirsNormalized++;
+  }
+
+  for (const relativeDir of DUPLICATE_ZH_TW_DOC_DIRS) {
+    const duplicateDir = resolveExactPath(root, relativeDir);
+    if (duplicateDir && existsSync(duplicateDir)) {
+      rmSync(duplicateDir, { recursive: true, force: true });
+      dirsRemoved++;
+    }
+  }
+
+  for (const htmlFile of walkFiles(root, ['.html'])) {
+    let html = readFileSync(htmlFile, 'utf-8');
+    const original = html;
+
+    html = html
+      .replaceAll('<html lang="zh"', '<html lang="zh-CN"')
+      .replaceAll('hreflang="zh"', 'hreflang="zh-CN"')
+      .replaceAll('property="og:locale" content="zh"', 'property="og:locale" content="zh_CN"');
+
+    if (html !== original) {
+      writeFileSync(htmlFile, html);
+      htmlPatched++;
+    }
+  }
+
+  for (const sitemapFile of walkFiles(root, ['.xml'])) {
+    if (!sitemapFile.includes('sitemap')) continue;
+
+    let xml = readFileSync(sitemapFile, 'utf-8');
+    const original = xml;
+
+    xml = xml
+      .replace(/<url><loc>[^<]*\/zh-tw\/[^<]*<\/loc>.*?<\/url>/g, '')
+      .replaceAll('hreflang="zh"', 'hreflang="zh-CN"');
+
+    if (xml !== original) {
+      writeFileSync(sitemapFile, xml);
+      sitemapPatched++;
+    }
+  }
+
+  return { htmlPatched, sitemapPatched, dirsRemoved, dirsNormalized };
+}
+
+let seoHtmlPatched = 0;
+let seoSitemapPatched = 0;
+let seoDirsRemoved = 0;
+let seoDirsNormalized = 0;
+for (const outputDir of STATIC_OUTPUT_DIRS) {
+  const result = patchChineseSeoMetadata(outputDir);
+  seoHtmlPatched += result.htmlPatched;
+  seoSitemapPatched += result.sitemapPatched;
+  seoDirsRemoved += result.dirsRemoved;
+  seoDirsNormalized += result.dirsNormalized;
+}
+
+console.log(`[post-build] Patched Chinese SEO metadata (${seoHtmlPatched} HTML, ${seoSitemapPatched} sitemap files, ${seoDirsRemoved} duplicate zh-tw dirs removed, ${seoDirsNormalized} root zh-TW dirs normalized)`);
+
+// --- 4. Copy UI component HTML files from @casys/mcp-std ---
 // Each component in lib/std/src/ui/dist/<name>/index.html is a self-contained
 // Preact + Tailwind single-file bundle (~350-450KB). We copy them into the
 // Vercel static output so the catalog can load them as iframe src without any

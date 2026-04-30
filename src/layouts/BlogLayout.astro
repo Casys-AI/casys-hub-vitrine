@@ -5,6 +5,7 @@ import Analytics from '@vercel/analytics/astro';
 import { getCollection } from 'astro:content';
 import HrefLang from '../components/HrefLang.astro';
 import { DEFAULT_SITE_URL, resolvePublicUrl } from '../lib/public-url';
+import { getHtmlLang, getOgLocale, getSchemaLanguage } from '../lib/locale-utils';
 
 export interface Props {
   title: string;
@@ -33,6 +34,8 @@ const ogImage = slug
 const localePrefix = locale === 'en' ? '' : `/${locale}`;
 const canonicalUrl = publicUrl.canonicalUrl;
 const blogBaseUrl = `${rootSiteUrl}${localePrefix}/blog`;
+const htmlLang = getHtmlLang(locale);
+const ogLocale = getOgLocale(locale);
 
 const labels = {
   en: {
@@ -138,7 +141,7 @@ function getPostSlug(post: typeof sortedPosts[0]) {
 ---
 
 <!DOCTYPE html>
-<html lang={locale === 'zh' ? 'zh-CN' : locale === 'zh-TW' ? 'zh-TW' : locale}>
+<html lang={htmlLang}>
   <head>
     <meta charset="UTF-8" />
     <meta name="description" content={description || t.blogSubtitle} />
@@ -191,6 +194,7 @@ function getPostSlug(post: typeof sortedPosts[0]) {
     <meta property="og:type" content="article" />
     <meta property="og:site_name" content="Casys AI" />
     <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:locale" content={ogLocale} />
     <meta property="og:title" content={effectiveOgTitle} />
     {effectiveOgDescription && <meta property="og:description" content={effectiveOgDescription} />}
     <meta property="og:image" content={ogImage} />
@@ -228,7 +232,7 @@ function getPostSlug(post: typeof sortedPosts[0]) {
         },
         ...(tags?.length && { "keywords": tags.join(", ") }),
         ...(category && { "articleSection": category }),
-        "inLanguage": locale === 'zh' ? 'zh-CN' : locale
+        "inLanguage": getSchemaLanguage(locale)
       }).replace(/</g, '\\u003c')} />
     )}
     {slug && (
@@ -352,7 +356,7 @@ function getPostSlug(post: typeof sortedPosts[0]) {
                   >
                     <span class="blog-nav-link-title">{post.data.title}</span>
                     <span class="blog-nav-link-meta">
-                      <span>{post.data.date.toLocaleDateString(locale === 'zh' ? 'zh-CN' : locale === 'zh-TW' ? 'zh-TW' : locale)}</span>
+                      <span>{post.data.date.toLocaleDateString(htmlLang)}</span>
                       {post.data.category && (
                         <>
                           <span class="blog-nav-link-dot">&middot;</span>

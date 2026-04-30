@@ -1,0 +1,146 @@
+<svg id="zitadel-issuer-proxy-tradeoff" width="1200" height="660" viewBox="0 0 1200 660" role="img" aria-labelledby="zitadel-issuer-proxy-tradeoff-title zitadel-issuer-proxy-tradeoff-desc" xmlns="http://www.w3.org/2000/svg">
+  <title id="zitadel-issuer-proxy-tradeoff-title">Why the OAuth issuer must stay Zitadel</title>
+  <desc id="zitadel-issuer-proxy-tradeoff-desc">The wrong proxy design rewrites issuer to the platform domain and makes JWT validation fail. The shipped design serves metadata from the platform but keeps issuer, authorize, token, and JWKS on Zitadel.</desc>
+  <defs>
+    <style>
+      #zitadel-issuer-proxy-tradeoff {
+        --bg: #fffdf8;
+        --ink: #1f2937;
+        --muted: #536071;
+        --line: #263445;
+        --soft-line: #c9c0b3;
+        --panel: #fff8ed;
+        --red-bg: #fff0ef;
+        --red-line: #d64545;
+        --green-bg: #e9f8ef;
+        --green-line: #17954d;
+        --amber-bg: #fff1c9;
+        --amber-line: #cf7b12;
+        --code-bg: #fffaf1;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        #zitadel-issuer-proxy-tradeoff {
+          --bg: #11100e;
+          --ink: #f4efe6;
+          --muted: #c8bdae;
+          --line: #eadfce;
+          --soft-line: #695e51;
+          --panel: #1c1813;
+          --red-bg: #321a17;
+          --red-line: #ff8d84;
+          --green-bg: #123221;
+          --green-line: #75d78e;
+          --amber-bg: #35260e;
+          --amber-line: #ffbf62;
+          --code-bg: #211b14;
+        }
+      }
+
+      html[data-theme="light"] #zitadel-issuer-proxy-tradeoff {
+        --bg: #fffdf8;
+        --ink: #1f2937;
+        --muted: #536071;
+        --line: #263445;
+        --soft-line: #c9c0b3;
+        --panel: #fff8ed;
+        --red-bg: #fff0ef;
+        --red-line: #d64545;
+        --green-bg: #e9f8ef;
+        --green-line: #17954d;
+        --amber-bg: #fff1c9;
+        --amber-line: #cf7b12;
+        --code-bg: #fffaf1;
+      }
+
+      html[data-theme="dark"] #zitadel-issuer-proxy-tradeoff {
+        --bg: #11100e;
+        --ink: #f4efe6;
+        --muted: #c8bdae;
+        --line: #eadfce;
+        --soft-line: #695e51;
+        --panel: #1c1813;
+        --red-bg: #321a17;
+        --red-line: #ff8d84;
+        --green-bg: #123221;
+        --green-line: #75d78e;
+        --amber-bg: #35260e;
+        --amber-line: #ffbf62;
+        --code-bg: #211b14;
+      }
+
+      #zitadel-issuer-proxy-tradeoff .title { fill: var(--ink); font: 760 34px Inter, Arial, sans-serif; }
+      #zitadel-issuer-proxy-tradeoff .subtitle { fill: var(--muted); font: 18px Inter, Arial, sans-serif; }
+      #zitadel-issuer-proxy-tradeoff .label { fill: var(--ink); font: 760 23px Inter, Arial, sans-serif; }
+      #zitadel-issuer-proxy-tradeoff .body { fill: var(--muted); font: 17px Inter, Arial, sans-serif; }
+      #zitadel-issuer-proxy-tradeoff .code { fill: var(--ink); font: 16px Menlo, Consolas, monospace; }
+      #zitadel-issuer-proxy-tradeoff .small { fill: var(--muted); font: 15px Inter, Arial, sans-serif; }
+      #zitadel-issuer-proxy-tradeoff .panel { fill: var(--panel); stroke: var(--soft-line); stroke-width: 1.6; }
+      #zitadel-issuer-proxy-tradeoff .box { stroke-width: 2.4; stroke-linejoin: round; }
+      #zitadel-issuer-proxy-tradeoff .red { fill: var(--red-bg); stroke: var(--red-line); }
+      #zitadel-issuer-proxy-tradeoff .green { fill: var(--green-bg); stroke: var(--green-line); }
+      #zitadel-issuer-proxy-tradeoff .amber { fill: var(--amber-bg); stroke: var(--amber-line); }
+      #zitadel-issuer-proxy-tradeoff .codebox { fill: var(--code-bg); stroke: var(--soft-line); stroke-width: 1.5; }
+      #zitadel-issuer-proxy-tradeoff .rough { fill: none; stroke: var(--line); stroke-width: 1.15; stroke-linecap: round; stroke-linejoin: round; opacity: 0.55; }
+      #zitadel-issuer-proxy-tradeoff .rough-red { fill: none; stroke: var(--red-line); stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; opacity: 0.65; }
+      #zitadel-issuer-proxy-tradeoff .rough-green { fill: none; stroke: var(--green-line); stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; opacity: 0.65; }
+      #zitadel-issuer-proxy-tradeoff .arrow { fill: none; stroke: var(--line); stroke-width: 3.1; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#zitadel-issuer-proxy-tradeoff-arrow); }
+      #zitadel-issuer-proxy-tradeoff .soft-arrow { fill: none; stroke: var(--soft-line); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 7 8; opacity: 0.78; marker-end: url(#zitadel-issuer-proxy-tradeoff-soft-arrow); }
+      #zitadel-issuer-proxy-tradeoff .cross { stroke: var(--red-line); stroke-width: 5; stroke-linecap: round; }
+      #zitadel-issuer-proxy-tradeoff .check { fill: none; stroke: var(--green-line); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+    <marker id="zitadel-issuer-proxy-tradeoff-arrow" markerWidth="13" markerHeight="13" refX="11" refY="6.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L11,6.5 L2,11" fill="none" stroke="var(--line)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="zitadel-issuer-proxy-tradeoff-soft-arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10" fill="none" stroke="var(--soft-line)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="660" rx="30" fill="var(--bg)"/>
+  <rect class="panel" x="32" y="32" width="1136" height="596" rx="24"/>
+
+  <text class="title" x="70" y="78">Serve metadata here. Keep issuer there.</text>
+  <text class="subtitle" x="70" y="112">The proxy can add DCR, but it must not pretend to sign Zitadel tokens.</text>
+
+  <g>
+    <rect class="box red" x="85" y="170" width="430" height="320" rx="22"/>
+    <path class="rough-red" d="M95 176 C197 164, 410 170, 506 178 M515 194 C524 280, 523 411, 506 481 M495 490 C392 499, 200 497, 95 481 M85 468 C77 381, 80 260, 93 177"/>
+    <text class="label" x="130" y="220">Wrong: proxy becomes issuer</text>
+    <rect class="codebox" x="130" y="252" width="330" height="102" rx="12"/>
+    <text class="code" x="154" y="288">issuer = platform.fr</text>
+    <text class="code" x="154" y="322">registration = /oauth/register</text>
+    <line class="cross" x1="132" y1="398" x2="160" y2="426"/>
+    <line class="cross" x1="160" y1="398" x2="132" y2="426"/>
+    <text class="body" x="180" y="405">JWT still says:</text>
+    <text class="code" x="180" y="434">iss = zitadel.cloud</text>
+    <text class="body" x="130" y="466">Issuer check fails or becomes dishonest.</text>
+  </g>
+
+  <g>
+    <rect class="box green" x="685" y="170" width="430" height="320" rx="22"/>
+    <path class="rough-green" d="M695 176 C797 164, 1010 170, 1106 178 M1115 194 C1124 280, 1123 411, 1106 481 M1095 490 C992 499, 800 497, 695 481 M685 468 C677 381, 680 260, 693 177"/>
+    <text class="label" x="730" y="220">Shipped: proxy adds DCR only</text>
+    <rect class="codebox" x="730" y="252" width="330" height="128" rx="12"/>
+    <text class="code" x="754" y="288">issuer = zitadel.cloud</text>
+    <text class="code" x="754" y="322">authorize = Zitadel</text>
+    <text class="code" x="754" y="356">registration = platform.fr</text>
+    <path class="check" d="M734 426 L756 448 L800 404"/>
+    <text class="body" x="820" y="420">JWT issuer matches</text>
+    <text class="body" x="820" y="448">the real signer.</text>
+  </g>
+
+  <g>
+    <rect class="box amber" x="425" y="520" width="350" height="72" rx="18"/>
+    <path class="rough" d="M434 525 C516 517, 692 520, 768 526 M775 535 C780 555, 779 579, 768 586 M759 592 C676 598, 518 597, 434 586 M425 579 C420 558, 422 541, 432 526"/>
+    <text class="label" x="464" y="563">Zitadel signs the token</text>
+  </g>
+
+  <path class="arrow" d="M518 330 C565 318, 635 318, 681 330"/>
+  <text class="small" x="552" y="300">keep only the truthful side</text>
+  <path class="soft-arrow" d="M600 520 C492 478, 364 486, 304 491"/>
+  <path class="soft-arrow" d="M600 520 C706 478, 836 486, 900 491"/>
+
+  <rect class="panel" x="90" y="610" width="1020" height="34" rx="12"/>
+  <text class="small" x="110" y="632">Rule: metadata may be proxied; token issuer must remain the system that actually signs the JWT.</text>
+</svg>

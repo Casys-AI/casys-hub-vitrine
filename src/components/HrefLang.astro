@@ -8,6 +8,7 @@
  */
 import { getCollection } from 'astro:content';
 import { buildPublicUrl, LOCALES, type Locale } from '../lib/public-url';
+import { getHrefLang } from '../lib/locale-utils';
 
 export interface Props {
   siteUrl?: string;
@@ -48,7 +49,7 @@ if (blogMatch) {
 {activeLocales.map((locale) => (
   <link
     rel="alternate"
-    hreflang={locale}
+    hreflang={getHrefLang(locale)}
     href={buildPublicUrl(blogMatch ? blogPathForLocale(locale) : pathname, locale, siteUrl)}
   />
 ))}

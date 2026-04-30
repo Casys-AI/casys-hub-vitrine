@@ -4,7 +4,7 @@ import Analytics from '@vercel/analytics/astro';
 import Footer from './Footer.astro';
 import HrefLang from './HrefLang.astro';
 import { resolvePublicUrl } from '../lib/public-url';
-import { getOgLocale } from '../lib/locale-utils';
+import { getHtmlLang, getOgLocale } from '../lib/locale-utils';
 
 export interface Props {
   title: string;
@@ -24,11 +24,13 @@ const resolvedOgImage = ogImage
     ? ogImage
     : new URL(ogImage, publicUrl.origin).toString()
   : undefined;
+const htmlLang = getHtmlLang(locale);
 const ogLocale = getOgLocale(locale);
+const localizedJsonLd = jsonLd && ('inLanguage' in jsonLd ? jsonLd : { ...jsonLd, inLanguage: htmlLang });
 ---
 
 <!DOCTYPE html>
-<html lang={locale}>
+<html lang={htmlLang}>
   <head>
     <meta charset="UTF-8" />
     <meta name="description" content={metaDescription} />
@@ -84,8 +86,8 @@ const ogLocale = getOgLocale(locale);
     <meta name="twitter:description" content={metaDescription} />
     {resolvedOgImage && <meta name="twitter:image" content={resolvedOgImage} />}
     <meta property="og:site_name" content="Casys AI" />
-    {jsonLd && (
-      <script type="application/ld+json" set:html={JSON.stringify(jsonLd).replace(/</g, '\\u003c')} />
+    {localizedJsonLd && (
+      <script type="application/ld+json" set:html={JSON.stringify(localizedJsonLd).replace(/</g, '\\u003c')} />
     )}
 
     <script is:inline async src="https://www.googletagmanager.com/gtag/js?id=G-FR86NHGK8Y"></script>

@@ -184,6 +184,11 @@ auth0:
   permalink: /auth0
   description: Auth0 tenant configuration and RS256 token dialects
 
+zitadel:
+  label: Zitadel
+  permalink: /zitadel
+  description: Zitadel identity, OAuth2, OIDC, and multi-tenant authentication
+
 security:
   label: Security
   permalink: /security

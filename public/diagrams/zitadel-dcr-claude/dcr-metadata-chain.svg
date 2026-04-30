@@ -1,0 +1,179 @@
+<svg id="zitadel-dcr-metadata-chain" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-labelledby="zitadel-dcr-metadata-chain-title zitadel-dcr-metadata-chain-desc" xmlns="http://www.w3.org/2000/svg">
+  <title id="zitadel-dcr-metadata-chain-title">Claude OAuth discovery chain for Zitadel DCR</title>
+  <desc id="zitadel-dcr-metadata-chain-desc">Claude reads MCP protected resource metadata, follows it to the platform authorization-server metadata proxy, gets a registration endpoint, registers a client, then uses Zitadel for normal OAuth login and tokens.</desc>
+  <defs>
+    <style>
+      #zitadel-dcr-metadata-chain {
+        --bg: #fffdf8;
+        --ink: #1f2937;
+        --muted: #536071;
+        --line: #263445;
+        --soft-line: #c9c0b3;
+        --panel: #fff8ed;
+        --neutral-bg: #f7f3ea;
+        --blue-bg: #eaf3ff;
+        --blue-line: #2f6feb;
+        --green-bg: #e9f8ef;
+        --green-line: #17954d;
+        --amber-bg: #fff1c9;
+        --amber-line: #cf7b12;
+        --violet-bg: #f0ecff;
+        --violet-line: #7048e8;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        #zitadel-dcr-metadata-chain {
+          --bg: #11100e;
+          --ink: #f4efe6;
+          --muted: #c8bdae;
+          --line: #eadfce;
+          --soft-line: #695e51;
+          --panel: #1c1813;
+          --neutral-bg: #242018;
+          --blue-bg: #14243a;
+          --blue-line: #77aaff;
+          --green-bg: #123221;
+          --green-line: #75d78e;
+          --amber-bg: #35260e;
+          --amber-line: #ffbf62;
+          --violet-bg: #231b3b;
+          --violet-line: #b7a0ff;
+        }
+      }
+
+      html[data-theme="light"] #zitadel-dcr-metadata-chain {
+        --bg: #fffdf8;
+        --ink: #1f2937;
+        --muted: #536071;
+        --line: #263445;
+        --soft-line: #c9c0b3;
+        --panel: #fff8ed;
+        --neutral-bg: #f7f3ea;
+        --blue-bg: #eaf3ff;
+        --blue-line: #2f6feb;
+        --green-bg: #e9f8ef;
+        --green-line: #17954d;
+        --amber-bg: #fff1c9;
+        --amber-line: #cf7b12;
+        --violet-bg: #f0ecff;
+        --violet-line: #7048e8;
+      }
+
+      html[data-theme="dark"] #zitadel-dcr-metadata-chain {
+        --bg: #11100e;
+        --ink: #f4efe6;
+        --muted: #c8bdae;
+        --line: #eadfce;
+        --soft-line: #695e51;
+        --panel: #1c1813;
+        --neutral-bg: #242018;
+        --blue-bg: #14243a;
+        --blue-line: #77aaff;
+        --green-bg: #123221;
+        --green-line: #75d78e;
+        --amber-bg: #35260e;
+        --amber-line: #ffbf62;
+        --violet-bg: #231b3b;
+        --violet-line: #b7a0ff;
+      }
+
+      #zitadel-dcr-metadata-chain .title { fill: var(--ink); font: 760 34px Inter, Arial, sans-serif; }
+      #zitadel-dcr-metadata-chain .subtitle { fill: var(--muted); font: 18px Inter, Arial, sans-serif; }
+      #zitadel-dcr-metadata-chain .label { fill: var(--ink); font: 760 22px Inter, Arial, sans-serif; }
+      #zitadel-dcr-metadata-chain .body { fill: var(--muted); font: 17px Inter, Arial, sans-serif; }
+      #zitadel-dcr-metadata-chain .small { fill: var(--muted); font: 15px Inter, Arial, sans-serif; }
+      #zitadel-dcr-metadata-chain .code { fill: var(--ink); font: 15px Menlo, Consolas, monospace; }
+      #zitadel-dcr-metadata-chain .step { fill: var(--bg); font: 760 15px Inter, Arial, sans-serif; }
+      #zitadel-dcr-metadata-chain .panel { fill: var(--panel); stroke: var(--soft-line); stroke-width: 1.6; }
+      #zitadel-dcr-metadata-chain .box { stroke: var(--line); stroke-width: 2.3; stroke-linejoin: round; }
+      #zitadel-dcr-metadata-chain .rough { fill: none; stroke: var(--line); stroke-width: 1.15; stroke-linecap: round; stroke-linejoin: round; opacity: 0.58; }
+      #zitadel-dcr-metadata-chain .arrow { fill: none; stroke: var(--line); stroke-width: 3.1; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#zitadel-dcr-metadata-chain-arrow); }
+      #zitadel-dcr-metadata-chain .side-arrow { fill: none; stroke: var(--soft-line); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 7 8; opacity: 0.78; marker-end: url(#zitadel-dcr-metadata-chain-soft-arrow); }
+      #zitadel-dcr-metadata-chain .neutral { fill: var(--neutral-bg); }
+      #zitadel-dcr-metadata-chain .blue { fill: var(--blue-bg); stroke: var(--blue-line); }
+      #zitadel-dcr-metadata-chain .green { fill: var(--green-bg); stroke: var(--green-line); }
+      #zitadel-dcr-metadata-chain .amber { fill: var(--amber-bg); stroke: var(--amber-line); }
+      #zitadel-dcr-metadata-chain .violet { fill: var(--violet-bg); stroke: var(--violet-line); }
+      #zitadel-dcr-metadata-chain .badge { fill: var(--line); }
+    </style>
+    <marker id="zitadel-dcr-metadata-chain-arrow" markerWidth="13" markerHeight="13" refX="11" refY="6.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L11,6.5 L2,11" fill="none" stroke="var(--line)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <marker id="zitadel-dcr-metadata-chain-soft-arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10" fill="none" stroke="var(--soft-line)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="700" rx="30" fill="var(--bg)"/>
+  <rect class="panel" x="32" y="32" width="1136" height="636" rx="24"/>
+
+  <text class="title" x="70" y="78">Claude needs one missing OAuth field</text>
+  <text class="subtitle" x="70" y="112">The platform only adds dynamic registration. Zitadel still handles login and tokens.</text>
+
+  <g>
+    <rect class="box neutral" x="70" y="250" width="205" height="128" rx="18"/>
+    <path class="rough" d="M78 255 C124 246, 222 250, 269 256 M275 266 C281 300, 280 347, 269 371 M259 377 C211 383, 122 381, 78 371 M70 362 C64 326, 66 288, 76 256"/>
+    <circle class="badge" cx="100" cy="280" r="17"/>
+    <text class="step" x="95" y="286">1</text>
+    <text class="label" x="122" y="286">Claude.ai</text>
+    <text class="body" x="100" y="326">adds remote</text>
+    <text class="body" x="100" y="352">MCP URL</text>
+  </g>
+
+  <g>
+    <rect class="box green" x="345" y="228" width="285" height="172" rx="18"/>
+    <path class="rough" d="M354 233 C421 224, 563 228, 623 234 M630 246 C637 294, 636 360, 623 393 M614 400 C548 406, 422 405, 354 393 M345 384 C339 335, 341 282, 352 234"/>
+    <circle class="badge" cx="378" cy="262" r="17"/>
+    <text class="step" x="373" y="268">2</text>
+    <text class="label" x="402" y="268">Protected resource</text>
+    <text class="code" x="375" y="312">/mcp/.well-known/...</text>
+    <text class="body" x="375" y="346">says authorization server</text>
+    <text class="code" x="375" y="374">= platform root</text>
+  </g>
+
+  <g>
+    <rect class="box blue" x="720" y="228" width="300" height="172" rx="18"/>
+    <path class="rough" d="M729 233 C800 224, 949 228, 1013 234 M1020 246 C1027 294, 1026 360, 1013 393 M1004 400 C932 406, 801 405, 729 393 M720 384 C714 335, 716 282, 727 234"/>
+    <circle class="badge" cx="754" cy="262" r="17"/>
+    <text class="step" x="749" y="268">3</text>
+    <text class="label" x="778" y="268">AS metadata proxy</text>
+    <text class="body" x="750" y="312">mirrors Zitadel metadata</text>
+    <text class="body" x="750" y="344">adds only:</text>
+    <text class="code" x="750" y="374">registration_endpoint</text>
+  </g>
+
+  <g>
+    <rect class="box violet" x="328" y="505" width="330" height="110" rx="18"/>
+    <path class="rough" d="M337 510 C416 501, 584 505, 651 511 M658 522 C664 552, 663 590, 651 609 M642 615 C563 621, 418 620, 337 609 M328 600 C322 569, 324 536, 335 511"/>
+    <circle class="badge" cx="362" cy="538" r="17"/>
+    <text class="step" x="357" y="544">4</text>
+    <text class="label" x="386" y="544">Register client</text>
+    <text class="code" x="360" y="581">POST /oauth/register</text>
+  </g>
+
+  <g>
+    <rect class="box amber" x="760" y="505" width="330" height="110" rx="18"/>
+    <path class="rough" d="M769 510 C848 501, 1017 505, 1083 511 M1090 522 C1096 552, 1095 590, 1083 609 M1074 615 C994 621, 850 620, 769 609 M760 600 C754 569, 756 536, 767 511"/>
+    <circle class="badge" cx="794" cy="538" r="17"/>
+    <text class="step" x="789" y="544">5</text>
+    <text class="label" x="818" y="544">Normal OAuth</text>
+    <text class="body" x="790" y="581">authorize, token, JWKS</text>
+  </g>
+
+  <g>
+    <rect class="box amber" x="780" y="72" width="286" height="100" rx="18"/>
+    <path class="rough" d="M789 77 C856 68, 999 72, 1059 78 M1066 88 C1072 116, 1071 148, 1059 166 M1050 172 C982 178, 857 176, 789 166 M780 158 C774 128, 776 103, 787 78"/>
+    <text class="label" x="812" y="114">Zitadel Cloud</text>
+    <text class="body" x="812" y="145">real identity provider</text>
+  </g>
+
+  <path class="arrow" d="M278 314 C300 312, 322 312, 340 314"/>
+  <path class="arrow" d="M633 314 C662 312, 692 312, 714 314"/>
+  <path class="arrow" d="M870 402 C802 440, 697 486, 662 536"/>
+  <path class="arrow" d="M890 402 C900 438, 914 474, 920 500"/>
+  <path class="side-arrow" d="M924 174 C904 190, 889 208, 878 224"/>
+  <path class="side-arrow" d="M930 502 C930 404, 928 282, 925 176"/>
+
+  <rect class="panel" x="82" y="640" width="1036" height="34" rx="12"/>
+  <text class="small" x="102" y="662">Design rule: the proxy changes discovery and registration, not authorization or token signing.</text>
+</svg>

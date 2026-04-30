@@ -1,0 +1,442 @@
+---
+title: "Build a Multi-Tenant Remote MCP Server for Claude.ai with Zitadel OAuth"
+description: "A practical tutorial for serving one remote MCP endpoint per tenant, authenticating Claude.ai with Zitadel, validating JWTs, and isolating tools by subdomain."
+author: "Erwan Lee Pesle"
+date: 2026-04-30
+tags:
+  - mcp
+  - mcp-server
+  - oauth2
+  - zitadel
+  - security
+  - architecture
+  - tutorial
+category: "Tutorial"
+language: en
+snippet: "Build a remote MCP server that works with Claude.ai, serves many tenants from one deployment, validates Zitadel JWTs, and keeps every tenant's tools and provider credentials isolated."
+featured: true
+draft: false
+---
+
+import ExcalidrawDiagram from '../../../components/ExcalidrawDiagram.astro';
+
+# Build a Multi-Tenant Remote MCP Server for Claude.ai with Zitadel
+
+> By the end of this guide, you will have a remote MCP endpoint that Claude.ai can connect to, a Zitadel-backed OAuth flow, and a per-tenant MCP server pipeline where each subdomain resolves to its own tools, credentials, and authorization boundary.
+
+---
+
+## What We Are Building
+
+This article is the continuation of [Connecting an MCP server to claude.ai: OAuth2 + Auth0](/blog/mcp-authentication-claude-ai-oauth2). That first guide showed the smallest useful version of MCP OAuth: one remote MCP server, one authorization server, one Claude.ai client.
+
+This article is the next layer: **one deployment, many MCP tenants**.
+
+The concrete running example is the e-invoicing platform we built around three pieces:
+
+- [`@casys/mcp-server`](https://jsr.io/@casys/mcp-server), the production MCP server framework that provides `McpApp`, OAuth metadata, JWT auth middleware, multi-tenant middleware, validation, rate limiting, and the HTTP handler.
+- [`@casys/mcp-einvoice`](https://github.com/casysai/mcp-einvoice), the e-invoicing MCP tool package and UI viewers.
+- The [MCP e-invoice platform](/use-cases/mcp-einvoice), the hosted multi-tenant product that wires those tools to real tenant credentials.
+
+The public shape:
+
+- `demo.einvoice-platform.fr/mcp` serves a public demo tenant.
+- `acme.einvoice-platform.fr/mcp` would serve ACME's private tenant.
+- Each tenant gets its own cached `McpApp`.
+- Each tenant has its own provider credentials and tool handlers.
+- Zitadel signs the access tokens.
+- The MCP server validates the JWT, then checks whether the authenticated user belongs to the tenant subdomain they are hitting.
+
+This is not a generic SaaS auth tutorial. The hard part is specific to remote MCP:
+
+- Claude.ai discovers auth through [MCP Protected Resource Metadata](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization).
+- Hosted Claude surfaces use the fixed callback URL `https://claude.ai/api/mcp/auth_callback` documented by Anthropic in the [connector authentication docs](https://claude.com/docs/connectors/building/authentication).
+- MCP requests are tool calls, not normal page views. The auth result must land inside the MCP middleware pipeline, not only in your web app session.
+- Tenant isolation must be enforced after JWT validation and before tool execution.
+
+The result looks like this inside Claude:
+
+<figure class="blog-screenshot">
+  <img src="/images/blog/zitadel-mcp/claude-einvoice-demo.png" alt="Claude.ai using the e-invoice MCP server to display received invoices from a tenant-specific remote MCP endpoint." loading="lazy" />
+  <figcaption>Claude.ai calling the remote e-invoice MCP server after OAuth. The tenant-specific tools return structured invoice UI, not a shared static bearer-token response.</figcaption>
+</figure>
+
+---
+
+## Architecture at a Glance
+
+<ExcalidrawDiagram src="mcp-zitadel-multitenant/tenant-architecture" alt="Multi-tenant MCP request path: Claude calls a tenant URL, Zitadel proves identity, and the MCP route loads tenant-local tools." wide />
+
+The split is important:
+
+**Zitadel owns identity.** It displays the login screen, handles consent, signs JWT access tokens, publishes the JWKS, and emits the organization claims we use for private tenant isolation.
+
+**The MCP server owns tenant routing.** It parses the subdomain, loads the tenant row, builds or reuses the tenant's `McpApp`, validates the request through the MCP middleware stack, and dispatches tools with the right provider credentials.
+
+**The provider adapter owns business access.** In our e-invoice case, the tenant's credentials point to an e-invoicing provider such as Iopole or Storecove. Those credentials are decrypted once when the tenant server is built, then bound to the tool handlers.
+
+That gives you a clean rule: if the user is authenticated but hits the wrong tenant subdomain, the request still fails before any tool sees it.
+
+---
+
+## The MCP Server Layer We Reused
+
+The interesting part of this implementation is not "we wrote a lot of OAuth code." We deliberately did not.
+
+The core MCP runtime is [`@casys/mcp-server`](https://jsr.io/@casys/mcp-server). The earlier [production MCP server guide](/blog/mcp-server-guide) covers the framework in detail: `McpApp`, Streamable HTTP, schema validation, middleware ordering, concurrency limits, backpressure, CORS, metrics, and auth providers.
+
+For this Zitadel setup, the pieces that matter are:
+
+- `createOIDCAuthProvider()` for issuer/audience/JWKS validation and Protected Resource Metadata.
+- `createMultiTenantMiddleware()` for the post-auth tenant boundary.
+- `McpApp.getFetchHandler()` so the Fresh route can delegate to a Web Standard request handler.
+- `McpApp.registerTools()` and resource registration for the `@casys/mcp-einvoice` tools and viewers.
+
+That is why the tutorial below focuses on wiring and boundaries instead of hand-rolling the MCP protocol. The MCP server framework already handles the transport and middleware pipeline; the platform code only decides which tenant is being served and which tools/credentials belong to it.
+
+---
+
+## 1. Model the Tenant Boundary
+
+Start with the tenant row. You need more than a `slug`.
+
+```typescript
+export interface Tenant {
+  id: string;
+  slug: string;                 // "demo", "acme", "globex"
+  zitadelOrgId: string | null;  // Zitadel organization/resource-owner id
+  isPublicMcp: boolean;         // true for a demo sandbox tenant
+  suspendedAt: Date | null;
+}
+```
+
+The `slug` routes HTTP traffic. The `zitadelOrgId` routes identity. Those are separate on purpose.
+
+For private tenants, the access token must contain Zitadel's resource-owner claim and that claim must match `tenant.zitadelOrgId`. Zitadel documents this reserved claim as `urn:zitadel:iam:user:resourceowner:id` in its [claims reference](https://zitadel.com/docs/apis/openidoauth/claims).
+
+For public demo tenants, you may deliberately skip the org claim check while still validating the JWT issuer, audience, signature, and expiry. We do this for the public e-invoice demo because dynamically registered Claude clients do not always receive the Zitadel-specific resource-owner claim. Skipping the org claim is not the same as skipping auth.
+
+---
+
+## 2. Configure Zitadel for JWT Access Tokens
+
+In Zitadel, create a project for your remote MCP service. Then configure an OIDC application for MCP access.
+
+The exact dashboard labels move over time, but the durable requirements are:
+
+- **Authorization Code flow** enabled.
+- **Refresh Token** enabled if your client is confidential and needs refresh.
+- **JWT access tokens**, not opaque tokens. Your MCP server needs local JWT verification through JWKS.
+- **Audience includes the project id** or whichever resource value your MCP server will check.
+- **Resource owner claim available** when you need private tenant isolation.
+- **JWKS endpoint available**. Zitadel documents that JWT access tokens can be verified with public keys through its [web keys documentation](https://zitadel.com/docs/guides/integrate/login/oidc/webkeys).
+
+For a production remote MCP setup, the configuration checklist is:
+
+1. Create one Zitadel project for the MCP service.
+2. Create the dashboard Web application if the product has a browser dashboard.
+3. Create the `mcp` API/Bearer application for the remote MCP resource.
+4. Use the Zitadel project id or a configured API resource as `ZITADEL_MCP_RESOURCE`.
+5. Configure access tokens as JWTs.
+6. Enable project/audience assertion so the MCP resource appears in `aud`.
+7. Make the Zitadel resource-owner claim available for private tenants: `urn:zitadel:iam:user:resourceowner:id`.
+8. Store the root platform domain and Zitadel identifiers in the server environment.
+9. If Claude.ai will register itself dynamically, add the DCR proxy variables covered in the [public runbook](/docs/guides/zitadel-claude-mcp-runbook).
+
+The minimal production environment for the MCP endpoint is:
+
+```bash
+ROOT_DOMAIN=einvoice-platform.fr
+ZITADEL_DOMAIN=https://your-instance.zitadel.cloud
+ZITADEL_MCP_CLIENT_ID=...
+ZITADEL_MCP_RESOURCE=... # usually the Zitadel project id used as JWT audience
+```
+
+In the e-invoice deployment, the static Zitadel project has both `dashboard`
+as a Web application and `mcp` as an API/Bearer application. DCR-created Claude
+clients are additional Web applications; they do not replace the MCP API
+resource your server validates against.
+
+Two details are easy to miss:
+
+1. Zitadel's JWKS endpoint for this setup is `/oauth/v2/keys`, not always `/.well-known/jwks.json`.
+2. If the access token is opaque, your MCP middleware cannot validate it locally. You either switch to JWT access tokens or add token introspection on every request. For a high-frequency MCP endpoint, local JWKS validation is the simpler path.
+
+For the full operator checklist, including the service-user PAT, DCR env vars, metadata curl checks, and cleanup commands, use the companion doc: [Zitadel + Claude.ai MCP Runbook](/docs/guides/zitadel-claude-mcp-runbook).
+
+---
+
+## 3. Build One McpApp per Tenant
+
+The per-tenant factory is where the MCP part becomes concrete.
+
+```typescript
+import {
+  createMultiTenantMiddleware,
+  createOIDCAuthProvider,
+  McpApp,
+} from "@casys/mcp-server";
+
+export async function buildMcpServer({ tenant, creds }) {
+  const issuer = Deno.env.get("ZITADEL_DOMAIN")!;
+  const rootDomain = Deno.env.get("ROOT_DOMAIN")!;
+  const resource = Deno.env.get("ZITADEL_MCP_RESOURCE")!;
+
+  const resourceMetadataUrl =
+    `https://${tenant.slug}.${rootDomain}/mcp/.well-known/oauth-protected-resource`;
+
+  const authProvider = createOIDCAuthProvider({
+    issuer,
+    audience: resource,
+    resource,
+    resourceMetadataUrl,
+    jwksUri: `${issuer}/oauth/v2/keys`,
+    authorizationServers: [`https://${rootDomain}`],
+  });
+
+  const app = new McpApp({
+    name: `einvoice-platform-${tenant.slug}`,
+    version: "0.1.0",
+    maxConcurrent: 10,
+    backpressureStrategy: "queue",
+    validateSchema: true,
+    auth: { provider: authProvider },
+  });
+
+  const { tools, handlers } = loadEinvoiceTools(creds);
+  app.registerTools(tools, handlers);
+
+  app.use(createMultiTenantMiddleware(new EinvoiceMcpTenantResolver()));
+
+  const handler = await app.getFetchHandler({
+    requireAuth: true,
+    cors: true,
+    corsOrigins: "*",
+  });
+
+  return { app, handler };
+}
+```
+
+The `authorizationServers` value is intentionally the root domain, not the Zitadel domain, in the e-invoice deployment. That is because the root domain serves an authorization-server metadata proxy that adds Dynamic Client Registration support for Claude.ai. If your Zitadel setup already gives your MCP client a registered OAuth client, you can point discovery directly at Zitadel instead.
+
+The factory should run on cache miss, not on every MCP request. Tool registration, JWKS setup, and credential decryption belong to server warmup.
+
+---
+
+## 4. Cache by Tenant, Invalidate on Credential Rotation
+
+For each tenant, cache the built server:
+
+```typescript
+type BuiltMcpServer = {
+  app: McpApp;
+  handler: (request: Request) => Promise<Response>;
+};
+
+const cache = new Map<string, Promise<BuiltMcpServer>>();
+
+export function getMcpServer(tenant: Tenant) {
+  const existing = cache.get(tenant.id);
+  if (existing) return existing;
+
+  const built = loadTenantCredentials(tenant.id)
+    .then((creds) => buildMcpServer({ tenant, creds }));
+
+  cache.set(tenant.id, built);
+  return built;
+}
+```
+
+Keep invalidation explicit. When a tenant rotates provider credentials, delete the cache entry and stop the old `McpApp` if your framework exposes a lifecycle hook.
+
+Do not fetch and decrypt provider credentials on every tool call. That makes the hot path slower and creates a new failure mode for every request. Bind the active credentials to the tenant server, then invalidate when they change.
+
+---
+
+## 5. Mount `/mcp` as a Thin Route
+
+Your web framework route should not contain business logic. It should only:
+
+1. Confirm the request is on a tenant subdomain.
+2. Load the cached `McpApp`.
+3. Rewrite the mounted path before delegation if needed.
+4. Return the handler response.
+
+In Fresh, the route looks like this:
+
+```typescript
+async function dispatch(ctx: Context<State>): Promise<Response> {
+  if (ctx.state.tenant.kind !== "tenant") {
+    return new Response("MCP endpoint is only available on tenant subdomains", {
+      status: 404,
+    });
+  }
+
+  const tenant = ctx.state.tenant.tenant;
+  const built = await getMcpServer(tenant);
+
+  const url = new URL(ctx.req.url);
+  url.pathname = url.pathname === "/mcp"
+    ? "/"
+    : url.pathname.replace(/^\/mcp\//, "/");
+
+  return await built.handler(new Request(url, ctx.req));
+}
+```
+
+The prefix rewrite matters because the public URL is `/mcp`, while the embedded `McpApp` exposes its internal routes at root:
+
+- `/.well-known/oauth-protected-resource`
+- `/metrics`
+- `/` for MCP JSON-RPC and streamable HTTP
+
+Without the rewrite, Claude.ai asks for `/mcp/.well-known/oauth-protected-resource`, the embedded app sees an unknown route, and auth discovery fails.
+
+---
+
+## 6. Enforce Tenant Isolation After JWT Validation
+
+The tenant resolver runs inside the MCP middleware chain, after the auth middleware has already validated the bearer token.
+
+<ExcalidrawDiagram src="mcp-zitadel-multitenant/tenant-auth-flow" alt="Tenant isolation flow: validate JWT, resolve host, then branch between private organization checks and public demo tenants." wide />
+
+The resolver is small but important:
+
+```typescript
+const ZITADEL_ORG_ID = "urn:zitadel:iam:user:resourceowner:id";
+
+export class EinvoiceMcpTenantResolver implements TenantResolver {
+  async resolve(ctx: MiddlewareContext): Promise<TenantResolution> {
+    const host = ctx.request?.headers.get("host") ?? "";
+    const parsed = parseHost(host);
+    if (parsed.kind !== "tenant") {
+      return { ok: false, reason: "no tenant subdomain" };
+    }
+
+    const authInfo = ctx.authInfo as AuthInfo | undefined;
+    if (!authInfo) {
+      return { ok: false, reason: "auth middleware did not run" };
+    }
+
+    const tenant = await findBySlug(parsed.slug);
+    if (!tenant || tenant.suspendedAt) {
+      return { ok: false, reason: "tenant unavailable" };
+    }
+
+    if (tenant.isPublicMcp) {
+      return { ok: true, tenantId: tenant.id };
+    }
+
+    const claim = authInfo.claims?.[ZITADEL_ORG_ID];
+    if (typeof claim !== "string" || claim !== tenant.zitadelOrgId) {
+      return { ok: false, reason: "zitadel org mismatch" };
+    }
+
+    return { ok: true, tenantId: tenant.id };
+  }
+}
+```
+
+Return detailed rejection reasons to logs and audit events, not to the client. A failed tenant check should collapse to a generic auth error. Otherwise, your MCP endpoint becomes a tenant enumeration API.
+
+---
+
+## 7. Publish Protected Resource Metadata
+
+Claude.ai discovers the OAuth server through Protected Resource Metadata. The MCP specification requires HTTP-based MCP servers that support authorization to expose that metadata or provide it through the `WWW-Authenticate` challenge.
+
+For a tenant endpoint, the document should look like this:
+
+```json
+{
+  "resource": "<zitadel-project-id-or-resource-id>",
+  "resource_metadata_url": "https://demo.einvoice-platform.fr/mcp/.well-known/oauth-protected-resource",
+  "authorization_servers": ["https://einvoice-platform.fr/"],
+  "bearer_methods_supported": ["header"]
+}
+```
+
+The `resource` value must match the audience your MCP server validates in the JWT.
+
+The `authorization_servers` value should point to the authorization server metadata that Claude can use. In the simplest setup, that can be Zitadel directly. In our shipped setup, it points to the platform root because the root serves an authorization-server metadata proxy with a `registration_endpoint` for Claude.ai.
+
+---
+
+## 8. Test the Connector Like Claude Will
+
+Before opening Claude.ai, test the discovery chain:
+
+```bash
+curl -i \
+  https://demo.einvoice-platform.fr/mcp/.well-known/oauth-protected-resource
+```
+
+Check for:
+
+- `200 OK`
+- `authorization_servers`
+- `resource`
+- `bearer_methods_supported: ["header"]`
+
+Then test the authorization-server metadata that Claude will fetch:
+
+```bash
+curl -i \
+  https://einvoice-platform.fr/.well-known/oauth-authorization-server
+```
+
+Check for:
+
+- `issuer`
+- `authorization_endpoint`
+- `token_endpoint`
+- `jwks_uri`
+- `code_challenge_methods_supported`
+- `registration_endpoint` if you support Dynamic Client Registration
+
+Only then add the connector in Claude.ai. Hosted Claude surfaces use `https://claude.ai/api/mcp/auth_callback` as the redirect URI. If you support DCR, Claude sends that in the registration request. If you pre-register the client, register that callback in Zitadel yourself.
+
+---
+
+## Where DCR Fits
+
+Zitadel is a strong fit for multi-tenant identity because its organizations map cleanly to tenant boundaries. The rough edge is Dynamic Client Registration. As of this writing, the Zitadel issue to implement RFC 7591 DCR is still open: [zitadel/zitadel#9810](https://github.com/zitadel/zitadel/issues/9810).
+
+Claude supports several auth modes for remote MCP connectors, including DCR, Client ID Metadata Documents, Anthropic-held credentials, and no auth. The current Anthropic docs also note that user-pasted static bearer tokens are not supported for custom connectors.
+
+For our public custom connector, we implemented a DCR proxy in front of Zitadel. That is the companion article: [Making Claude.ai MCP OAuth Work with Zitadel Before Native DCR](/blog/zitadel-dcr-proxy-claude-mcp).
+
+If you are building an internal connector, you may not need DCR. You can pre-register a Claude client in Zitadel and supply the client credentials where Claude supports that path. If you are publishing a public remote MCP server that users add by URL, DCR or another supported discovery-based registration path becomes much more important.
+
+---
+
+## Failure Modes to Check First
+
+**No login button in Claude.ai.** Discovery is broken. Check the MCP Protected Resource Metadata first, then the authorization-server metadata.
+
+**OAuth succeeds, then MCP calls return 401.** The JWT validation settings are wrong. Check `issuer`, `audience`, `jwksUri`, and whether Zitadel is issuing JWT access tokens.
+
+**Private tenant user can log in but cannot call tools.** The user may be authenticated in Zitadel but not in the tenant organization expected by your resolver. Inspect the `urn:zitadel:iam:user:resourceowner:id` claim.
+
+**Public demo tenant works in a normal browser but fails from Claude.** Do not require Zitadel-specific organization claims for public DCR-created clients unless you have verified those claims are present.
+
+**The metadata endpoint works at root but not under `/mcp`.** Your route mount probably forgot to strip `/mcp` before delegating to the embedded MCP handler.
+
+**Tools call the wrong provider account.** You are loading credentials too late or keying the cache incorrectly. Build the tenant server with tenant credentials and invalidate the cache on rotation.
+
+---
+
+## Links
+
+- [Connecting an MCP server to claude.ai: OAuth2 + Auth0](/blog/mcp-authentication-claude-ai-oauth2)
+- [Zitadel + Claude.ai MCP Runbook](/docs/guides/zitadel-claude-mcp-runbook)
+- [MCP Server in Production: The Complete TypeScript Guide](/blog/mcp-server-guide)
+- [MCP e-invoice use case](/use-cases/mcp-einvoice)
+- [Claude connector authentication docs](https://claude.com/docs/connectors/building/authentication)
+- [MCP Authorization spec, latest](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization)
+- [Zitadel web keys and JWT verification](https://zitadel.com/docs/guides/integrate/login/oidc/webkeys)
+- [Zitadel claims reference](https://zitadel.com/docs/apis/openidoauth/claims)
+- [Zitadel DCR issue](https://github.com/zitadel/zitadel/issues/9810)
+- [@casys/mcp-server](https://jsr.io/@casys/mcp-server)
+- [@casys/mcp-einvoice](https://github.com/casysai/mcp-einvoice)

@@ -7,7 +7,7 @@ import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import HrefLang from '../components/HrefLang.astro';
 import { DEFAULT_SITE_URL, resolvePublicUrl } from '../lib/public-url';
-import { getOgLocale } from '../lib/locale-utils';
+import { getHtmlLang, getOgLocale } from '../lib/locale-utils';
 
 export interface Props {
   title: string;
@@ -24,7 +24,11 @@ const rootSiteUrl = (siteUrl || DEFAULT_SITE_URL).replace(/\/+$/, '');
 const publicUrl = resolvePublicUrl(pathname, siteUrl);
 const canonicalUrl = publicUrl.canonicalUrl;
 const ogImageUrl = new URL(ogImage ?? '/og/home.png', publicUrl.origin).toString();
+const htmlLang = getHtmlLang(locale);
 const ogLocale = getOgLocale(locale);
+const localizedJsonLd = jsonLd?.map((schema) =>
+  'inLanguage' in schema ? schema : { ...schema, inLanguage: htmlLang }
+);
 
 // Meta tags based on business positioning
 const metaTitles = {
@@ -48,7 +52,7 @@ const resolvedDescription = description || metaDescriptionFallback;
 ---
 
 <!DOCTYPE html>
-<html lang={locale}>
+<html lang={htmlLang}>
   <head>
     <meta charset="UTF-8" />
     <meta name="description" content={resolvedDescription} />
@@ -136,7 +140,7 @@ const resolvedDescription = description || metaDescriptionFallback;
       "@type": "WebSite",
       "name": "Casys",
       "url": rootSiteUrl,
-      "inLanguage": ["en", "fr", "zh", "zh-TW"]
+      "inLanguage": ["en", "fr", "zh-CN", "zh-TW"]
     })} />
     {(() => {
       // Auto-generate BreadcrumbList for non-homepage, non-blog paths
@@ -170,7 +174,7 @@ const resolvedDescription = description || metaDescriptionFallback;
       }
       return null;
     })()}
-    {jsonLd && jsonLd.map((schema) => (
+    {localizedJsonLd && localizedJsonLd.map((schema) => (
       <script type="application/ld+json" set:html={JSON.stringify(schema).replace(/</g, '\\u003c')} />
     ))}
     <style is:inline>

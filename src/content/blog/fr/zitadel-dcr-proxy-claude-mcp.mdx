@@ -1,0 +1,506 @@
+---
+title: "Faire fonctionner l'OAuth MCP de Claude.ai avec Zitadel avant le DCR natif"
+description: "Comment nous avons ajouté un proxy RFC 7591 Dynamic Client Registration devant Zitadel Cloud pour que Claude.ai puisse se connecter à un serveur MCP distant."
+author: "Erwan Lee Pesle"
+date: 2026-04-30
+tags:
+  - mcp
+  - mcp-server
+  - oauth2
+  - zitadel
+  - security
+  - architecture
+category: "Infrastructure"
+language: fr
+snippet: "Zitadel signe les tokens. Notre proxy ajoute seulement les métadonnées OAuth et l'endpoint Dynamic Client Registration dont Claude.ai a besoin avant de lancer le flux OAuth MCP."
+featured: false
+draft: false
+---
+
+import ExcalidrawDiagram from '../../../components/ExcalidrawDiagram.astro';
+
+# Faire fonctionner l'OAuth MCP de Claude.ai avec Zitadel avant le DCR natif
+
+> Retour de terrain sur l'implémentation de Dynamic Client Registration pour un serveur MCP distant sur Claude.ai, sans remplacer Zitadel comme fournisseur d'identité.
+
+---
+
+## Le symptôme : pas de bouton de connexion
+
+C'est la suite Zitadel de [Connecter un serveur MCP à claude.ai : OAuth2 + Auth0](/fr/blog/mcp-authentication-claude-ai-oauth2). Dans la version Auth0, l'Authorization Server exposait déjà le comportement de découverte dont Claude avait besoin. Avec Zitadel, le serveur MCP était déjà solide, mais une capacité de découverte manquait côté upstream.
+
+Le serveur concerné n'était pas un endpoint de démonstration. C'était la stack MCP e-invoice hébergée, construite sur [`@casys/mcp-server`](https://jsr.io/@casys/mcp-server), [`@casys/mcp-einvoice`](https://github.com/casysai/mcp-einvoice), et la [plateforme MCP e-invoice](/fr/use-cases/mcp-einvoice). Le runtime MCP avait déjà :
+
+- Un vrai endpoint HTTP `/mcp`.
+- Des Protected Resource Metadata sur `/.well-known/oauth-protected-resource`.
+- Une connexion OIDC Zitadel.
+- Des access tokens JWT.
+- Une validation JWKS dans le middleware MCP.
+- Une isolation tenant via le claim d'organisation Zitadel.
+
+Cela fonctionnait quand le client OAuth était déjà enregistré. Cela ne fonctionnait pas comme connecteur public Claude.ai ajouté par URL.
+
+L'échec visible n'était pas une belle erreur OAuth. Claude n'arrivait tout simplement pas à terminer la configuration. Pas de bouton de connexion utile, pas de listing d'outils réussi, pas d'échange de token.
+
+La pièce manquante n'était pas dans le code des outils MCP. C'était un champ dans la découverte de l'Authorization Server : `registration_endpoint`.
+
+Au moment de l'implémentation, Zitadel Cloud n'exposait pas OAuth 2.0 Dynamic Client Registration. L'issue upstream est toujours visible ici : [zitadel/zitadel#9810](https://github.com/zitadel/zitadel/issues/9810). Claude.ai, de son côté, supporte OAuth avec Dynamic Client Registration pour les connecteurs MCP distants personnalisés, comme documenté dans la [documentation Anthropic sur l'authentification des connecteurs](https://claude.com/docs/connectors/building/authentication).
+
+Nous avons donc ajouté le DCR devant Zitadel, sans devenir l'Authorization Server.
+
+> **Pourquoi Zitadel ?** Zitadel est une plateforme IAM [fondée en Suisse](https://zitadel.com/about) et [open source](https://zitadel.com/opensource), utilisable en service cloud managé ou en self-hosted. Pour ce déploiement MCP, le choix était concret : OIDC/OAuth2 standard, modèle d'organisations adapté au multi-tenant, validation JWT via JWKS, et un fournisseur européen open source que l'on pouvait garder comme source de vérité d'identité au lieu de déplacer la logique d'authentification dans le serveur MCP.
+
+---
+
+## Ce que fait Claude.ai avant de démarrer OAuth
+
+L'authentification MCP distante est pilotée par la découverte. Claude ne commence pas par demander un client id à l'utilisateur. Il apprend d'abord comment la ressource protégée veut être authentifiée.
+
+La chaîne est la suivante :
+
+1. Claude appelle votre endpoint MCP sans token.
+2. Votre endpoint MCP renvoie `401` et/ou expose des Protected Resource Metadata.
+3. Claude lit `authorization_servers` dans ces métadonnées.
+4. Claude récupère les métadonnées d'Authorization Server depuis cet Authorization Server.
+5. Si les métadonnées exposent `registration_endpoint`, Claude peut s'enregistrer comme client OAuth.
+6. Alors seulement, le flux authorization code normal peut commencer.
+
+<ExcalidrawDiagram src="zitadel-dcr-claude/dcr-metadata-chain" alt="Claude découvre le proxy de métadonnées, enregistre un client, puis utilise Zitadel pour OAuth." wide />
+
+L'erreur que nous avons failli faire était de placer `registration_endpoint` dans le document Protected Resource Metadata.
+
+C'est tentant, parce que MCP commence au niveau de la ressource protégée. Mais ce n'est pas le bon niveau. Les Protected Resource Metadata indiquent au client *où se trouve l'Authorization Server*. Les Authorization Server Metadata indiquent au client *ce que l'Authorization Server supporte*. Dynamic Client Registration appartient aux métadonnées d'Authorization Server.
+
+Une fois ce point clarifié, le design est devenu petit.
+
+---
+
+## Le rôle du proxy
+
+Le proxy a deux responsabilités :
+
+1. Servir un document de métadonnées d'Authorization Server qui reflète principalement Zitadel, mais inclut `registration_endpoint`.
+2. Implémenter `/oauth/register` et les endpoints de gestion RFC 7592 en créant, lisant, mettant à jour et supprimant des applications OIDC dans Zitadel.
+
+Il ne :
+
+- montre pas d'interface de connexion ;
+- n'émet pas d'authorization codes ;
+- n'échange pas les codes contre des tokens ;
+- ne signe pas les access tokens ;
+- ne proxifie pas toutes les requêtes OAuth ;
+- ne re-signe pas et ne réécrit pas les JWT.
+
+Tout cela reste dans Zitadel.
+
+La route est volontairement banale, parce que le framework serveur MCP porte la partie réutilisable. `createAsMetadataHandler()` vit dans [`@casys/mcp-server`](https://jsr.io/@casys/mcp-server), à côté du provider d'auth OIDC utilisé par l'endpoint MCP lui-même :
+
+```typescript
+import { createAsMetadataHandler } from "@casys/mcp-server";
+
+const handle = createAsMetadataHandler({
+  upstreamIssuer: Deno.env.get("ZITADEL_DOMAIN")!,
+  registrationEndpoint: "https://einvoice-platform.fr/oauth/register",
+});
+
+export const handler = {
+  GET(req: Request) {
+    return handle(req);
+  },
+};
+```
+
+Les métadonnées obtenues conservent le vrai issuer :
+
+```json
+{
+  "issuer": "https://your-instance.zitadel.cloud",
+  "authorization_endpoint": "https://your-instance.zitadel.cloud/oauth/v2/authorize",
+  "token_endpoint": "https://your-instance.zitadel.cloud/oauth/v2/token",
+  "jwks_uri": "https://your-instance.zitadel.cloud/oauth/v2/keys",
+  "registration_endpoint": "https://einvoice-platform.fr/oauth/register"
+}
+```
+
+Cette combinaison paraît étrange au premier abord : métadonnées servies depuis `einvoice-platform.fr`, issuer toujours sur `zitadel.cloud`, registration sur `einvoice-platform.fr`.
+
+C'est précisément le but.
+
+<ExcalidrawDiagram src="zitadel-dcr-claude/issuer-proxy-tradeoff" alt="Le proxy peut ajouter DCR, mais l'issuer doit rester le vrai signataire Zitadel." wide />
+
+Si le proxy remplace `issuer` par son propre domaine, les JWT ne correspondent plus à l'issuer validé par le serveur MCP. Vous êtes alors forcé d'ajouter de la réécriture de tokens, du collage par introspection, ou une validation mensongère. Garder l'issuer fidèle à la réalité signifie que le proxy n'est qu'un pont de métadonnées et d'enregistrement client.
+
+---
+
+## Pourquoi ce proxy appartient près du serveur MCP
+
+Ce proxy DCR n'était pas un produit d'identité séparé. C'était une couche de compatibilité pour serveur MCP.
+
+Le code le plus utile était le même chemin que celui utilisé par le serveur multi-tenant :
+
+- `@casys/mcp-server` savait déjà publier les Protected Resource Metadata pour les clients MCP distants.
+- Le provider d'auth OIDC validait déjà les JWT Zitadel sur l'issuer, l'audience et le JWKS.
+- Le pipeline middleware imposait déjà la résolution de tenant avant l'exécution des outils.
+- Le package d'outils e-invoice, `@casys/mcp-einvoice`, exposait déjà les outils métier et les viewers que Claude appellerait après l'auth.
+
+Le travail du proxy est donc resté étroit : permettre à Claude d'enregistrer un client OAuth, puis disparaître du chemin. Une fois que Claude a un token, chaque requête revient au pipeline MCP normal décrit dans [Construire un serveur MCP distant multi-tenant pour Claude.ai avec Zitadel OAuth](/fr/blog/multi-tenant-mcp-server-zitadel-claude).
+
+---
+
+## Checklist de configuration
+
+Le runbook interne de ce déploiement est trop opérationnel pour être publié tel quel, mais la version publique est ici : [Runbook Zitadel + Claude.ai MCP](/fr/docs/guides/zitadel-claude-mcp-runbook). Il contient les vérifications copier-coller, les variables d'environnement, les endpoints DCR et les étapes de nettoyage.
+
+La version courte :
+
+1. Utilisez des sous-domaines tenant pour MCP, par exemple `demo.einvoice-platform.fr/mcp`.
+2. Utilisez le domaine racine pour les métadonnées OAuth et le DCR, par exemple `einvoice-platform.fr/.well-known/oauth-authorization-server` et `einvoice-platform.fr/oauth/register`.
+3. Créez un projet Zitadel pour le service MCP.
+4. Créez l'application Web statique `dashboard` si le produit a un dashboard web.
+5. Créez l'application statique API/Bearer `mcp` utilisée comme ressource/audience MCP.
+6. Configurez les JWT access tokens et l'assertion projet/audience.
+7. Créez un service user capable de gérer les applications OIDC dans ce projet.
+8. Stockez le PAT du service user uniquement côté serveur.
+9. Activez le proxy DCR et les limites de débit.
+10. Validez les redirect URIs avant toute création d'application Zitadel.
+11. Persistez la ligne client DCR et hashez le Registration Access Token.
+12. Ajoutez un nettoyage planifié pour les anciennes apps créées par DCR.
+
+La surface d'environnement ressemble à ceci :
+
+```bash
+ROOT_DOMAIN=einvoice-platform.fr
+ZITADEL_DOMAIN=https://your-instance.zitadel.cloud
+ZITADEL_PROJECT_ID=...
+ZITADEL_DASHBOARD_CLIENT_ID=...
+ZITADEL_DASHBOARD_CLIENT_SECRET=...
+ZITADEL_MCP_RESOURCE=...
+ZITADEL_MCP_CLIENT_ID=...
+ZITADEL_PAT=...
+DCR_PROXY_ENABLED=true
+DCR_RATE_LIMIT_PER_IP=5
+DCR_RATE_LIMIT_GLOBAL=100
+DCR_GC_RETENTION_DAYS=30
+DCR_ALERT_EMAIL=ops@example.com
+```
+
+`dashboard` et `mcp` sont les applications longues durées. Les applications `dcr-Claude-*` sont des applications OAuth par client, créées par le proxy quand Claude s'enregistre. `ZITADEL_PAT` doit venir d'un service user. Dans un MVP, vous pouvez temporairement réutiliser un PAT admin plus large, mais la cible de production est un token limité à la gestion des apps dans le projet Zitadel.
+
+---
+
+## Ce que Claude enregistre
+
+La requête DCR de Claude ressemble à un document standard de métadonnées client OAuth.
+
+Les champs importants sont :
+
+```json
+{
+  "client_name": "Claude",
+  "redirect_uris": [
+    "https://claude.ai/api/mcp/auth_callback"
+  ],
+  "grant_types": ["authorization_code", "refresh_token"],
+  "response_types": ["code"],
+  "token_endpoint_auth_method": "client_secret_post",
+  "scope": "openid profile email offline_access"
+}
+```
+
+L'URL de callback est fixe pour les surfaces Claude hébergées. Anthropic la documente comme `https://claude.ai/api/mcp/auth_callback`.
+
+Le champ surprenant était `token_endpoint_auth_method`. Les premiers clients MCP s'enregistraient souvent comme clients publics avec `none` et PKCE. Claude.ai peut s'enregistrer comme client confidentiel et utiliser `client_secret_post`, surtout quand des refresh tokens sont impliqués.
+
+Votre proxy DCR doit supporter les deux :
+
+| Métadonnées DCR | App Zitadel |
+|---|---|
+| `token_endpoint_auth_method: "none"` | App User Agent, sans client secret |
+| `token_endpoint_auth_method: "client_secret_post"` | App Web, client secret généré |
+| `grant_types: ["authorization_code"]` | Authorization Code |
+| `grant_types: ["authorization_code", "refresh_token"]` | Authorization Code + Refresh Token |
+
+Quand Zitadel crée une application confidentielle, renvoyez le `client_secret` une seule fois dans la réponse DCR. Ne stockez rien dont vous n'aurez pas besoin plus tard.
+
+---
+
+## Ce qui apparaît dans Zitadel
+
+Chaque enregistrement DCR réussi crée une vraie application Web OIDC dans le projet Zitadel. Dans notre déploiement, les applications générées utilisent des noms comme `dcr-Claude-...`, pour que les opérateurs puissent les distinguer des applications créées à la main, comme l'application Web statique `dashboard` et la ressource statique API/Bearer `mcp`.
+
+<figure class="blog-screenshot">
+  <img src="/images/blog/zitadel-mcp/zitadel-dcr-apps.png" alt="Grille d'applications Zitadel montrant des apps web dcr-Claude générées par Dynamic Client Registration pour Claude.ai." loading="lazy" />
+  <figcaption>Dynamic Client Registration est visible dans Zitadel sous forme d'applications Web générées. C'est attendu, mais cela transforme le support de suppression RFC 7592, les journaux d'audit et le garbage collection en exigences opérationnelles, pas en simples conforts de nettoyage.</figcaption>
+</figure>
+
+Cette capture est aussi un outil de debug utile. Si Claude atteint bien `/oauth/register` mais qu'aucune app `dcr-Claude-...` n'apparaît, l'échec se situe avant ou pendant l'appel à la Management API Zitadel. Si l'app apparaît mais que Claude ne peut toujours pas se connecter, inspectez la réponse d'enregistrement, la redirect URI, la gestion du client secret et la méthode d'authentification au token endpoint.
+
+---
+
+## Mapper RFC 7591 vers Zitadel
+
+L'appel de création central mappe les métadonnées client validées vers une app OIDC Zitadel :
+
+```typescript
+const isConfidential = authMethod === "client_secret_post";
+
+const body = {
+  name: generatedAppName,
+  redirectUris,
+  responseTypes: ["OIDC_RESPONSE_TYPE_CODE"],
+  grantTypes: isConfidential
+    ? [
+        "OIDC_GRANT_TYPE_AUTHORIZATION_CODE",
+        "OIDC_GRANT_TYPE_REFRESH_TOKEN",
+      ]
+    : ["OIDC_GRANT_TYPE_AUTHORIZATION_CODE"],
+  appType: isConfidential
+    ? "OIDC_APP_TYPE_WEB"
+    : "OIDC_APP_TYPE_USER_AGENT",
+  authMethodType: isConfidential
+    ? "OIDC_AUTH_METHOD_TYPE_POST"
+    : "OIDC_AUTH_METHOD_TYPE_NONE",
+  consentRequired: true,
+  accessTokenType: "OIDC_TOKEN_TYPE_JWT",
+  accessTokenRoleAssertion: true,
+  devMode: false,
+};
+```
+
+Quatre paramètres comptent plus qu'ils n'en ont l'air :
+
+**`consentRequired: true`** garde l'utilisateur dans la boucle. Le DCR signifie que n'importe qui peut demander la création d'un client ; l'écran de consentement fait donc partie du modèle de sécurité.
+
+**`accessTokenType: "OIDC_TOKEN_TYPE_JWT"`** permet au serveur MCP de valider les tokens localement contre le JWKS Zitadel. La documentation Zitadel sur les web keys explique comment les JWT sont signés et vérifiés avec des clés publiques.
+
+**`accessTokenRoleAssertion: true`** aide à inclure les données de projet/audience dans le token, afin que le serveur MCP puisse valider `aud`.
+
+**`devMode: false`** force Zitadel à imposer les redirect URIs HTTPS comme deuxième ligne de défense après votre propre validation.
+
+---
+
+## Valider les Redirect URIs avant de créer quoi que ce soit
+
+Par design, le DCR est un endpoint non authentifié. Traitez chaque requête d'enregistrement comme hostile tant qu'elle n'a pas prouvé le contraire.
+
+Les règles de redirect URI que nous avons livrées :
+
+- HTTPS obligatoire pour les redirect URIs web normales.
+- `http://localhost` autorisé pour le développement local et les flux de type client natif.
+- Les schémas CLI connus peuvent être explicitement allowlistés.
+- Les IP littérales sont rejetées.
+- Les hôtes et TLD réservés comme `example.com`, `.test`, `.local` et `.internal` sont rejetés.
+
+La forme de validation est simple :
+
+```typescript
+export function validateRedirectUri(uri: string): void {
+  const parsed = new URL(uri);
+  const scheme = parsed.protocol.replace(/:$/, "");
+  const host = parsed.hostname;
+
+  if (isAllowedCliScheme(scheme)) return;
+  if (isIpLiteral(host)) throw invalidRedirectUri();
+  if (scheme === "http" && host === "localhost") return;
+  if (scheme !== "https") throw invalidRedirectUri();
+  if (isReservedHost(host)) throw invalidRedirectUri();
+}
+```
+
+Ne créez jamais l'app Zitadel avant que cette validation réussisse. Sinon, les enregistrements échoués laissent de l'état derrière eux dans l'Identity Provider.
+
+---
+
+## Stocker l'état DCR comme une frontière de sécurité
+
+Après la création de l'app par Zitadel, persistez l'enregistrement.
+
+Les champs locaux utiles sont :
+
+| Champ | Pourquoi il existe |
+|---|---|
+| `clientId` | Valeur renvoyée à Claude et utilisée pour les futures requêtes de gestion |
+| `zitadelProjectId` | Nécessaire pour mettre à jour/supprimer l'app plus tard |
+| `zitadelAppId` | Identifiant de l'app Zitadel |
+| `redirectUris` | Validation locale rapide pour les requêtes de gestion |
+| `grantTypes` | Reconstruire si le client est public ou confidentiel |
+| `registrationAccessTokenHash` | Bearer token RFC 7592, hashé au repos |
+| `registrationIpHash` | Corrélation d'abus sans stocker l'IP brute |
+| `registrationUserAgent` | Audit et debug |
+| `deletedAt` | Soft-delete pour la piste d'audit |
+
+Le Registration Access Token doit avoir une forte entropie et n'être renvoyé qu'une fois :
+
+```typescript
+function generateRat(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(48));
+  const b64url = btoa(String.fromCharCode(...bytes))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+  return `rat_${b64url}`;
+}
+```
+
+Hashez-le avant stockage. Un hash rapide est acceptable ici, parce que le token a une entropie aléatoire de 384 bits. Ce n'est pas un mot de passe utilisateur.
+
+---
+
+## Limiter et auditer la porte ouverte
+
+Comme `/oauth/register` est public, il lui faut ses propres contrôles :
+
+- rate limit par IP ;
+- rate limit global ;
+- événement d'audit structuré pour chaque enregistrement ;
+- événement d'audit pour les tentatives rate-limited ;
+- rollback si l'écriture en base échoue après la création d'une app Zitadel ;
+- alerte si le rollback échoue aussi ;
+- garbage collection pour les clients anciens ou inutilisés.
+
+Le chemin de rollback n'est pas optionnel. Le mode d'échec le plus pénible est :
+
+1. La création de l'app Zitadel réussit.
+2. L'écriture en base échoue.
+3. Le client reçoit une 500.
+4. L'app reste dans Zitadel, non suivie par votre plateforme.
+
+Supprimez l'app dans le bloc catch. Si cette suppression échoue, émettez un événement d'audit haute sévérité avec l'app id orphelin et le project id.
+
+---
+
+## Le bug tenant que cela a exposé
+
+Le proxy DCR a permis à Claude de s'enregistrer et de se connecter. Puis le premier appel MCP authentifié échouait encore.
+
+Le bug du resolver était subtil :
+
+```typescript
+const claim = authInfo.claims?.["urn:zitadel:iam:user:resourceowner:id"];
+if (!claim) reject();
+if (claim !== tenant.zitadelOrgId) reject();
+if (tenant.isPublicMcp) accept();
+```
+
+Cet ordre est mauvais pour un tenant de démo public. Les JWT émis via DCR pour Claude ne portaient pas le claim resource-owner Zitadel, et les tenants de démo publics autorisent volontairement n'importe quel utilisateur authentifié.
+
+La correction a consisté à récupérer le tenant d'abord, puis à ignorer le contrôle du claim d'organisation quand `tenant.isPublicMcp` vaut true :
+
+```typescript
+if (tenant.isPublicMcp) {
+  return { ok: true, tenantId: tenant.id };
+}
+
+const claim = authInfo.claims?.["urn:zitadel:iam:user:resourceowner:id"];
+if (claim !== tenant.zitadelOrgId) {
+  return { ok: false, reason: "zitadel org mismatch" };
+}
+```
+
+Cette distinction compte :
+
+- Tenant public : JWT validé requis, appartenance à l'organisation non requise.
+- Tenant privé : JWT validé requis, appartenance à l'organisation requise.
+
+Ne transformez pas la logique de démo publique en bypass d'auth. Faites-en un bypass de claim tenant après validation du JWT.
+
+---
+
+## Tester la chaîne complète
+
+Testez d'abord la découverte :
+
+```bash
+curl -i \
+  https://demo.einvoice-platform.fr/mcp/.well-known/oauth-protected-resource
+```
+
+Vous voulez un document de métadonnées dont `authorization_servers` pointe vers le serveur qui expose vos métadonnées d'Authorization Server.
+
+Testez ensuite le proxy de métadonnées AS :
+
+```bash
+curl -i \
+  https://einvoice-platform.fr/.well-known/oauth-authorization-server
+```
+
+Vous voulez :
+
+- `issuer` égal à l'issuer Zitadel ;
+- `authorization_endpoint` et `token_endpoint` égaux aux endpoints Zitadel ;
+- `jwks_uri` égal à l'endpoint JWKS Zitadel ;
+- `registration_endpoint` égal à votre endpoint proxy DCR.
+
+Puis smoke-testez l'enregistrement avec un client jetable :
+
+```bash
+curl -X POST https://einvoice-platform.fr/oauth/register \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "client_name": "article-smoke",
+    "redirect_uris": ["http://localhost:4173/callback"],
+    "grant_types": ["authorization_code"],
+    "response_types": ["code"],
+    "token_endpoint_auth_method": "none"
+  }'
+```
+
+Supprimez immédiatement ce client avec le `registration_access_token` renvoyé. Ne collez jamais de Registration Access Tokens dans des logs, captures d'écran ou articles.
+
+Enfin, testez via Claude.ai :
+
+1. Ajoutez l'URL MCP distante.
+2. Confirmez que le bouton de connexion apparaît.
+3. Connectez-vous via Zitadel.
+4. Confirmez que `tools/list` réussit.
+5. Appelez un outil read-only inoffensif.
+6. Vérifiez les événements d'audit pour `dcr_register`, `mcp_call`, et les événements de rejet tenant si une requête a échoué.
+
+---
+
+## Ce qui a changé dans la spécification MCP actuelle
+
+Cette implémentation a été construite pour résoudre le comportement Claude.ai observé en avril 2026. La dernière spécification d'autorisation MCP, `2025-11-25`, met désormais davantage l'accent sur les Client ID Metadata Documents et traite Dynamic Client Registration comme un chemin supporté, pas comme le seul chemin futur.
+
+Cela compte pour la stratégie produit :
+
+- Le DCR reste utile quand le client doit obtenir un client id sans relation préalable.
+- Les Client ID Metadata Documents peuvent devenir un meilleur défaut quand les deux côtés les supportent.
+- Des credentials détenus par Anthropic peuvent être préférables pour des connecteurs à l'échelle d'un annuaire, parce que le DCR peut créer beaucoup de clients OAuth.
+- Les static bearer tokens ne sont toujours pas le chemin des connecteurs personnalisés Claude.ai.
+
+Le proxy DCR n'est donc pas une religion. C'est un pont de compatibilité qui nous a permis de garder Zitadel, de livrer le connecteur MCP distant et d'éviter de remplacer l'Identity Provider simplement parce qu'un champ de métadonnées OAuth manquait.
+
+---
+
+## La règle de design
+
+Ne déplacez pas tout l'Authorization Server dans votre app juste pour ajouter le DCR.
+
+Gardez la séparation :
+
+- **Votre plateforme** : Protected Resource Metadata, proxy de métadonnées d'Authorization Server, endpoint DCR, routage tenant, audit, rate limits.
+- **Zitadel** : login, consentement, authorization endpoint, token endpoint, JWKS, signature de tokens, claims d'organisation.
+- **Serveur MCP** : validation bearer JWT, resolver tenant, exécution des outils.
+
+Ce design est plus petit, plus facile à auditer et plus facile à retirer plus tard si Zitadel livre le DCR natif ou si vous passez aux Client ID Metadata Documents.
+
+---
+
+## Liens
+
+- [Construire un serveur MCP distant multi-tenant pour Claude.ai avec Zitadel OAuth](/fr/blog/multi-tenant-mcp-server-zitadel-claude)
+- [Runbook Zitadel + Claude.ai MCP](/fr/docs/guides/zitadel-claude-mcp-runbook)
+- [Connecter un serveur MCP à claude.ai : OAuth2 + Auth0](/fr/blog/mcp-authentication-claude-ai-oauth2)
+- [Serveur MCP en production : le guide TypeScript complet](/fr/blog/mcp-server-guide)
+- [Cas d'usage MCP e-invoice](/fr/use-cases/mcp-einvoice)
+- [Documentation Claude sur l'authentification des connecteurs](https://claude.com/docs/connectors/building/authentication)
+- [Spécification MCP Authorization, latest](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization)
+- [Spécification MCP Authorization, 2025-06-18](https://modelcontextprotocol.io/specification/2025-06-18/basic/authorization)
+- [RFC 7591 - OAuth 2.0 Dynamic Client Registration](https://www.rfc-editor.org/rfc/rfc7591)
+- [RFC 8414 - OAuth 2.0 Authorization Server Metadata](https://www.rfc-editor.org/rfc/rfc8414)
+- [RFC 9728 - OAuth 2.0 Protected Resource Metadata](https://datatracker.ietf.org/doc/html/rfc9728)
+- [Issue DCR Zitadel](https://github.com/zitadel/zitadel/issues/9810)
+- [Zitadel web keys and JWT verification](https://zitadel.com/docs/guides/integrate/login/oidc/webkeys)
+- [@casys/mcp-server](https://jsr.io/@casys/mcp-server)
+- [@casys/mcp-einvoice](https://github.com/casysai/mcp-einvoice)

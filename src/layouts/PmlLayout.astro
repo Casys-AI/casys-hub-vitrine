@@ -5,7 +5,7 @@ import Analytics from '@vercel/analytics/astro';
 import Footer from '../components/Footer.astro';
 import HrefLang from '../components/HrefLang.astro';
 import { DEFAULT_SITE_URL, resolvePublicUrl } from '../lib/public-url';
-import { getOgLocale } from '../lib/locale-utils';
+import { getHtmlLang, getOgLocale } from '../lib/locale-utils';
 
 export interface Props {
   title: string;
@@ -18,6 +18,7 @@ const pathname = Astro.url.pathname;
 const siteUrl = (import.meta.env.PUBLIC_SITE_URL as string | undefined)?.trim();
 const rootSiteUrl = (siteUrl || DEFAULT_SITE_URL).replace(/\/+$/, '');
 const canonicalUrl = resolvePublicUrl(pathname, siteUrl).canonicalUrl;
+const htmlLang = getHtmlLang(locale);
 const ogLocale = getOgLocale(locale);
 
 const metaDescriptions = {
@@ -67,7 +68,7 @@ const nav = navTranslations[locale as keyof typeof navTranslations] ?? navTransl
 ---
 
 <!DOCTYPE html>
-<html lang={locale}>
+<html lang={htmlLang}>
   <head>
     <meta charset="UTF-8" />
     <meta name="description" content={resolvedDescription} />
@@ -121,6 +122,7 @@ const nav = navTranslations[locale as keyof typeof navTranslations] ?? navTransl
       "applicationCategory": "DeveloperApplication",
       "operatingSystem": "Cross-platform",
       "url": canonicalUrl,
+      "inLanguage": htmlLang,
       "author": { "@type": "Organization", "name": "Casys AI", "url": rootSiteUrl },
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
     }).replace(/</g, '\\u003c')} />

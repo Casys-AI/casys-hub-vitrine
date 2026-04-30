@@ -63,6 +63,7 @@ export const GET: APIRoute = () => {
   sections.push(readDoc(docsRoot, 'getting-started/quickstart.mdx', 'Quick Start'));
   sections.push(readDoc(docsRoot, 'guides/middleware.mdx', 'Guide — Middleware Pipeline'));
   sections.push(readDoc(docsRoot, 'guides/auth.mdx', 'Guide — Authentication (OAuth2)'));
+  sections.push(readDoc(docsRoot, 'guides/zitadel-claude-mcp-runbook.mdx', 'Guide — Zitadel + Claude.ai MCP Runbook'));
   sections.push(readDoc(docsRoot, 'guides/configuration.mdx', 'Guide — Configuration (YAML)'));
   sections.push(readDoc(docsRoot, 'guides/mcp-apps.mdx', 'Guide — MCP Apps (UI Resources)'));
   sections.push(readDoc(docsRoot, 'api/concurrent-mcp-server.mdx', 'API Reference — McpApp'));

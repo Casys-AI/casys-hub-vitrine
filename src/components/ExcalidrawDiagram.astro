@@ -5,9 +5,10 @@ import path from 'node:path';
 interface Props {
   src: string;
   alt: string;
+  wide?: boolean;
 }
 
-const { src, alt } = Astro.props;
+const { src, alt, wide = false } = Astro.props;
 
 // Read the pre-generated SVG at build time
 const svgPath = path.join(process.cwd(), 'public', 'diagrams', `${src}.svg`);
@@ -32,6 +33,9 @@ if (svgContent) {
     }
   );
 
+  const usesSelfThemedSvg = svgContent.includes('var(--');
+
+  if (!usesSelfThemedSvg) {
   // Replace background-style fills (#08080a, #0d1117) with the bg class.
   // Apply globally so nested terminal/code boxes that reuse the dark bg color
   // also theme-adapt in light mode (otherwise they stay dark with dark text).
@@ -206,10 +210,11 @@ if (svgContent) {
 
   // Generic mid-gray (used as muted text/fills in middleware + deployment diagrams)
   svgContent = svgContent.replace(/fill="#888888"/g, 'class="excali-gray-mid-fill" fill="#888888"');
+  }
 }
 ---
 
-<figure class="excalidraw-figure" role="img" aria-label={alt}>
+<figure class:list={['excalidraw-figure', { 'excalidraw-figure--wide': wide }]} role="img" aria-label={alt}>
   <div class="excalidraw-wrapper" set:html={svgContent} />
   <figcaption class="excalidraw-caption">{alt}</figcaption>
 </figure>
@@ -228,6 +233,10 @@ if (svgContent) {
     overflow: hidden;
     border: 1px solid var(--md-sys-color-outline-variant);
     background: var(--md-sys-color-surface-container-low);
+  }
+
+  .excalidraw-figure--wide .excalidraw-wrapper {
+    max-width: min(100%, 960px);
   }
 
   .excalidraw-wrapper :global(svg) {

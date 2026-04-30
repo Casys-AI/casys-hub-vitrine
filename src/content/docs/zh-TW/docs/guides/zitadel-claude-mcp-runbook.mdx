@@ -1,0 +1,324 @@
+---
+title: Zitadel + Claude.ai MCP Runbook
+description: 為 Claude.ai 設定 Zitadel OAuth、動態客戶端註冊和多租戶遠端 MCP 伺服器。
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+本 runbook 是電子發票遠端 MCP 平台所用設定的公開脫敏版本。它保留
+Zitadel 作為真正的授權伺服器，同時加入 Claude.ai 連接自訂遠端 MCP
+伺服器所需的 OAuth 元資料和動態客戶端註冊端點。
+
+<Aside type="caution">
+  不要逐字發布內部 runbook。不要在公開文件和截圖中暴露服務路徑、生產使用者名稱、
+  Personal Access Token、Registration Access Token 或客戶租戶識別碼。
+</Aside>
+
+## 目標架構
+
+你需要三個公開入口：
+
+| 入口 | 範例 | 用途 |
+|---|---|---|
+| 租戶 MCP 端點 | `https://demo.example.com/mcp` | Claude.ai 連接到這裡。 |
+| 受保護資源元資料 | `https://demo.example.com/mcp/.well-known/oauth-protected-resource` | 告訴 Claude 要使用哪個授權伺服器。 |
+| 授權伺服器代理 | `https://example.com/.well-known/oauth-authorization-server` | 鏡像 Zitadel 元資料並加入 `registration_endpoint`。 |
+| DCR 端點 | `https://example.com/oauth/register` | 在 Zitadel 中為 Claude.ai 建立 OAuth 客戶端。 |
+
+代理不得簽發令牌。登入、同意授權、authorization-code 交換、令牌簽章、
+JWKS 和組織宣告仍由 Zitadel 負責。
+
+## 前置條件
+
+- 一個用於平台級 OAuth 路由的根網域，例如 `example.com`。
+- 用於 MCP 端點的租戶子網域，例如 `demo.example.com`。
+- 生產環境使用 HTTPS。
+- 一個會保留 `Host` header 的反向代理或託管層。
+- 一個專用於遠端 MCP 服務的 Zitadel project。
+- 一個可以呼叫 Zitadel Management API 的伺服器端 runtime。
+- 一個 MCP 伺服器 runtime，例如 `@casys/mcp-server`，能夠驗證 JWT 並提供受保護資源元資料。
+
+## 環境變數
+
+變數名稱可以依你的應用調整，但要保持相同的職責分離：
+
+```bash
+ROOT_DOMAIN=example.com
+ZITADEL_DOMAIN=https://your-instance.zitadel.cloud
+
+# Static Zitadel apps in the project.
+ZITADEL_PROJECT_ID=...
+ZITADEL_DASHBOARD_CLIENT_ID=...
+ZITADEL_DASHBOARD_CLIENT_SECRET=...
+ZITADEL_MCP_CLIENT_ID=...
+ZITADEL_MCP_RESOURCE=...
+
+# Required only when the DCR proxy creates apps through the Zitadel Management API.
+ZITADEL_PAT=...
+
+# Operational controls for the public registration endpoint.
+DCR_PROXY_ENABLED=true
+DCR_RATE_LIMIT_PER_IP=5
+DCR_RATE_LIMIT_GLOBAL=100
+DCR_GC_RETENTION_DAYS=30
+DCR_ALERT_EMAIL=ops@example.com
+
+# Optional: custom desktop-client redirect URI schemes.
+DCR_EXTRA_URI_SCHEMES=cursor,zed,vscode
+```
+
+`ZITADEL_PAT` 應屬於一個 service user。MVP 階段有時會暫時使用權限較寬的
+admin token。生產環境中，應優先使用能在目標 project 中建立、更新和刪除
+OIDC application 的最小可行權限範圍。
+
+## Zitadel 設定
+
+建立一個 Zitadel project，並在其中建立兩個靜態應用：
+
+| 應用 | Zitadel 類型 | 使用方 | 環境變數 |
+|---|---|---|---|
+| `dashboard` | Web / OIDC Authorization Code | 你的 Web dashboard 登入和 callback 路由 | `ZITADEL_DASHBOARD_CLIENT_ID`, `ZITADEL_DASHBOARD_CLIENT_SECRET` |
+| `mcp` | API / Bearer resource | 遠端 MCP 端點的 JWT audience 和驗證邊界 | `ZITADEL_MCP_CLIENT_ID`, `ZITADEL_MCP_RESOURCE` |
+
+DCR 代理不會取代這些靜態應用。Claude 註冊自身時，它會建立額外的客戶端應用，
+通常命名為類似 `dcr-Claude-...` 的形式。
+
+<Steps>
+  1. 為 MCP 服務建立一個 Zitadel project。
+
+  2. 如果產品有瀏覽器 dashboard，建立 dashboard Web application。使用
+     Authorization Code flow，並將 client id/secret 存入
+     `ZITADEL_DASHBOARD_CLIENT_ID` 和 `ZITADEL_DASHBOARD_CLIENT_SECRET`。
+
+  3. 建立 MCP API/Bearer application。將它的 client id 存入
+     `ZITADEL_MCP_CLIENT_ID`。
+
+  4. 選擇 MCP audience。在電子發票設定中，`ZITADEL_MCP_RESOURCE` 是
+     Zitadel project id，因為 Zitadel 預設會把它放入 JWT 的 `aud` claim。
+     如果你設定了對應的 audience 行為，也可以使用自訂 API URL。
+
+  5. 設定 token 選項，確保 access token 是 JWT，而不是 opaque token。
+
+  6. 在 access token 中啟用 project/audience assertion。在電子發票設定中，
+     MCP 伺服器會用 `ZITADEL_MCP_RESOURCE` 驗證 `aud`。
+
+  7. 對於私有租戶隔離，確保 token 包含 Zitadel resource-owner organization claim：
+     `urn:zitadel:iam:user:resourceowner:id`。
+
+  8. 為 DCR 代理建立一個 service user。
+
+  9. 授予該 service user 在 MCP project 中建立、更新和刪除 OIDC app 的權限。
+
+  10. 為該 service user 產生 Personal Access Token，並存為 `ZITADEL_PAT`。
+</Steps>
+
+## MCP 伺服器設定
+
+使用 OIDC/JWT provider 設定你的 MCP 伺服器：
+
+```typescript
+import { createOIDCAuthProvider, McpApp } from "@casys/mcp-server";
+
+const issuer = Deno.env.get("ZITADEL_DOMAIN")!;
+const rootDomain = Deno.env.get("ROOT_DOMAIN")!;
+const resource = Deno.env.get("ZITADEL_MCP_RESOURCE")!;
+const tenantSlug = "demo";
+
+const authProvider = createOIDCAuthProvider({
+  issuer,
+  audience: resource,
+  resource,
+  jwksUri: `${issuer}/oauth/v2/keys`,
+  authorizationServers: [`https://${rootDomain}`],
+  resourceMetadataUrl:
+    `https://${tenantSlug}.${rootDomain}/mcp/.well-known/oauth-protected-resource`,
+});
+
+const app = new McpApp({
+  name: `my-mcp-${tenantSlug}`,
+  version: "1.0.0",
+  auth: { provider: authProvider },
+  validateSchema: true,
+});
+```
+
+對於多租戶部署，為每個租戶建立一個 `McpApp`，並依租戶 id 快取。呼叫
+`getFetchHandler()` 之前，先註冊該租戶專屬的工具和憑證。
+
+## 受保護資源元資料
+
+Claude.ai 必須能夠取得租戶專屬元資料：
+
+```bash
+curl -s https://demo.example.com/mcp/.well-known/oauth-protected-resource | jq .
+```
+
+預期結構：
+
+```json
+{
+  "resource": "your-zitadel-resource-or-project-id",
+  "resource_metadata_url": "https://demo.example.com/mcp/.well-known/oauth-protected-resource",
+  "authorization_servers": ["https://example.com"],
+  "bearer_methods_supported": ["header"]
+}
+```
+
+當你提供授權伺服器元資料代理時，`authorization_servers` 指向平台根網域。
+如果 Zitadel 之後直接提供你需要的註冊行為，這裡也可以直接指向 Zitadel。
+
+## 授權伺服器元資料代理
+
+在根網域上提供這個端點：
+
+```bash
+GET https://example.com/.well-known/oauth-authorization-server
+```
+
+回應應鏡像 Zitadel，並加入你的註冊端點：
+
+```json
+{
+  "issuer": "https://your-instance.zitadel.cloud",
+  "authorization_endpoint": "https://your-instance.zitadel.cloud/oauth/v2/authorize",
+  "token_endpoint": "https://your-instance.zitadel.cloud/oauth/v2/token",
+  "jwks_uri": "https://your-instance.zitadel.cloud/oauth/v2/keys",
+  "registration_endpoint": "https://example.com/oauth/register",
+  "code_challenge_methods_supported": ["S256"]
+}
+```
+
+保持 `issuer` 等於真實的 Zitadel issuer。如果把它改成你的代理網域，JWT 的
+`iss` claim 將不再符合 MCP 伺服器驗證的值。
+
+## 動態客戶端註冊端點
+
+實作：
+
+- `POST /oauth/register`
+- `GET /oauth/register/:client_id`
+- `PUT /oauth/register/:client_id`
+- `DELETE /oauth/register/:client_id`
+
+Claude 使用標準 OAuth client metadata 註冊：
+
+```json
+{
+  "client_name": "Claude",
+  "redirect_uris": ["https://claude.ai/api/mcp/auth_callback"],
+  "grant_types": ["authorization_code", "refresh_token"],
+  "response_types": ["code"],
+  "token_endpoint_auth_method": "client_secret_post",
+  "scope": "openid profile email offline_access"
+}
+```
+
+將註冊資訊映射到 Zitadel OIDC application：
+
+| DCR metadata | Zitadel app |
+|---|---|
+| `token_endpoint_auth_method: "none"` | User Agent app, no client secret |
+| `token_endpoint_auth_method: "client_secret_post"` | Web app, generated client secret |
+| `grant_types: ["authorization_code"]` | Authorization Code |
+| `grant_types: ["authorization_code", "refresh_token"]` | Authorization Code + Refresh Token |
+
+對每個動態建立的 app，強制啟用：
+
+- 必須同意授權；
+- JWT access token；
+- project/audience assertion；
+- 生產環境強制 HTTPS redirect。
+
+## Redirect URI 驗證
+
+在 Zitadel 中建立任何內容之前先驗證 redirect URI：
+
+- 允許 `https://` Web callback；
+- 允許本機開發使用 `http://localhost`；
+- 可選允許已知桌面 scheme，例如 `cursor://`、`zed://` 或 `vscode://`；
+- 拒絕 IP literal；
+- 拒絕保留 host 和 TLD，例如 `example.com`、`.test`、`.local` 和 `.internal`。
+
+如果驗證失敗，返回 `invalid_redirect_uri` 或 `invalid_client_metadata`，
+並且不要建立 Zitadel app。
+
+## 需要儲存的 DCR 狀態
+
+持久化足夠的狀態，以便之後管理已註冊的 client：
+
+| 欄位 | 用途 |
+|---|---|
+| `clientId` | 返回給 Claude，並用於管理請求。 |
+| `zitadelProjectId` | Zitadel Management API 呼叫所需。 |
+| `zitadelAppId` | 在 Zitadel 中更新/刪除的 app。 |
+| `redirectUris` | 本機驗證和 RFC 7592 回應。 |
+| `grantTypes` | 重建 public 與 confidential client 行為。 |
+| `registrationAccessTokenHash` | RFC 7592 bearer token 的雜湊。 |
+| `registrationIpHash` | 不儲存原始 IP 的濫用關聯。 |
+| `registrationUserAgent` | 維運除錯。 |
+| `deletedAt` | 軟刪除和審計軌跡。 |
+
+Registration Access Token 只返回一次。絕不要把它發布到日誌、截圖、文章或支援工單中。
+
+## 維運檢查
+
+依序檢查完整 discovery 鏈路：
+
+```bash
+curl -i https://demo.example.com/mcp/.well-known/oauth-protected-resource
+curl -i https://example.com/.well-known/oauth-authorization-server
+```
+
+用一次性本機 callback 做註冊冒煙測試：
+
+```bash
+curl -s -X POST https://example.com/oauth/register \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "client_name": "runbook-smoke",
+    "redirect_uris": ["http://localhost:9999/callback"],
+    "grant_types": ["authorization_code"],
+    "response_types": ["code"],
+    "token_endpoint_auth_method": "none"
+  }' | jq .
+```
+
+然後立即刪除該 client：
+
+```bash
+CLIENT_ID="..."
+RAT="..."
+
+curl -i -X DELETE "https://example.com/oauth/register/${CLIENT_ID}" \
+  -H "Authorization: Bearer ${RAT}"
+```
+
+預期回應：`204 No Content`。
+
+## 清理和濫用控制
+
+Zitadel console 會為每個已註冊的 Claude client 顯示一個產生的 Web
+application。DCR 正常運作時，出現類似 `dcr-Claude-...` 的名稱是預期行為。
+這些產生的 client 與靜態 `dashboard` Web app 和靜態 `mcp` API app 並列存在。
+
+因為 `/oauth/register` 是公開端點，執行時應配備：
+
+- 按 IP 限流；
+- 全域限流；
+- registration、update、delete 和 rate-limit 事件的審計事件；
+- 如果 Zitadel app 已建立但資料庫持久化失敗，則回滾；
+- 針對回滾失敗或異常註冊量發送警示；
+- 為不活躍 client 定期執行垃圾回收。
+
+## Claude.ai 端到端測試
+
+1. 在 Claude.ai 中新增遠端 MCP URL，例如
+   `https://demo.example.com/mcp`。
+2. 確認登入按鈕出現。
+3. 透過 Zitadel 登入。
+4. 確認 Claude 可以完成 OAuth 並列出工具。
+5. 呼叫一個唯讀 MCP 工具。
+6. 檢查審計軌跡中是否有 `dcr_register`、`mcp_call` 和租戶拒絕事件。
+
+如果登入按鈕沒有出現，問題通常在 discovery metadata。如果登入成功但工具呼叫返回
+`401`，檢查 JWT issuer、audience、JWKS 和租戶 claim 驗證。

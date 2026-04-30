@@ -17,6 +17,7 @@ const body = `# Casys MCP Platform Documentation
 
 - /docs/platform/overview — MCP Platform overview
 - /docs/getting-started/introduction — mcp-server introduction
+- /docs/guides/zitadel-claude-mcp-runbook — Zitadel + Claude.ai MCP OAuth runbook
 - /docs/mcp-bridge/introduction — mcp-bridge introduction
 - /docs/mcp-compose/introduction — mcp-compose introduction
 `.trimEnd();

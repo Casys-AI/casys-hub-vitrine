@@ -1,6 +1,6 @@
 ---
-title: "Context Engineering 情境工程完整指南：AI 代理的決策核心"
-description: "深入解析 Context Engineering（情境工程）：為什麼 AI 代理的效能不在於模型大小，而在於你組裝給它看的資訊。涵蓋 MCP、GraphRAG 與實務架構。"
+title: "Context engineering / 上下文工程指南：AI agent 的決策核心"
+description: "Context engineering（上下文工程）完整指南：為什麼 AI agent 的效能不只取決於模型大小，而在於你組裝給它看的資訊。涵蓋 MCP、GraphRAG、工具選擇與台灣企業實務架構。"
 author: "Erwan Lee Pesle"
 date: 2026-02-27
 tags:
@@ -11,16 +11,16 @@ tags:
   - knowledge-management
 category: "產業"
 language: zh-TW
-snippet: "Context Engineering（情境工程）正在取代 Prompt Engineering 成為 AI 應用的核心能力。本文從架構層面解析如何為 AI 代理組裝正確的情境，涵蓋 MCP 協定、GraphRAG 與實務範例。"
+snippet: "Context engineering（上下文工程）正在取代 prompt engineering 成為 AI agent 應用的核心能力。本文從架構層面解析如何組裝正確上下文，涵蓋 MCP 協定、GraphRAG、工具選擇與實務範例。"
 featured: true
 draft: false
 ---
 
-## 什麼是 Context Engineering？情境工程入門教學
+## 什麼是 Context engineering / 上下文工程？入門教學
 
 2026 年，AI 領域出現了一個明確的認知轉折：**模型的能力天花板不在參數量，而在你餵給它的情境品質**。
 
-Context Engineering——情境工程——指的不是你如何措辭一個提示（那是 Prompt Engineering），而是你**如何組裝、篩選、排序**模型在推理時看到的所有資訊。這包括工具描述、歷史對話、外部資料庫查詢結果、使用者偏好，以及工作流程的當前狀態。
+Context engineering——上下文工程——指的不是你如何措辭一個提示（那是 prompt engineering），而是你**如何組裝、篩選、排序**模型在推理時看到的所有資訊。這包括工具描述、歷史對話、外部資料庫查詢結果、使用者偏好，以及工作流程的當前狀態。
 
 一個直白的類比：Prompt Engineering 是「你怎麼問問題」，Context Engineering 是「你在問問題之前，先把哪些文件攤在桌上」。
 

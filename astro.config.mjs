@@ -67,6 +67,7 @@ export default defineConfig({
               items: [
                 { label: 'Middleware Pipeline', slug: 'docs/guides/middleware' },
                 { label: 'Authentication (OAuth2)', slug: 'docs/guides/auth' },
+                { label: 'Zitadel + Claude.ai MCP Runbook', slug: 'docs/guides/zitadel-claude-mcp-runbook' },
                 { label: 'Configuration (YAML)', slug: 'docs/guides/configuration' },
                 { label: 'MCP Apps (UI Resources)', slug: 'docs/guides/mcp-apps' },
               ],

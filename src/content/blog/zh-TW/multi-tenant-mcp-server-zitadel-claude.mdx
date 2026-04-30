@@ -1,0 +1,439 @@
+---
+title: "用 Zitadel OAuth 為 Claude.ai 建構多租戶遠端 MCP 伺服器"
+description: "一篇實用教學：為每個租戶提供一個遠端 MCP endpoint，用 Zitadel 驗證 Claude.ai，驗證 JWT，並依子網域隔離工具。"
+author: "Erwan Lee Pesle"
+date: 2026-04-30
+tags:
+  - mcp
+  - mcp-server
+  - oauth2
+  - zitadel
+  - security
+  - architecture
+  - tutorial
+category: "教學"
+language: zh-TW
+snippet: "建構一個可與 Claude.ai 搭配使用的遠端 MCP 伺服器：一個部署服務多個租戶，驗證 Zitadel JWT，並隔離每個租戶的工具與提供商憑證。"
+featured: true
+draft: false
+---
+
+import ExcalidrawDiagram from '../../../components/ExcalidrawDiagram.astro';
+
+# 用 Zitadel 為 Claude.ai 建構多租戶遠端 MCP 伺服器
+
+> 讀完這篇指南後，你會得到一個 Claude.ai 可以連線的遠端 MCP endpoint、一個以 Zitadel 為後盾的 OAuth 流程，以及一條按租戶區分的 MCP 伺服器管線：每個子網域都會解析到自己的工具、憑證和授權邊界。
+
+---
+
+## 我們要建構什麼
+
+本文延續 [Connecting an MCP server to claude.ai: OAuth2 + Auth0](/zh-TW/blog/mcp-authentication-claude-ai-oauth2)。第一篇指南展示了 MCP OAuth 的最小可用版本：一個遠端 MCP 伺服器、一個授權伺服器、一個 Claude.ai client。
+
+這篇文章進入下一層：**一個部署，服務多個 MCP 租戶**。
+
+這裡的實際執行範例，是我們圍繞三個部分建構的電子發票平台：
+
+- [`@casys/mcp-server`](https://jsr.io/@casys/mcp-server)：生產環境 MCP server framework，提供 `McpApp`、OAuth metadata、JWT auth middleware、多租戶 middleware、validation、rate limiting 和 HTTP handler。
+- [`@casys/mcp-einvoice`](https://github.com/casysai/mcp-einvoice)：電子發票 MCP 工具套件和 UI viewers。
+- [MCP e-invoice platform](/use-cases/mcp-einvoice)：託管的多租戶產品，把這些工具接到真實的租戶憑證。
+
+公開形態如下：
+
+- `demo.einvoice-platform.fr/mcp` 服務一個公開 demo tenant。
+- `acme.einvoice-platform.fr/mcp` 可以服務 ACME 的 private tenant。
+- 每個租戶都有自己快取的 `McpApp`。
+- 每個租戶都有自己的 provider credentials 和 tool handlers。
+- Zitadel 簽發 access tokens。
+- MCP 伺服器驗證 JWT，然後檢查已驗證使用者是否屬於正在存取的租戶子網域。
+
+這不是一篇泛泛的 SaaS auth 教學。困難點是遠端 MCP 特有的：
+
+- Claude.ai 透過 [MCP Protected Resource Metadata](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization) 探索 auth。
+- 託管版 Claude surfaces 使用固定 callback URL `https://claude.ai/api/mcp/auth_callback`，Anthropic 在 [connector authentication docs](https://claude.com/docs/connectors/building/authentication) 中有記載。
+- MCP requests 是 tool calls，不是一般頁面瀏覽。Auth result 必須進入 MCP middleware pipeline，而不只是你的 web app session。
+- 租戶隔離必須在 JWT validation 之後、tool execution 之前強制執行。
+
+在 Claude 裡，結果會像這樣：
+
+<figure class="blog-screenshot">
+  <img src="/images/blog/zitadel-mcp/claude-einvoice-demo.png" alt="Claude.ai 使用電子發票 MCP 伺服器，從租戶專屬的遠端 MCP endpoint 顯示收到的發票。" loading="lazy" />
+  <figcaption>OAuth 完成後，Claude.ai 呼叫遠端電子發票 MCP 伺服器。租戶專屬工具回傳結構化發票 UI，而不是共享的靜態 bearer-token response。</figcaption>
+</figure>
+
+---
+
+## 架構概覽
+
+<ExcalidrawDiagram src="mcp-zitadel-multitenant/tenant-architecture" alt="多租戶 MCP 請求路徑：Claude 呼叫租戶 URL，Zitadel 證明身分，MCP 路由載入租戶本地工具。" wide />
+
+這裡的切分很重要：
+
+**Zitadel 擁有身份。** 它顯示 login screen，處理 consent，簽發 JWT access tokens，發布 JWKS，並輸出我們用於 private tenant isolation 的 organization claims。
+
+**MCP 伺服器擁有租戶 routing。** 它解析子網域，載入 tenant row，建構或重用該租戶的 `McpApp`，透過 MCP middleware stack 驗證 request，並用正確的 provider credentials dispatch tools。
+
+**Provider adapter 擁有業務存取。** 在我們的 e-invoice 情境中，租戶的 credentials 指向 Iopole 或 Storecove 這類電子發票 provider。這些 credentials 會在建構租戶伺服器時解密一次，然後綁定到 tool handlers。
+
+因此得到一條清楚規則：如果使用者已驗證，但打到錯誤的租戶子網域，request 仍會在任何 tool 看見它之前失敗。
+
+---
+
+## 我們重用的 MCP 伺服器層
+
+這個實作中有意思的部分不是「我們寫了很多 OAuth code」。我們刻意沒有這麼做。
+
+核心 MCP runtime 是 [`@casys/mcp-server`](https://jsr.io/@casys/mcp-server)。先前的 [MCP Server in Production: The Complete TypeScript Guide](/zh-TW/blog/mcp-server-guide) 已詳細介紹這個 framework：`McpApp`、Streamable HTTP、schema validation、middleware ordering、concurrency limits、backpressure、CORS、metrics 和 auth providers。
+
+在這套 Zitadel 設定中，重要的元件是：
+
+- `createOIDCAuthProvider()`：用於 issuer/audience/JWKS validation 和 Protected Resource Metadata。
+- `createMultiTenantMiddleware()`：用於 auth 之後的 tenant boundary。
+- `McpApp.getFetchHandler()`：讓 Fresh route 委派給 Web Standard request handler。
+- `McpApp.registerTools()` 和 resource registration：用於 `@casys/mcp-einvoice` tools 和 viewers。
+
+所以，下面的教學會聚焦在 wiring 和 boundaries，而不是手刻 MCP protocol。MCP server framework 已經處理 transport 和 middleware pipeline；platform code 只決定目前服務哪個租戶，以及哪些 tools/credentials 屬於它。
+
+---
+
+## 1. 建模租戶邊界
+
+先從 tenant row 開始。你需要的不只是一個 `slug`。
+
+```typescript
+export interface Tenant {
+  id: string;
+  slug: string;                 // "demo", "acme", "globex"
+  zitadelOrgId: string | null;  // Zitadel organization/resource-owner id
+  isPublicMcp: boolean;         // true for a demo sandbox tenant
+  suspendedAt: Date | null;
+}
+```
+
+`slug` route HTTP traffic。`zitadelOrgId` route identity。兩者刻意分開。
+
+對 private tenants 來說，access token 必須包含 Zitadel 的 resource-owner claim，而且該 claim 必須符合 `tenant.zitadelOrgId`。Zitadel 在 [claims reference](https://zitadel.com/docs/apis/openidoauth/claims) 中把這個 reserved claim 記為 `urn:zitadel:iam:user:resourceowner:id`。
+
+對 public demo tenants，你可以刻意跳過 org claim check，但仍然驗證 JWT issuer、audience、signature 和 expiry。我們的 public e-invoice demo 就是這樣做，因為 dynamically registered Claude clients 不一定總會收到 Zitadel-specific resource-owner claim。跳過 org claim 不等於跳過 auth。
+
+---
+
+## 2. 設定 Zitadel 以簽發 JWT Access Tokens
+
+在 Zitadel 中，為你的遠端 MCP service 建立一個 project。接著為 MCP access 設定一個 OIDC application。
+
+Dashboard 裡的確切標籤會隨時間變動，但長期穩定的要求是：
+
+- 啟用 **Authorization Code flow**。
+- 如果你的 client 是 confidential 且需要 refresh，啟用 **Refresh Token**。
+- 使用 **JWT access tokens**，不要用 opaque tokens。你的 MCP 伺服器需要透過 JWKS 做本地 JWT verification。
+- **Audience 包含 project id**，或包含 MCP 伺服器會檢查的 resource value。
+- 需要 private tenant isolation 時，**Resource owner claim 可用**。
+- **JWKS endpoint 可用**。Zitadel 在 [web keys documentation](https://zitadel.com/docs/guides/integrate/login/oidc/webkeys) 中說明，JWT access tokens 可用 public keys 驗證。
+
+Production remote MCP setup 的設定清單如下：
+
+1. 為 MCP service 建立一個 Zitadel project。
+2. 如果產品有 browser dashboard，建立 dashboard Web application。
+3. 為 remote MCP resource 建立 `mcp` API/Bearer application。
+4. 使用 Zitadel project id 或已設定的 API resource 作為 `ZITADEL_MCP_RESOURCE`。
+5. 將 access tokens 設定為 JWT。
+6. 啟用 project/audience assertion，讓 MCP resource 出現在 `aud` 中。
+7. 為 private tenants 提供 Zitadel resource-owner claim：`urn:zitadel:iam:user:resourceowner:id`。
+8. 將平台 root domain 和 Zitadel identifiers 存入 server environment。
+9. 如果 Claude.ai 會動態註冊自己，加入[公開 runbook](/zh-TW/docs/guides/zitadel-claude-mcp-runbook) 中涵蓋的 DCR 代理變數。
+
+MCP endpoint 的最小 production environment 是：
+
+```bash
+ROOT_DOMAIN=einvoice-platform.fr
+ZITADEL_DOMAIN=https://your-instance.zitadel.cloud
+ZITADEL_MCP_CLIENT_ID=...
+ZITADEL_MCP_RESOURCE=... # usually the Zitadel project id used as JWT audience
+```
+
+在 e-invoice deployment 中，靜態 Zitadel project 同時有作為 Web application 的 `dashboard` 和作為 API/Bearer application 的 `mcp`。DCR-created Claude clients 是額外的 Web applications；它們不會取代伺服器要驗證的 MCP API resource。
+
+兩個細節很容易漏掉：
+
+1. 這套設定中，Zitadel 的 JWKS endpoint 是 `/oauth/v2/keys`，不一定是 `/.well-known/jwks.json`。
+2. 如果 access token 是 opaque，你的 MCP middleware 無法本地驗證它。你要嘛切換到 JWT access tokens，要嘛在每個 request 上做 token introspection。對高頻 MCP endpoint 來說，本地 JWKS validation 是更簡單的路徑。
+
+完整操作清單，包括 service-user PAT、DCR 環境變數、metadata curl 檢查和清理命令，請使用配套文件：[Zitadel + Claude.ai MCP Runbook](/zh-TW/docs/guides/zitadel-claude-mcp-runbook)。
+
+---
+
+## 3. 為每個租戶建構一個 McpApp
+
+按租戶建立 factory 的地方，就是 MCP 部分變得具體的地方。
+
+```typescript
+import {
+  createMultiTenantMiddleware,
+  createOIDCAuthProvider,
+  McpApp,
+} from "@casys/mcp-server";
+
+export async function buildMcpServer({ tenant, creds }) {
+  const issuer = Deno.env.get("ZITADEL_DOMAIN")!;
+  const rootDomain = Deno.env.get("ROOT_DOMAIN")!;
+  const resource = Deno.env.get("ZITADEL_MCP_RESOURCE")!;
+
+  const resourceMetadataUrl =
+    `https://${tenant.slug}.${rootDomain}/mcp/.well-known/oauth-protected-resource`;
+
+  const authProvider = createOIDCAuthProvider({
+    issuer,
+    audience: resource,
+    resource,
+    resourceMetadataUrl,
+    jwksUri: `${issuer}/oauth/v2/keys`,
+    authorizationServers: [`https://${rootDomain}`],
+  });
+
+  const app = new McpApp({
+    name: `einvoice-platform-${tenant.slug}`,
+    version: "0.1.0",
+    maxConcurrent: 10,
+    backpressureStrategy: "queue",
+    validateSchema: true,
+    auth: { provider: authProvider },
+  });
+
+  const { tools, handlers } = loadEinvoiceTools(creds);
+  app.registerTools(tools, handlers);
+
+  app.use(createMultiTenantMiddleware(new EinvoiceMcpTenantResolver()));
+
+  const handler = await app.getFetchHandler({
+    requireAuth: true,
+    cors: true,
+    corsOrigins: "*",
+  });
+
+  return { app, handler };
+}
+```
+
+在 e-invoice deployment 中，`authorizationServers` 的值刻意是 root domain，而不是 Zitadel domain。原因是 root domain 服務一個 authorization-server metadata proxy，替 Claude.ai 加上 Dynamic Client Registration 支援。如果你的 Zitadel setup 已經給 MCP client 註冊好了 OAuth client，也可以讓 discovery 直接指向 Zitadel。
+
+這個 factory 應該在 cache miss 時執行，而不是每個 MCP request 都執行。Tool registration、JWKS setup 和 credential decryption 都屬於 server warmup。
+
+---
+
+## 4. 按租戶快取，並在憑證輪換時失效
+
+為每個租戶快取建好的 server：
+
+```typescript
+type BuiltMcpServer = {
+  app: McpApp;
+  handler: (request: Request) => Promise<Response>;
+};
+
+const cache = new Map<string, Promise<BuiltMcpServer>>();
+
+export function getMcpServer(tenant: Tenant) {
+  const existing = cache.get(tenant.id);
+  if (existing) return existing;
+
+  const built = loadTenantCredentials(tenant.id)
+    .then((creds) => buildMcpServer({ tenant, creds }));
+
+  cache.set(tenant.id, built);
+  return built;
+}
+```
+
+失效要明確處理。當租戶輪換 provider credentials 時，刪除 cache entry；如果你的 framework 暴露 lifecycle hook，也停止舊的 `McpApp`。
+
+不要在每次 tool call 時讀取和解密 provider credentials。這會讓 hot path 變慢，並替每個 request 製造新的 failure mode。把 active credentials 綁定到 tenant server，等它們變更時再讓 cache 失效。
+
+---
+
+## 5. 將 `/mcp` 掛載成薄 route
+
+你的 web framework route 不應該包含 business logic。它只應該：
+
+1. 確認 request 在 tenant subdomain 上。
+2. 載入快取的 `McpApp`。
+3. 必要時在 delegation 前重寫 mounted path。
+4. 回傳 handler response。
+
+在 Fresh 中，route 長這樣：
+
+```typescript
+async function dispatch(ctx: Context<State>): Promise<Response> {
+  if (ctx.state.tenant.kind !== "tenant") {
+    return new Response("MCP endpoint is only available on tenant subdomains", {
+      status: 404,
+    });
+  }
+
+  const tenant = ctx.state.tenant.tenant;
+  const built = await getMcpServer(tenant);
+
+  const url = new URL(ctx.req.url);
+  url.pathname = url.pathname === "/mcp"
+    ? "/"
+    : url.pathname.replace(/^\/mcp\//, "/");
+
+  return await built.handler(new Request(url, ctx.req));
+}
+```
+
+Prefix rewrite 很重要，因為公開 URL 是 `/mcp`，但嵌入的 `McpApp` 在 root 暴露內部 routes：
+
+- `/.well-known/oauth-protected-resource`
+- `/metrics`
+- `/` for MCP JSON-RPC and streamable HTTP
+
+如果不 rewrite，Claude.ai 會要求 `/mcp/.well-known/oauth-protected-resource`，嵌入的 app 會看到 unknown route，auth discovery 就會失敗。
+
+---
+
+## 6. 在 JWT 驗證後強制執行租戶隔離
+
+Tenant resolver 跑在 MCP middleware chain 裡面，並且是在 auth middleware 已經驗證 bearer token 之後。
+
+<ExcalidrawDiagram src="mcp-zitadel-multitenant/tenant-auth-flow" alt="租戶隔離流程：驗證 JWT、解析 host，然後區分私有組織檢查與公開 demo tenant。" wide />
+
+Resolver 很小，但很重要：
+
+```typescript
+const ZITADEL_ORG_ID = "urn:zitadel:iam:user:resourceowner:id";
+
+export class EinvoiceMcpTenantResolver implements TenantResolver {
+  async resolve(ctx: MiddlewareContext): Promise<TenantResolution> {
+    const host = ctx.request?.headers.get("host") ?? "";
+    const parsed = parseHost(host);
+    if (parsed.kind !== "tenant") {
+      return { ok: false, reason: "no tenant subdomain" };
+    }
+
+    const authInfo = ctx.authInfo as AuthInfo | undefined;
+    if (!authInfo) {
+      return { ok: false, reason: "auth middleware did not run" };
+    }
+
+    const tenant = await findBySlug(parsed.slug);
+    if (!tenant || tenant.suspendedAt) {
+      return { ok: false, reason: "tenant unavailable" };
+    }
+
+    if (tenant.isPublicMcp) {
+      return { ok: true, tenantId: tenant.id };
+    }
+
+    const claim = authInfo.claims?.[ZITADEL_ORG_ID];
+    if (typeof claim !== "string" || claim !== tenant.zitadelOrgId) {
+      return { ok: false, reason: "zitadel org mismatch" };
+    }
+
+    return { ok: true, tenantId: tenant.id };
+  }
+}
+```
+
+把詳細的拒絕原因寫到 logs 和 audit events，不要回傳給 client。失敗的 tenant check 應該收斂成 generic auth error。否則，你的 MCP endpoint 會變成 tenant enumeration API。
+
+---
+
+## 7. 發布 Protected Resource Metadata
+
+Claude.ai 透過 Protected Resource Metadata 探索 OAuth server。MCP specification 要求支援 authorization 的 HTTP-based MCP servers 暴露這份 metadata，或透過 `WWW-Authenticate` challenge 提供。
+
+對租戶 endpoint 來說，document 應該長這樣：
+
+```json
+{
+  "resource": "<zitadel-project-id-or-resource-id>",
+  "resource_metadata_url": "https://demo.einvoice-platform.fr/mcp/.well-known/oauth-protected-resource",
+  "authorization_servers": ["https://einvoice-platform.fr/"],
+  "bearer_methods_supported": ["header"]
+}
+```
+
+`resource` value 必須符合 MCP server 在 JWT 中驗證的 audience。
+
+`authorization_servers` value 應該指向 Claude 可用的 authorization server metadata。在最簡單的設定裡，可以直接指向 Zitadel。在我們已出貨的設定裡，它指向 platform root，因為 root 會服務帶有 `registration_endpoint` 的 authorization-server metadata proxy，供 Claude.ai 使用。
+
+---
+
+## 8. 像 Claude 一樣測試 Connector
+
+打開 Claude.ai 之前，先測試 discovery chain：
+
+```bash
+curl -i \
+  https://demo.einvoice-platform.fr/mcp/.well-known/oauth-protected-resource
+```
+
+檢查：
+
+- `200 OK`
+- `authorization_servers`
+- `resource`
+- `bearer_methods_supported: ["header"]`
+
+然後測試 Claude 會抓取的 authorization-server metadata：
+
+```bash
+curl -i \
+  https://einvoice-platform.fr/.well-known/oauth-authorization-server
+```
+
+檢查：
+
+- `issuer`
+- `authorization_endpoint`
+- `token_endpoint`
+- `jwks_uri`
+- `code_challenge_methods_supported`
+- `registration_endpoint` if you support Dynamic Client Registration
+
+確認之後，再到 Claude.ai 加入 connector。託管版 Claude surfaces 使用 `https://claude.ai/api/mcp/auth_callback` 作為 redirect URI。如果你支援 DCR，Claude 會在 registration request 裡送出它。如果你預先註冊 client，就要自己在 Zitadel 裡註冊這個 callback。
+
+---
+
+## DCR 放在哪裡
+
+Zitadel 很適合多租戶身份，因為它的 organizations 能乾淨地對應到 tenant boundaries。比較粗糙的邊緣是 Dynamic Client Registration。截至本文寫作時，Zitadel 實作 RFC 7591 DCR 的 issue 仍然 open：[zitadel/zitadel#9810](https://github.com/zitadel/zitadel/issues/9810)。
+
+Claude 支援 remote MCP connectors 的多種 auth modes，包括 DCR、Client ID Metadata Documents、Anthropic-held credentials 和 no auth。目前 Anthropic docs 也指出，custom connectors 不支援使用者貼上的 static bearer tokens。
+
+對我們的公開自訂 connector，我們在 Zitadel 前面實作了一個 DCR 代理。配套文章是：[在 Zitadel 原生支援 DCR 之前，讓 Claude.ai 的 MCP OAuth 正常運作](/zh-TW/blog/zitadel-dcr-proxy-claude-mcp)。
+
+如果你建構的是 internal connector，可能不需要 DCR。你可以在 Zitadel 中預先註冊 Claude client，並在 Claude 支援的路徑中提供 client credentials。如果你發布的是使用者透過 URL 加入的 public remote MCP server，DCR 或其他受支援的 discovery-based registration path 就重要得多。
+
+---
+
+## 優先檢查的故障模式
+
+**Claude.ai 裡沒有 login button。** Discovery 壞了。先檢查 MCP Protected Resource Metadata，再檢查 authorization-server metadata。
+
+**OAuth 成功，但 MCP calls 回傳 401。** JWT validation settings 錯了。檢查 `issuer`、`audience`、`jwksUri`，以及 Zitadel 是否簽發 JWT access tokens。
+
+**Private tenant user 可以登入，但不能呼叫 tools。** 使用者可能已在 Zitadel 中驗證，但不在 resolver 預期的租戶 organization 裡。檢查 `urn:zitadel:iam:user:resourceowner:id` claim。
+
+**Public demo tenant 在一般瀏覽器中可用，但從 Claude 失敗。** 除非你已驗證那些 claims 存在，否則不要要求 public DCR-created clients 攜帶 Zitadel-specific organization claims。
+
+**Metadata endpoint 在 root 可用，但在 `/mcp` 下不可用。** 你的 route mount 很可能忘了在 delegation 到 embedded MCP handler 前移除 `/mcp`。
+
+**Tools 呼叫了錯誤的 provider account。** 你載入 credentials 太晚，或 cache key 用錯。用 tenant credentials 建構 tenant server，並在憑證輪換時讓 cache 失效。
+
+---
+
+## Links
+
+- [Connecting an MCP server to claude.ai: OAuth2 + Auth0](/zh-TW/blog/mcp-authentication-claude-ai-oauth2)
+- [Zitadel + Claude.ai MCP Runbook](/zh-TW/docs/guides/zitadel-claude-mcp-runbook)
+- [MCP Server in Production: The Complete TypeScript Guide](/zh-TW/blog/mcp-server-guide)
+- [MCP e-invoice use case](/use-cases/mcp-einvoice)
+- [Claude connector authentication docs](https://claude.com/docs/connectors/building/authentication)
+- [MCP Authorization spec, latest](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization)
+- [Zitadel web keys and JWT verification](https://zitadel.com/docs/guides/integrate/login/oidc/webkeys)
+- [Zitadel claims reference](https://zitadel.com/docs/apis/openidoauth/claims)
+- [Zitadel DCR issue](https://github.com/zitadel/zitadel/issues/9810)
+- [@casys/mcp-server](https://jsr.io/@casys/mcp-server)
+- [@casys/mcp-einvoice](https://github.com/casysai/mcp-einvoice)
