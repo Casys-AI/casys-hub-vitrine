@@ -198,13 +198,16 @@ const t = useTranslations(locale).articleAskDialog;
   .ask-dialog {
     border: none;
     border-radius: 16px;
+    margin: auto;
     padding: 0;
     max-width: 32rem;
     width: calc(100% - 2rem);
+    max-height: calc(100% - 3rem);
     background: var(--md-sys-color-surface, #fefbff);
     color: var(--md-sys-color-on-surface, #1c1b1f);
     box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18);
     font-family: 'Inter', sans-serif;
+    overflow: auto;
   }
 
   .ask-dialog::backdrop {
