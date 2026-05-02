@@ -703,6 +703,18 @@ const html = renderComposite(descriptor);`,
     hiddenSubject: "新的 CASYS 聯繫請求",
   },
 
+  articleCta: {
+    headlineDefault: "正在生產環境中構建 AI 應用？",
+    headlineWithTopic: "正在做 {topic}？",
+    subtext: "我們已將這套技術棧投入生產。20 分鐘通話，不推銷 — 只給你一個誠實的答案：我們能否幫你。",
+    teaseHeadline: "在生產環境卡住了？",
+    teaseSubtext: "我們已經做過了。省下數月的反覆試錯。",
+    primaryCta: "預約 Erwan 20 分鐘",
+    secondaryCta: "提交問題",
+    primaryAria: "預約 20 分鐘諮詢",
+    secondaryAria: "透過聯繫表單提交問題",
+  },
+
   // ========================================
   // SUBSITE: ENGINE
   // ========================================

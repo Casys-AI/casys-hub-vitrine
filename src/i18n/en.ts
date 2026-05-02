@@ -824,6 +824,19 @@ const html = renderComposite(descriptor);`,
     hiddenSubject: "New CASYS contact request",
   },
 
+  articleCta: {
+    headlineDefault: "Building with AI in production?",
+    headlineWithTopic: "Working on {topic}?",
+    subtext:
+      "We've shipped this stack in production. 20 minutes, no pitch — just an honest answer to whether we can help.",
+    teaseHeadline: "Stuck on this in production?",
+    teaseSubtext: "We've shipped it. Skip the months of trial and error.",
+    primaryCta: "Book 20 min with Erwan",
+    secondaryCta: "Send a question",
+    primaryAria: "Book a 20-minute consultation",
+    secondaryAria: "Send a question via the contact form",
+  },
+
   // ========================================
   // SUBSITE: ENGINE
   // ========================================

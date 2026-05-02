@@ -2,6 +2,7 @@
 import { getCollection } from 'astro:content';
 import BlogLayout from '../../../layouts/BlogLayout.astro';
 import AuthorByline from '../../../components/AuthorByline.astro';
+import ArticleCTA from '../../../components/ArticleCTA.astro';
 
 const locale = 'zh';
 
@@ -58,6 +59,12 @@ const relatedPosts = allPosts
 function getPostSlug(post: typeof allPosts[0]) {
   return post.slug.replace('zh/', '');
 }
+
+const cta = entry.data.cta;
+const ctaVariant = cta?.variant ?? 'engaged';
+const showTopCta = !!cta && (ctaVariant === 'tease' || ctaVariant === 'both');
+const showBottomCta = !!cta && (ctaVariant === 'engaged' || ctaVariant === 'both');
+const articleSlug = entry.slug.replace('zh/', '');
 ---
 
 <BlogLayout title={entry.data.title} locale={locale} description={entry.data.description} slug={entry.slug.replace('zh/', '')} ogTitle={ogTitle} ogDescription={ogDescription} datePublished={entry.data.date?.toISOString()} dateModified={entry.data.updatedAt?.toISOString()} author={entry.data.author} tags={entry.data.tags} category={entry.data.category}>
@@ -128,10 +135,30 @@ function getPostSlug(post: typeof allPosts[0]) {
     )}
   </header>
 
+  {showTopCta && (
+    <ArticleCTA
+      variant={ctaVariant}
+      topic={cta?.topic}
+      locale={locale}
+      position="top"
+      articleSlug={articleSlug}
+    />
+  )}
+
   <!-- Contenu de l'article -->
   <article class="prose">
     <Content />
   </article>
+
+  {showBottomCta && (
+    <ArticleCTA
+      variant={ctaVariant}
+      topic={cta?.topic}
+      locale={locale}
+      position="bottom"
+      articleSlug={articleSlug}
+    />
+  )}
 
   <!-- Articles similaires -->
   {relatedPosts.length > 0 && (

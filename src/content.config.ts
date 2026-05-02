@@ -19,6 +19,12 @@ const blog = defineCollection({
     snippet: z.string().optional(),
     featured: z.boolean().default(false),
     draft: z.boolean().default(false),
+    cta: z
+      .object({
+        variant: z.enum(['engaged', 'tease', 'both']).default('engaged'),
+        topic: z.string().optional(),
+      })
+      .optional(),
   }),
 });
 

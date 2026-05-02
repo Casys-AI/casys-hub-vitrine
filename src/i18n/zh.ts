@@ -703,6 +703,18 @@ const html = renderComposite(descriptor);`,
     hiddenSubject: "新的 CASYS 联系请求",
   },
 
+  articleCta: {
+    headlineDefault: "正在生产环境中构建 AI 应用？",
+    headlineWithTopic: "正在做 {topic}？",
+    subtext: "我们已将这套技术栈投入生产。20 分钟通话，不推销 — 只给你一个诚实的答案：我们能否帮你。",
+    teaseHeadline: "在生产环境卡住了？",
+    teaseSubtext: "我们已经做过了。省下数月的反复试错。",
+    primaryCta: "预约 Erwan 20 分钟",
+    secondaryCta: "提交问题",
+    primaryAria: "预约 20 分钟咨询",
+    secondaryAria: "通过联系表单提交问题",
+  },
+
   // ========================================
   // SUBSITE: ENGINE
   // ========================================

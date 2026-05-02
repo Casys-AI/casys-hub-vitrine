@@ -1,0 +1,238 @@
+---
+import { useTranslations } from '../i18n';
+
+type Variant = 'engaged' | 'tease' | 'both';
+
+interface Props {
+  variant?: Variant;
+  topic?: string;
+  locale?: string;
+  position?: 'top' | 'bottom';
+  articleSlug?: string;
+}
+
+const {
+  variant = 'engaged',
+  topic,
+  locale = 'en',
+  position = 'bottom',
+  articleSlug = '',
+} = Astro.props;
+
+const t = useTranslations(locale).articleCta;
+
+const isTease = position === 'top' || (variant === 'tease' && position === 'bottom');
+
+const headline = isTease
+  ? t.teaseHeadline
+  : topic
+    ? t.headlineWithTopic.replace('{topic}', topic)
+    : t.headlineDefault;
+
+const subtext = isTease ? t.teaseSubtext : t.subtext;
+
+const localePrefix = locale === 'en' ? '' : `/${locale}`;
+const bookHref = `${localePrefix}/#contact`;
+const askHref = `${localePrefix}/#contact-form`;
+---
+
+<aside class={`article-cta article-cta--${position}`} aria-label={t.primaryAria}>
+  <div class="article-cta-inner">
+    <div class="article-cta-content">
+      <h3 class="article-cta-headline">{headline}</h3>
+      <p class="article-cta-subtext">{subtext}</p>
+    </div>
+
+    <div class="article-cta-actions">
+      <a
+        href={bookHref}
+        class="article-cta-btn article-cta-btn--primary"
+        aria-label={t.primaryAria}
+        data-umami-event="cta-blog-book"
+        data-umami-event-article={articleSlug}
+        data-umami-event-position={position}
+        data-umami-event-variant={variant}
+      >
+        <span class="material-symbols-rounded" aria-hidden="true">calendar_month</span>
+        <span>{t.primaryCta}</span>
+      </a>
+
+      <a
+        href={askHref}
+        class="article-cta-btn article-cta-btn--secondary"
+        aria-label={t.secondaryAria}
+        data-umami-event="cta-blog-ask"
+        data-umami-event-article={articleSlug}
+        data-umami-event-position={position}
+        data-umami-event-variant={variant}
+      >
+        <span class="material-symbols-rounded" aria-hidden="true">chat_bubble_outline</span>
+        <span>{t.secondaryCta}</span>
+      </a>
+    </div>
+  </div>
+</aside>
+
+<style>
+  .article-cta {
+    margin: 3rem 0;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .article-cta--top {
+    margin: 2rem 0 2.5rem;
+  }
+
+  .article-cta-inner {
+    background: linear-gradient(
+      135deg,
+      var(--md-sys-color-surface-container-low, #f7f2fa) 0%,
+      var(--md-sys-color-surface-container, #f3edf7) 100%
+    );
+    border: 1px solid var(--md-sys-color-outline-variant, #c4c7c5);
+    border-radius: 16px;
+    padding: 2rem 1.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .article-cta-inner::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(180deg, #6750a4 0%, #d4a574 100%);
+  }
+
+  .article-cta-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .article-cta-headline {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--md-sys-color-on-surface, #1c1b1f);
+    margin: 0;
+    letter-spacing: -0.015em;
+  }
+
+  .article-cta-subtext {
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--md-sys-color-on-surface-variant, #49454f);
+    margin: 0;
+  }
+
+  .article-cta-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .article-cta-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease,
+      color 0.15s ease, border-color 0.15s ease;
+    cursor: pointer;
+    line-height: 1.2;
+  }
+
+  .article-cta-btn .material-symbols-rounded {
+    font-size: 1.125rem;
+  }
+
+  .article-cta-btn--primary {
+    background-color: var(--md-sys-color-primary, #6750a4);
+    color: var(--md-sys-color-on-primary, #ffffff);
+    border: 1px solid transparent;
+  }
+
+  .article-cta-btn--primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(103, 80, 164, 0.3);
+    background-color: #594092;
+  }
+
+  .article-cta-btn--secondary {
+    background-color: transparent;
+    color: var(--md-sys-color-on-surface, #1c1b1f);
+    border: 1px solid var(--md-sys-color-outline, #79747e);
+  }
+
+  .article-cta-btn--secondary:hover {
+    background-color: var(--md-sys-color-surface-variant, #e7e0ec);
+    border-color: var(--md-sys-color-on-surface, #1c1b1f);
+  }
+
+  @media (max-width: 540px) {
+    .article-cta-inner {
+      padding: 1.5rem 1.25rem;
+    }
+    .article-cta-headline {
+      font-size: 1.25rem;
+    }
+    .article-cta-actions {
+      flex-direction: column;
+    }
+    .article-cta-btn {
+      justify-content: center;
+      width: 100%;
+    }
+  }
+
+  /* Dark mode — warm orange palette */
+  :global(html[data-theme='dark']) .article-cta-inner {
+    background: linear-gradient(135deg, #1a1815 0%, #221d18 100%);
+    border-color: rgba(255, 184, 111, 0.15);
+  }
+
+  :global(html[data-theme='dark']) .article-cta-inner::before {
+    background: linear-gradient(180deg, #FFB86F 0%, #D4A574 100%);
+  }
+
+  :global(html[data-theme='dark']) .article-cta-headline {
+    color: #f5f0ea;
+  }
+
+  :global(html[data-theme='dark']) .article-cta-subtext {
+    color: #d5c3b5;
+  }
+
+  :global(html[data-theme='dark']) .article-cta-btn--primary {
+    background-color: #FFB86F;
+    color: #1a1815;
+  }
+
+  :global(html[data-theme='dark']) .article-cta-btn--primary:hover {
+    background-color: #ffc98f;
+    box-shadow: 0 4px 18px rgba(255, 184, 111, 0.25);
+  }
+
+  :global(html[data-theme='dark']) .article-cta-btn--secondary {
+    color: #f5f0ea;
+    border-color: rgba(255, 184, 111, 0.4);
+  }
+
+  :global(html[data-theme='dark']) .article-cta-btn--secondary:hover {
+    background-color: rgba(255, 184, 111, 0.08);
+    border-color: #FFB86F;
+    color: #FFB86F;
+  }
+</style>
