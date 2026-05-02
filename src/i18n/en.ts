@@ -837,6 +837,25 @@ const html = renderComposite(descriptor);`,
     secondaryAria: "Send a question via the contact form",
   },
 
+  articleAskDialog: {
+    title: "Ask Erwan a question",
+    subtitleDefault: "Quick question about what you just read? Drop it here — answered within 24h.",
+    subtitleWithTopic: "Quick question about {topic}? Drop it here — answered within 24h.",
+    nameLabel: "Your name",
+    namePlaceholder: "Jane Doe",
+    emailLabel: "Your email",
+    emailPlaceholder: "jane@company.com",
+    messageLabel: "Your question",
+    messagePlaceholder: "What's blocking you, what would you build, what's not clear in the article…",
+    submit: "Send",
+    sending: "Sending…",
+    cancel: "Cancel",
+    closeAria: "Close dialog",
+    success: "Got it. Erwan will reply within 24h.",
+    error: "Something went wrong. Try again or email hello@casys.ai",
+    hiddenSubject: "Blog question from {article}",
+  },
+
   // ========================================
   // SUBSITE: ENGINE
   // ========================================

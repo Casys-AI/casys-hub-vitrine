@@ -715,6 +715,25 @@ const html = renderComposite(descriptor);`,
     secondaryAria: "通过联系表单提交问题",
   },
 
+  articleAskDialog: {
+    title: "向 Erwan 提问",
+    subtitleDefault: "对刚才读到的内容有疑问？写在这里——24 小时内回复。",
+    subtitleWithTopic: "对 {topic} 有疑问？写在这里——24 小时内回复。",
+    nameLabel: "你的名字",
+    namePlaceholder: "张三",
+    emailLabel: "你的邮箱",
+    emailPlaceholder: "you@company.com",
+    messageLabel: "你的问题",
+    messagePlaceholder: "你卡在哪里？想做什么？文章里哪里不清楚？",
+    submit: "发送",
+    sending: "发送中…",
+    cancel: "取消",
+    closeAria: "关闭弹窗",
+    success: "收到。Erwan 会在 24 小时内回复。",
+    error: "出错了。请重试或邮件至 hello@casys.ai",
+    hiddenSubject: "博客提问 — {article}",
+  },
+
   // ========================================
   // SUBSITE: ENGINE
   // ========================================

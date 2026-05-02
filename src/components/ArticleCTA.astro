@@ -33,7 +33,6 @@ const subtext = isTease ? t.teaseSubtext : t.subtext;
 
 const localePrefix = locale === 'en' ? '' : `/${locale}`;
 const bookHref = `${localePrefix}/#contact`;
-const askHref = `${localePrefix}/#contact-form`;
 ---
 
 <aside class={`article-cta article-cta--${position}`} aria-label={t.primaryAria}>
@@ -57,10 +56,15 @@ const askHref = `${localePrefix}/#contact-form`;
         <span>{t.primaryCta}</span>
       </a>
 
-      <a
-        href={askHref}
+      <button
+        type="button"
         class="article-cta-btn article-cta-btn--secondary"
         aria-label={t.secondaryAria}
+        aria-haspopup="dialog"
+        aria-controls="article-ask-dialog"
+        data-ask-trigger
+        data-ask-article={articleSlug}
+        data-ask-topic={topic ?? ''}
         data-umami-event="cta-blog-ask"
         data-umami-event-article={articleSlug}
         data-umami-event-position={position}
@@ -68,7 +72,7 @@ const askHref = `${localePrefix}/#contact-form`;
       >
         <span class="material-symbols-rounded" aria-hidden="true">chat_bubble_outline</span>
         <span>{t.secondaryCta}</span>
-      </a>
+      </button>
     </div>
   </div>
 </aside>

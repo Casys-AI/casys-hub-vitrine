@@ -3,6 +3,7 @@ import { getCollection } from 'astro:content';
 import BlogLayout from '../../../layouts/BlogLayout.astro';
 import AuthorByline from '../../../components/AuthorByline.astro';
 import ArticleCTA from '../../../components/ArticleCTA.astro';
+import ArticleAskDialog from '../../../components/ArticleAskDialog.astro';
 
 const locale = 'zh';
 
@@ -222,6 +223,8 @@ const articleSlug = entry.slug.replace('zh/', '');
       </div>
     </div>
   </nav>
+
+  {(showTopCta || showBottomCta) && <ArticleAskDialog locale={locale} />}
 </BlogLayout>
 
 <style>

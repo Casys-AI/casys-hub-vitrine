@@ -837,6 +837,25 @@ const html = renderComposite(descriptor);`,
     secondaryAria: "Poser une question via le formulaire de contact",
   },
 
+  articleAskDialog: {
+    title: "Poser une question à Erwan",
+    subtitleDefault: "Une question rapide sur ce que vous venez de lire ? Posez-la ici — réponse sous 24h.",
+    subtitleWithTopic: "Une question sur {topic} ? Posez-la ici — réponse sous 24h.",
+    nameLabel: "Votre nom",
+    namePlaceholder: "Jean Dupont",
+    emailLabel: "Votre email",
+    emailPlaceholder: "jean@entreprise.com",
+    messageLabel: "Votre question",
+    messagePlaceholder: "Ce qui vous bloque, ce que vous voulez construire, ce qui n'est pas clair dans l'article…",
+    submit: "Envoyer",
+    sending: "Envoi…",
+    cancel: "Annuler",
+    closeAria: "Fermer la fenêtre",
+    success: "Reçu. Erwan vous répond sous 24h.",
+    error: "Une erreur est survenue. Réessayez ou écrivez à hello@casys.ai",
+    hiddenSubject: "Question blog depuis {article}",
+  },
+
   // ========================================
   // SUBSITE: ENGINE
   // ========================================
