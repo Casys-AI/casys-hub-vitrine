@@ -158,27 +158,29 @@ const askHref = `${localePrefix}/#contact-form`;
     font-size: 1.125rem;
   }
 
-  .article-cta-btn--primary {
+  .article-cta .article-cta-btn--primary {
     background-color: var(--md-sys-color-primary, #6750a4);
     color: var(--md-sys-color-on-primary, #ffffff);
     border: 1px solid transparent;
   }
 
-  .article-cta-btn--primary:hover {
+  .article-cta .article-cta-btn--primary:hover {
     transform: translateY(-1px);
     box-shadow: 0 4px 14px rgba(103, 80, 164, 0.3);
     background-color: #594092;
+    color: var(--md-sys-color-on-primary, #ffffff);
   }
 
-  .article-cta-btn--secondary {
+  .article-cta .article-cta-btn--secondary {
     background-color: transparent;
     color: var(--md-sys-color-on-surface, #1c1b1f);
     border: 1px solid var(--md-sys-color-outline, #79747e);
   }
 
-  .article-cta-btn--secondary:hover {
+  .article-cta .article-cta-btn--secondary:hover {
     background-color: var(--md-sys-color-surface-variant, #e7e0ec);
     border-color: var(--md-sys-color-on-surface, #1c1b1f);
+    color: var(--md-sys-color-on-surface, #1c1b1f);
   }
 
   @media (max-width: 540px) {
@@ -215,22 +217,23 @@ const askHref = `${localePrefix}/#contact-form`;
     color: #d5c3b5;
   }
 
-  :global(html[data-theme='dark']) .article-cta-btn--primary {
+  :global(html[data-theme='dark']) .article-cta .article-cta-btn--primary {
     background-color: #FFB86F;
     color: #1a1815;
   }
 
-  :global(html[data-theme='dark']) .article-cta-btn--primary:hover {
+  :global(html[data-theme='dark']) .article-cta .article-cta-btn--primary:hover {
     background-color: #ffc98f;
     box-shadow: 0 4px 18px rgba(255, 184, 111, 0.25);
+    color: #1a1815;
   }
 
-  :global(html[data-theme='dark']) .article-cta-btn--secondary {
+  :global(html[data-theme='dark']) .article-cta .article-cta-btn--secondary {
     color: #f5f0ea;
     border-color: rgba(255, 184, 111, 0.4);
   }
 
-  :global(html[data-theme='dark']) .article-cta-btn--secondary:hover {
+  :global(html[data-theme='dark']) .article-cta .article-cta-btn--secondary:hover {
     background-color: rgba(255, 184, 111, 0.08);
     border-color: #FFB86F;
     color: #FFB86F;
